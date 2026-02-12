@@ -1,0 +1,54 @@
+
+
+export type DisplayStyle = 'style1' | 'style2' | 'style3' | 'style4' | 'style5';
+
+export interface Category {
+  id: string;
+  name: string;
+  parentId: string | null;
+  displayStyle: DisplayStyle;
+  fileTypes?: string;
+  createdAt?: any;
+  order?: number;
+}
+
+export interface ContentItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  downloadUrl?: string;
+  prompt?: string;
+  videoUrl?: string;
+  instructions?: string;
+  createdAt?: any;
+  order?: number;
+  screenshots?: string[];
+  appVersion?: string;
+}
+
+export interface SubscriptionDialogConfig {
+  title: string;
+  description: string;
+  link: string;
+  enabled: boolean;
+}
+
+export interface ShareLinkConfig {
+  url: string;
+  text?: string;
+  enabled: boolean;
+}
+
+export interface ThemeConfig {
+  primaryColor: string;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: any; // Using any for Firebase Timestamp
+}
+    
+
+    

@@ -1,0 +1,32 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Publicly readable collections
+    match /categories/{document=**} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
+    match /appConfig/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
+    // User-specific data
+    match /users/{userId}/suggestions/{suggestionId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}
