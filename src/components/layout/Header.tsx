@@ -24,7 +24,6 @@ import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { signOut } from 'firebase/auth';
-import LoginButton from '@/components/auth/LoginButton';
 
 const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
   const { user, isUserLoading } = useUser();
@@ -44,9 +43,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
   
   const navItems = [
     { href: '/home', label: "الرئيسيه", external: false },
-    { href: '/about', label: "معلومات التطبيق", external: false },
     { href: '/colors', label: "منسق الالوان", external: false },
-    { href: '/pricing', label: "الأسعار", external: false },
     { href: '/subscribe', label: "اشتراك", external: false, icon: Star },
   ];
 
@@ -104,10 +101,6 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                   <div className="flex-1 bg-card text-card-foreground rounded-t-[2.5rem] p-6 flex flex-col">
                     <nav className="flex-1">
                       <ul className="space-y-2">
-                        {/* Dynamic Login/Subscription button */}
-                        <li>
-                            <LoginButton />
-                        </li>
                         
                         {navItems.map((item) => (
                           <li key={item.label}>
@@ -131,7 +124,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                           </li>
                         ))}
                         
-                        {isAdmin && (
+                        {isAdmin ? (
                             <li>
                                 <Link href={'/admin/dashboard'} className="block group">
                                   <SheetClose asChild>
@@ -142,6 +135,17 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                                   </SheetClose>
                                 </Link>
                             </li>
+                        ) : (
+                           <li>
+                              <Link href={'/login'} className="block group">
+                                <SheetClose asChild>
+                                    <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
+                                      <span className="font-semibold text-lg">الدخول</span>
+                                      <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                </SheetClose>
+                              </Link>
+                          </li>
                         )}
                         
                         {shareLinkConfig?.enabled && canShare && (

@@ -1,0 +1,227 @@
+'use client';
+
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+import { Loader2, Mail, Lock, Key, Frown } from 'lucide-react';
+import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useToast } from '@/hooks/use-toast';
+import { FirebaseError } from 'firebase/app';
+
+const formSchema = z.object({
+  email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
+  password: z.string().optional(),
+  activationCode: z.string().optional(),
+  rememberMe: z.boolean().default(false).optional(),
+});
+
+type LoginFormValues = z.infer<typeof formSchema>;
+
+export default function UnifiedLoginForm() {
+  const [role, setRole] = useState<'admin' | 'pro'>('admin');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const auth = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      activationCode: '',
+      rememberMe: false,
+    },
+  });
+
+  const handleRoleChange = (newRole: 'admin' | 'pro') => {
+    setRole(newRole);
+    setError(null);
+    form.reset(); // Reset form fields on role change
+  };
+
+  const onSubmit = async (data: LoginFormValues) => {
+    setIsSubmitting(true);
+    setError(null);
+
+    if (role === 'admin') {
+      if (!data.password) {
+        form.setError('password', { message: 'كلمة المرور مطلوبة' });
+        setIsSubmitting(false);
+        return;
+      }
+      try {
+        await signInWithEmailAndPassword(auth, data.email, data.password);
+        router.push('/admin/dashboard');
+      } catch (e: any) {
+         let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
+        if (e instanceof FirebaseError) {
+          if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+          }
+        }
+        setError(description);
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else if (role === 'pro') {
+      // Placeholder for Pro user activation
+      if (!data.activationCode || data.activationCode.length < 6) {
+         form.setError('activationCode', { message: 'الرجاء إدخال كود تفعيل صالح.' });
+         setIsSubmitting(false);
+         return;
+      }
+      console.log('Pro Activation Attempt:', data);
+      toast({
+        title: "قيد التطوير",
+        description: "ميزة تفعيل حساب برو غير متاحة بعد.",
+      });
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
+        <CardDescription>اختر نوع الحساب للمتابعة</CardDescription>
+      </CardHeader>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardContent className="space-y-6">
+            <FormField
+              control={form.control}
+              name="role"
+              render={() => (
+                <FormItem className="space-y-3">
+                  <FormLabel>نوع الحساب</FormLabel>
+                   <FormControl>
+                    <RadioGroup
+                      onValueChange={(value: 'admin' | 'pro') => handleRoleChange(value)}
+                      defaultValue={role}
+                      className="flex items-center space-x-4 rtl:space-x-reverse"
+                    >
+                      <FormItem className="flex items-center space-x-2 rtl:space-x-reverse">
+                        <FormControl>
+                          <RadioGroupItem value="admin" id="r1" />
+                        </FormControl>
+                        <FormLabel htmlFor="r1" className="font-normal">مدير</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 rtl:space-x-reverse">
+                        <FormControl>
+                          <RadioGroupItem value="pro" id="r2" />
+                        </FormControl>
+                        <FormLabel htmlFor="r2" className="font-normal">برو</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>البريد الإلكتروني</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input type="email" placeholder="email@example.com" {...field} className="pl-10 text-left" dir="ltr" />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {role === 'admin' && (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>كلمة المرور</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input type="password" placeholder="••••••••••••" {...field} className="pl-10 text-left" dir="ltr" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
+            {role === 'pro' && (
+              <FormField
+                control={form.control}
+                name="activationCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>كود التفعيل</FormLabel>
+                    <FormControl>
+                       <div className="relative">
+                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input placeholder="أدخل كود التفعيل" {...field} className="pl-10 text-left" dir="ltr" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="rememberMe"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      تذكرني
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            
+            {error && (
+                <div className="flex items-center justify-center gap-2 text-destructive pt-2 text-sm">
+                    <Frown className="h-5 w-5" />
+                    <p className="font-semibold">{error}</p>
+                </div>
+            )}
+
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
+            </Button>
+          </CardFooter>
+        </form>
+      </Form>
+    </>
+  );
+}

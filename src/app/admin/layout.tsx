@@ -12,17 +12,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     useEffect(() => {
         if (isUserLoading) return;
 
-        const isLoginPage = pathname === '/admin/login';
+        const isLoginPage = pathname === '/login';
 
         if (!user && !isLoginPage) {
-            router.replace('/admin/login');
+            router.replace('/login');
         }
         if (user && isLoginPage) {
             router.replace('/admin/dashboard');
         }
     }, [user, isUserLoading, router, pathname]);
 
-    if (isUserLoading || (!user && pathname !== '/admin/login') || (user && pathname === '/admin/login')) {
+    if (isUserLoading || (!user && pathname !== '/login') || (user && pathname === '/login')) {
         return (
             <div className="flex h-screen items-center justify-center bg-background">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -32,5 +32,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     
     return <>{children}</>;
 }
-
-    
