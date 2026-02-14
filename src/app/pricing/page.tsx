@@ -5,6 +5,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check } from 'lucide-react';
+import Link from 'next/link';
 
 const plans = [
     {
@@ -58,9 +59,17 @@ export default function PricingPage() {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button className={`w-full ${plan.isFeatured ? 'bg-primary' : 'bg-secondary text-secondary-foreground'}`}>
-                    {plan.isFeatured ? 'الترقية الآن' : 'ابدأ مجاناً'}
-                  </Button>
+                  {plan.isFeatured ? (
+                    <Button asChild className="w-full">
+                      <Link href="/subscribe">
+                        الترقية الآن
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" className="w-full" disabled>
+                      ابدأ مجاناً
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
             ))}
