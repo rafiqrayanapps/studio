@@ -59,7 +59,7 @@ const useFormSchemas = () => {
     
     const themeSchema = z.object({
         primaryColor: z.string().min(1, "كود اللون مطلوب").regex(colorRegex, "صيغة اللون غير صحيحة. مثال: 350 72% 51%"),
-        primaryColorDark: z.string().regex(colorRegex, {message: "صيغة اللون غير صحيحة. مثال: 350 72% 51%"}).or(z.literal('')).optional(),
+        primaryColorDark: z.string().regex(colorRegex, { message: "صيغة اللون غير صحيحة. مثال: 350 72% 51%" }).or(z.literal('')).optional(),
     });
 
     const notificationSchema = z.object({
