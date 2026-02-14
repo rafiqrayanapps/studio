@@ -23,7 +23,6 @@ import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { signOut } from 'firebase/auth';
-import LoginButton from '../auth/LoginButton';
 
 const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
   const { user, isUserLoading } = useUser();
@@ -32,6 +31,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
   const [canShare, setCanShare] = React.useState(false);
 
   React.useEffect(() => {
+    // This check ensures navigator is accessed only on the client side.
     if (typeof navigator !== 'undefined' && navigator.share) {
       setCanShare(true);
     }
@@ -101,8 +101,6 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                   <div className="flex-1 bg-card text-card-foreground rounded-t-[2.5rem] p-6 flex flex-col">
                     <nav className="flex-1">
                       <ul className="space-y-2">
-                        <LoginButton />
-
                         {navItems.map((item) => (
                           <li key={item.label}>
                              {item.external ? (
