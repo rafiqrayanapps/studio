@@ -15,15 +15,18 @@ import Link from 'next/link';
 import { 
   Menu,
   ChevronLeft,
-  Share2
+  Share2,
+  LogOut
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { signOut } from 'firebase/auth';
+import LoginButton from '../auth/LoginButton';
 
 const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
-  const { user } = useUser();
+  const { user, auth: firebaseAuth } = useFirebase();
   const firestore = useFirestore();
 
   const shareLinkRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'shareLink') : null, [firestore]);
@@ -33,7 +36,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
     { href: '/home', label: "الرئيسيه", external: false },
     { href: '/about', label: "معلومات التطبيق", external: false },
     { href: '/colors', label: "منسق الالوان", external: false },
-    { href: user ? '/admin/dashboard' : '/admin/login', label: "لوحة التحكم", external: false },
+    { href: '/pricing', label: "الأسعار", external: false },
   ];
 
   const handleShare = async () => {
@@ -52,6 +55,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
     }
   };
 
+  const isAdmin = user?.providerData.some(p => p.providerId === 'password');
 
   return (
     <header className={cn(
@@ -89,6 +93,8 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                   <div className="flex-1 bg-card text-card-foreground rounded-t-[2.5rem] p-6 flex flex-col">
                     <nav className="flex-1">
                       <ul className="space-y-2">
+                        <LoginButton />
+
                         {navItems.map((item) => (
                           <li key={item.label}>
                              {item.external ? (
@@ -110,12 +116,37 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                              )}
                           </li>
                         ))}
+                        
+                        {isAdmin && (
+                            <li>
+                                <Link href={'/admin/dashboard'} className="block group">
+                                  <SheetClose asChild>
+                                      <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
+                                        <span className="font-semibold text-lg">لوحة التحكم</span>
+                                        <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+                                      </div>
+                                  </SheetClose>
+                                </Link>
+                            </li>
+                        )}
+                        
                         {shareLinkConfig?.enabled && typeof navigator !== 'undefined' && navigator.share && (
                            <li>
                               <div className="block group cursor-pointer" onClick={handleShare}>
                                 <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
                                   <span className="font-semibold text-lg">مشاركة التطبيق</span>
                                   <Share2 className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              </div>
+                           </li>
+                        )}
+
+                        {isAdmin && (
+                             <li>
+                              <div className="block group cursor-pointer" onClick={() => signOut(firebaseAuth)}>
+                                <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary text-destructive">
+                                  <span className="font-semibold text-lg">تسجيل الخروج (Admin)</span>
+                                  <LogOut className="h-5 w-5" />
                                 </div>
                               </div>
                            </li>

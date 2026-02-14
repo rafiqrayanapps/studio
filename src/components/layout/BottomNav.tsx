@@ -31,35 +31,30 @@ export default function BottomNav() {
 
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({
     opacity: 0,
+    transform: 'translateX(-50%)'
   });
 
   useEffect(() => {
-    // This effect runs only on the client, after the component has mounted
-    // and the locale is hydrated from localStorage. This prevents hydration mismatch.
-    const isRTL = true; // Always RTL now
+    if (!isMounted) return;
 
-    // Positions for Home, Favorites, Notifications out of 4 total items
-    const indicatorPositionsLTR = ['12.5%', '37.5%', '62.5%'];
+    const isRTL = true;
+    // Total items = 4 (3 nav + 1 action)
+    // Positions: 12.5%, 37.5%, 62.5%, 87.5%
+    // In RTL, it's reversed. The nav items are on the right.
     const indicatorPositionsRTL = ['87.5%', '62.5%', '37.5%'];
-
-    const positions = isRTL ? indicatorPositionsRTL : indicatorPositionsLTR;
-
+    const positions = indicatorPositionsRTL;
+    
     if (activeIndex > -1) {
-        const positionProp = isRTL ? 'right' : 'left';
-        const positionValue = positions[activeIndex];
-        const transformValue = 'translateX(-50%)'; // The dot is centered on the position
-
-        setIndicatorStyle({
-            [positionProp]: positionValue,
-            transform: transformValue,
+        setIndicatorStyle(prev => ({
+            ...prev,
+            right: positions[activeIndex],
             opacity: 1,
-            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        });
+            transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }));
     } else {
-        // Hide indicator if no item is active
-        setIndicatorStyle({ opacity: 0 });
+        setIndicatorStyle(prev => ({ ...prev, opacity: 0 }));
     }
-  }, [activeIndex]);
+  }, [activeIndex, isMounted]);
 
 
   if (pathname.startsWith('/admin') || pathname === '/') {
@@ -102,12 +97,10 @@ export default function BottomNav() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden px-4 pb-4">
       <div className="relative max-w-sm mx-auto">
-        {/* The moving dot indicator */}
         <div 
           style={indicatorStyle}
           className="absolute -top-[6px] h-3 w-3 rounded-full bg-primary"
         />
-        {/* Main Nav Container */}
         <div className="bg-card rounded-full shadow-lg flex justify-around items-center h-14 w-full p-1 relative">
             {navItems.map(item => <NavLink key={item.href} {...item} />)}
             

@@ -50,3 +50,12 @@ export interface Notification {
   description: string;
   createdAt: any; // Using any for Firebase Timestamp
 }
+
+export interface UserProfile {
+  id: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  createdAt: any; // Firebase Timestamp
+  subscriptionTier: 'free' | 'pro';
+}
