@@ -69,6 +69,7 @@ const useFormSchemas = () => {
 
     const whitelistSchema = z.object({
         email: z.string().email("البريد الإلكتروني غير صالح."),
+        activationCode: z.string().optional(),
         role: z.enum(['admin', 'pro'], { required_error: "الدور مطلوب." }),
     });
 
@@ -161,7 +162,7 @@ export default function AdminDashboardPage() {
   const shareLinkForm = useForm<ShareLinkFormValues>({ resolver: zodResolver(shareLinkSchema), defaultValues: { url: '', text: '', enabled: false } });
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
-  const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', role: 'pro' } });
+  const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', activationCode: '', role: 'pro' } });
 
 
   // Effects to reset forms when editing state changes
@@ -751,6 +752,7 @@ export default function AdminDashboardPage() {
                             <Form {...whitelistForm}>
                                 <form onSubmit={whitelistForm.handleSubmit(onWhitelistSubmit)} className="space-y-6">
                                     <FormField control={whitelistForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>البريد الإلكتروني للمشترك</FormLabel><FormControl><Input placeholder="user@example.com" {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={whitelistForm.control} name="activationCode" render={({ field }) => ( <FormItem><FormLabel>كود التفعيل (اختياري)</FormLabel><FormControl><Input placeholder="ادخل كود التفعيل" {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                     <FormField control={whitelistForm.control} name="role" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>الصلاحية</FormLabel>
@@ -781,9 +783,16 @@ export default function AdminDashboardPage() {
                                     <div key={user.id} className="flex items-center bg-secondary p-2 rounded-md">
                                         <div className="flex-1">
                                             <p className="font-bold">{user.email}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                الصلاحية: <span className="font-semibold text-primary">{user.role === 'admin' ? 'Admin' : 'Pro'}</span>
-                                            </p>
+                                            <div className="text-sm text-muted-foreground flex gap-4">
+                                                <p>
+                                                    الصلاحية: <span className="font-semibold text-primary">{user.role === 'admin' ? 'Admin' : 'Pro'}</span>
+                                                </p>
+                                                {user.activationCode && (
+                                                    <p>
+                                                        الكود: <span className="font-mono text-foreground">{user.activationCode}</span>
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'whitelist', entity: user })}><Trash2/></Button>
                                     </div>

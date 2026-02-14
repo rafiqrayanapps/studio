@@ -326,6 +326,10 @@
             "pro"
           ]
         },
+        "activationCode": {
+          "type": "string",
+          "description": "The activation code for a 'pro' user."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
