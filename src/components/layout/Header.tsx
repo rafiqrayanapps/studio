@@ -21,32 +21,32 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { useLocale } from '@/hooks/use-locale';
 
 const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
   const { user } = useUser();
   const firestore = useFirestore();
+  const { t } = useLocale();
 
   const shareLinkRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'shareLink') : null, [firestore]);
   const { data: shareLinkConfig } = useDoc<ShareLinkConfig>(shareLinkRef);
   
   const navItems = [
-    { href: '/home', label: 'الرئيسيه', external: false },
-    { href: '/about', label: 'معلومات التطبيق', external: false },
-    { href: '/colors', label: 'منسق الالوان', external: false },
-    { href: user ? '/admin/dashboard' : '/admin/login', label: 'لوحة التحكم', external: false },
+    { href: '/home', label: t('mainMenuHome'), external: false },
+    { href: '/about', label: t('mainMenuAbout'), external: false },
+    { href: '/colors', label: t('mainMenuColors'), external: false },
+    { href: user ? '/admin/dashboard' : '/admin/login', label: t('mainMenuDashboard'), external: false },
   ];
 
   const handleShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share && shareLinkConfig?.enabled && shareLinkConfig.url) {
       try {
         await navigator.share({
-          title: 'رفيق المصمم',
-          text: shareLinkConfig.text || 'تحقق من هذا التطبيق الرائع!',
+          title: t('designerCompanion'),
+          text: shareLinkConfig.text || t('shareApp'),
           url: shareLinkConfig.url,
         });
       } catch (error: any) {
-        // This error is thrown when the user cancels the share dialog.
-        // It's expected behavior and not a true error, so we can safely ignore it.
         if (error.name !== 'AbortError') {
           console.error('Error sharing:', error);
         }
@@ -71,18 +71,18 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
               </SheetTrigger>
               <SheetContent side="right" className="p-0 w-[85vw] max-w-sm bg-transparent border-0">
                  <SheetHeader className="sr-only">
-                    <SheetTitle>القائمة الرئيسية</SheetTitle>
+                    <SheetTitle>{t('mainMenu')}</SheetTitle>
                     <SheetDescription>
-                      روابط التنقل الرئيسية في التطبيق
+                      {t('mainMenuDescription')}
                     </SheetDescription>
                   </SheetHeader>
                  <div className="flex flex-col h-full bg-primary">
                   {/* Header part */}
                   <div className="flex items-center justify-center h-48">
                     <div className="text-center text-primary-foreground">
-                      <h2 className="text-4xl font-bold">رفيق</h2>
+                      <h2 className="text-4xl font-bold">{t('designerCompanion')}</h2>
                       <div className="mt-1 bg-primary-foreground text-primary px-4 py-1 rounded-lg inline-block">
-                        <h3 className="text-3xl font-bold tracking-widest">المصمم</h3>
+                        <h3 className="text-3xl font-bold tracking-widest">{t('designer')}</h3>
                       </div>
                     </div>
                   </div>
@@ -116,7 +116,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                            <li>
                               <div className="block group cursor-pointer" onClick={handleShare}>
                                 <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                                  <span className="font-semibold text-lg">مشاركة التطبيق</span>
+                                  <span className="font-semibold text-lg">{t('shareApp')}</span>
                                   <Share2 className="h-5 w-5 text-muted-foreground" />
                                 </div>
                               </div>
@@ -130,7 +130,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                        <SheetClose asChild>
                           <div className="block group cursor-pointer">
                             <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                              <span className="font-semibold text-lg">رجوع</span>
+                              <span className="font-semibold text-lg">{t('back')}</span>
                               <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                             </div>
                           </div>

@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
+import { useLocale } from '@/hooks/use-locale';
 
 
 export default function CategoryPage() {
@@ -27,6 +28,7 @@ export default function CategoryPage() {
   const router = useRouter();
   const id = params.id as string;
   const firestore = useFirestore();
+  const { t, locale } = useLocale();
   
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,33 +36,24 @@ export default function CategoryPage() {
   const { toast } = useToast();
 
   // --- START CACHING STRATEGY ---
-
-  // 1. CACHE & STATE FOR ALL CATEGORIES (to find sub-categories)
   const [cachedAllCategories, setCachedAllCategories] = useLocalStorage<WithId<Category>[]>('allCategoriesCache', []);
   const [displayAllCategories, setDisplayAllCategories] = useState<WithId<Category>[]>(cachedAllCategories);
-
-  // 2. CACHE & STATE FOR ITEMS (per-category)
   const [cachedItems, setCachedItems] = useLocalStorage<WithId<ContentItem>[]>(`itemsCache-${id}`, []);
   const [displayItems, setDisplayItems] = useState<WithId<ContentItem>[]>(cachedItems);
 
-  // 3. FETCH LIVE DATA
-  // Fetch current category details (no caching for this single doc, it's fast enough)
   const categoryRef = useMemoFirebase(() => (firestore && id ? doc(firestore, 'categories', id) : null), [firestore, id]);
   const { data: category, isLoading: categoryLoading, error: categoryError } = useDoc<Category>(categoryRef, { propagateError: true });
 
-  // Fetch ALL categories (live)
   const allCategoriesQuery = useMemoFirebase(() => (
     firestore ? query(collection(firestore, 'categories')) : null
   ), [firestore]);
   const { data: liveAllCategories, isLoading: subCategoriesLoading } = useCollection<Category>(allCategoriesQuery, { propagateError: true });
 
-  // Fetch content items (live)
   const itemsQuery = useMemoFirebase(() => (
     firestore && id ? query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc')) : null
   ), [firestore, id]);
   const { data: liveItems, isLoading: itemsLoading } = useCollection<ContentItem>(itemsQuery, { propagateError: true });
 
-  // 4. UPDATE DISPLAY AND CACHE FROM LIVE DATA
   useEffect(() => {
       if (liveAllCategories) {
           setDisplayAllCategories(liveAllCategories);
@@ -76,7 +69,6 @@ export default function CategoryPage() {
       }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveItems, setCachedItems]);
-  
   // --- END CACHING STRATEGY ---
 
   const subCategories = useMemo(() => {
@@ -89,10 +81,10 @@ export default function CategoryPage() {
   const toggleFavorite = (item: WithId<ContentItem>) => {
     const isCurrentlyFavorite = isFavorite(item.id);
     if (isCurrentlyFavorite) {
-      toast({ title: "تمت الإزالة من المفضلة" });
+      toast({ title: t('favoriteRemoved') });
       setFavorites(prev => prev.filter(fav => fav.id !== item.id));
     } else {
-      toast({ title: "تمت الإضافة إلى المفضلة" });
+      toast({ title: t('favoriteAdded') });
       setFavorites(prev => [...prev, item]);
     }
   };
@@ -154,7 +146,7 @@ export default function CategoryPage() {
                      <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                         <Button className="w-full">
                             <Download className="ml-2 h-4 w-4" />
-                            تحميل
+                            {t('download')}
                         </Button>
                     </a>
                 </div>
@@ -186,7 +178,7 @@ export default function CategoryPage() {
                     <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                     <Button className="w-full">
                         <Download className="ml-2 h-4 w-4" />
-                        تحميل
+                        {t('download')}
                     </Button>
                     </a>
                 </div>
@@ -200,12 +192,12 @@ export default function CategoryPage() {
             const handleCopy = () => {
                 if (item.prompt) {
                     navigator.clipboard.writeText(item.prompt);
-                    toast({ title: 'تم نسخ البرومبت!' });
+                    toast({ title: t('promptCopied') });
                 }
             };
             return (
                 <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group relative">
-                    <CardContent className="p-4 flex flex-col flex-1 gap-4 text-right">
+                    <CardContent className="p-4 flex flex-col flex-1 gap-4">
                         <h3 className="font-bold text-xl text-center">{item.title}</h3>
 
                         <div className="relative cursor-pointer w-full rounded-lg overflow-hidden">
@@ -222,26 +214,26 @@ export default function CategoryPage() {
 
                         {item.instructions && (
                             <div className="space-y-2">
-                                <h4 className="font-semibold text-foreground">التعليمات</h4>
+                                <h4 className="font-semibold text-foreground">{t('instructions')}</h4>
                                 <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{item.instructions}</p>
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <h4 className="font-semibold text-foreground">البرومبت</h4>
+                            <h4 className="font-semibold text-foreground">{t('prompt')}</h4>
                             <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted border-transparent" dir="ltr" />
                         </div>
                         
                         <div className="flex flex-col sm:flex-row gap-2 mt-auto">
                             <Button variant="default" className="w-full" onClick={handleCopy}>
                                 <Copy className="ml-2 h-4 w-4" />
-                                نسخ البرومبت
+                                {t('copy')} {t('prompt')}
                             </Button>
                             {item.downloadUrl && (
                                 <Button asChild variant="secondary" className="w-full">
                                     <a href={item.downloadUrl} target="_blank" rel="noopener noreferrer">
                                         <Download className="ml-2 h-4 w-4" />
-                                        تحميل
+                                        {t('download')}
                                     </a>
                                 </Button>
                             )}
@@ -284,7 +276,7 @@ export default function CategoryPage() {
                                 <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="w-full">
                                     <Button variant="secondary" className="w-full">
                                         <PlayCircle className="ml-2 h-4 w-4" />
-                                        مشاهدة الفيديو
+                                        {t('watchVideo')}
                                     </Button>
                                 </a>
                             </div>
@@ -295,10 +287,7 @@ export default function CategoryPage() {
         );
         case 'style5':
             const Style5Item = ({ item }: { item: WithId<ContentItem> }) => {
-                const [emblaApi, setEmblaApi] = useState<CarouselApi | null>(null);
-
                 const handleImageClick = (imageUrl: string) => {
-                    // The crash was happening here. Removed the problematic check.
                     setSelectedImage(imageUrl);
                 };
 
@@ -310,7 +299,7 @@ export default function CategoryPage() {
                             )}
                             <div className="flex-1">
                                 <h3 className="font-bold text-xl">{item.title}</h3>
-                                {item.appVersion && <p className="text-primary font-semibold text-sm">الإصدار {item.appVersion}</p>}
+                                {item.appVersion && <p className="text-primary font-semibold text-sm">{t('version')} {item.appVersion}</p>}
                                 <p className="text-muted-foreground text-sm mt-1">{item.instructions}</p>
                             </div>
                         </div>
@@ -321,15 +310,14 @@ export default function CategoryPage() {
                                     opts={{ 
                                         align: 'start', 
                                         dragFree: true,
-                                        direction: 'rtl',
-                                    }} 
-                                    setApi={setEmblaApi}>
+                                        direction: locale,
+                                    }}>
                                     <CarouselContent className="-ml-1">
                                         {item.screenshots.map((ss, i) => (
                                             <CarouselItem key={i} className="basis-4/5 pl-1">
                                                 <Image
                                                     src={ss}
-                                                    alt={`${item.title} screenshot ${i + 1}`}
+                                                    alt={t('screenshotAlt', { title: item.title, index: i + 1 })}
                                                     width={1080}
                                                     height={1920}
                                                     sizes="(max-width: 768px) 80vw, 40vw"
@@ -346,7 +334,7 @@ export default function CategoryPage() {
                         <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" className="w-full mt-2">
                             <Button className="w-full">
                                 <Download className="ml-2 h-4 w-4" />
-                                تحميل
+                                {t('download')}
                             </Button>
                         </a>
                     </Card>
@@ -367,16 +355,16 @@ export default function CategoryPage() {
   };
   
   return (
-    <div className="flex min-h-dvh flex-col bg-secondary" dir="rtl">
+    <div className="flex min-h-dvh flex-col bg-secondary">
         <div className="sticky top-0 z-20">
-             <Header showMenu={false} title={categoryLoading ? '...' : (category?.name || 'قسم غير معروف')}>
+             <Header showMenu={false} title={categoryLoading ? '...' : (category?.name || t('unknownCategory'))}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-10">
               <div className="pb-4 px-6">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input placeholder="ابحث..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} dir="rtl" />
+                    <Input placeholder={t('search')} className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -385,8 +373,8 @@ export default function CategoryPage() {
       <main className="flex-1 px-6 pt-2 pb-24">
         {categoryError && !isLoading ? (
             <div className="text-center text-destructive p-12 bg-destructive/10 rounded-2xl mt-4 space-y-2">
-                <AlertTriangle className="mx-auto h-8 w-8" /><h3 className="font-bold text-lg">خطأ في تحميل القسم</h3>
-                <p className="text-sm">لم نتمكن من العثور على هذا القسم أو ليس لديك إذن لعرضه.</p>
+                <AlertTriangle className="mx-auto h-8 w-8" /><h3 className="font-bold text-lg">{t('errorLoadingCategory')}</h3>
+                <p className="text-sm">{t('noPermission')}</p>
             </div>
         ) : isLoading ? (
           <div className="space-y-8 mt-6">
@@ -415,7 +403,7 @@ export default function CategoryPage() {
             )}
             {renderContent()}
             {(!filteredSubCategories || filteredSubCategories.length === 0) && (!filteredItems || filteredItems.length === 0) && !isLoading && (
-                 <div className="text-center text-muted-foreground p-12"><p>لا يوجد محتوى في هذا القسم بعد.</p></div>
+                 <div className="text-center text-muted-foreground p-12"><p>{t('noContent')}</p></div>
             )}
           </div>
         )}
@@ -424,7 +412,7 @@ export default function CategoryPage() {
        <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
           <DialogHeader>
-            <DialogTitle className="sr-only">Image Preview</DialogTitle>
+            <DialogTitle className="sr-only">{t('imagePreview')}</DialogTitle>
           </DialogHeader>
           {selectedImage && <Image src={selectedImage} alt="Preview" width={1200} height={800} className="w-full h-auto max-h-[90vh] object-contain rounded-lg" />}
         </DialogContent>

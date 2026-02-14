@@ -1,13 +1,14 @@
 import AdminLoginForm from '@/components/auth/AdminLoginForm';
+import { useLocale } from '@/hooks/use-locale';
 
 export default function AdminLoginPage() {
+  // Although this is a server component, we render the form which is a client component
+  // We can call useLocale here if we convert this to a client component, or pass t down.
+  // For simplicity, let's keep text in the form component.
+
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center bg-primary overflow-hidden">
         <div className="w-full max-w-xs px-4 z-10 space-y-10">
-            <div className="text-center text-primary-foreground">
-                <h1 className="text-5xl font-bold">تسجيل الدخول</h1>
-                <p className="text-lg opacity-90">للمتابعة</p>
-            </div>
             <AdminLoginForm />
         </div>
        <div className="absolute bottom-0 left-0 right-0 animate-wave">

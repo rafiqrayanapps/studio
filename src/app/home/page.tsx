@@ -11,10 +11,12 @@ import Link from 'next/link';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { useLocale } from '@/hooks/use-locale';
 
 export default function HomePage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
+  const { t } = useLocale();
 
   // 1. Read from localStorage cache first.
   const [cachedCategories, setCachedCategories] = useLocalStorage<WithId<CategoryType>[]>('allCategoriesCache', []);
@@ -52,12 +54,12 @@ export default function HomePage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
       <div className="sticky top-0 z-20">
-          <Header title="رفيق المصمم" />
+          <Header title={t('designerCompanion')} />
           <div className="relative z-10 -mt-10">
               <div className="pb-4 px-6">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input placeholder="ابحث عن القسم..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} dir="rtl" />
+                    <Input placeholder={t('searchForSection')} className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -70,7 +72,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <p className="text-muted-foreground text-sm mb-4">{mainCategories.length} قسم</p>
+            <p className="text-muted-foreground text-sm mb-4">{mainCategories.length} {t('sections')}</p>
             <div className="grid grid-cols-2 gap-4">
               {mainCategories.map((cat, index) => (
                 <div

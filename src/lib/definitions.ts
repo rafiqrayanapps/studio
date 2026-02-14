@@ -41,6 +41,7 @@ export interface ShareLinkConfig {
 
 export interface ThemeConfig {
   primaryColor: string;
+  primaryColorDark?: string;
 }
 
 export interface Notification {

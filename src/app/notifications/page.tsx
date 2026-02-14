@@ -10,10 +10,12 @@ import { Bell, BellRing } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
+import { useLocale } from '@/hooks/use-locale';
 
 export default function NotificationsPage() {
   const firestore = useFirestore();
   const [, setLastSeenTimestamp] = useLocalStorage<number | null>('lastSeenNotificationTimestamp', null);
+  const { t } = useLocale();
 
   const notificationsQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc')) : null,
@@ -39,8 +41,8 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
-      <Header title="الإشعارات" />
-      <main className="flex-1 px-4 pt-4 pb-24" dir="rtl">
+      <Header title={t('notifications')} />
+      <main className="flex-1 px-4 pt-4 pb-24">
         <div className="container mx-auto max-w-2xl space-y-4">
           {isLoading ? (
             [...Array(3)].map((_, i) => (
@@ -77,8 +79,8 @@ export default function NotificationsPage() {
           ) : (
             <div className="text-center text-muted-foreground p-12 mt-10 bg-card rounded-2xl">
               <Bell className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="font-bold text-lg">لا توجد إشعارات جديدة</h3>
-              <p className="mt-1">سنعلمك عند وصول أي جديد.</p>
+              <h3 className="font-bold text-lg">{t('noNewNotifications')}</h3>
+              <p className="mt-1">{t('weWillNotify')}</p>
             </div>
           )}
         </div>

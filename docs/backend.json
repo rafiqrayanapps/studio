@@ -201,7 +201,11 @@
       "properties": {
         "primaryColor": {
           "type": "string",
-          "description": "The primary color for the theme in HSL format without the hsl() wrapper (e.g., '222.2 47.4% 11.2%')."
+          "description": "The primary color for the light theme in HSL format without the hsl() wrapper (e.g., '222.2 47.4% 11.2%')."
+        },
+        "primaryColorDark": {
+          "type": "string",
+          "description": "The primary color for the dark theme in HSL format without the hsl() wrapper (e.g., '222.2 47.4% 11.2%')."
         }
       },
       "required": [
@@ -326,5 +330,3 @@
     "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings like the subscription dialog."
   }
 }
-
-    

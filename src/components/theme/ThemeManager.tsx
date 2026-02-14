@@ -4,9 +4,12 @@ import { useFirestore } from '@/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect } from 'react';
 import type { ThemeConfig } from '@/lib/definitions';
+import { useTheme } from 'next-themes';
 
-const THEME_COLOR_KEY = 'primaryColor';
-const DEFAULT_COLOR = '350 72% 51%';
+const THEME_LIGHT_KEY = 'primaryColor';
+const THEME_DARK_KEY = 'primaryColorDark';
+const DEFAULT_COLOR_LIGHT = '350 72% 51%';
+const DEFAULT_COLOR_DARK = '350 72% 51%';
 
 /**
  * Updates the theme-color meta tag in the document head.
@@ -19,10 +22,8 @@ function updateThemeColorMeta(color: string) {
   let metaThemeColor = document.querySelector('meta[name="theme-color"]');
 
   if (metaThemeColor) {
-    // If the meta tag exists, update its content.
     metaThemeColor.setAttribute('content', fullHslColor);
   } else {
-    // If it doesn't exist, create it and append to the head.
     metaThemeColor = document.createElement('meta');
     metaThemeColor.name = 'theme-color';
     metaThemeColor.content = fullHslColor;
@@ -30,64 +31,71 @@ function updateThemeColorMeta(color: string) {
   }
 }
 
-
 export default function ThemeManager() {
   const firestore = useFirestore();
+  const { resolvedTheme } = useTheme();
 
+  // This effect handles applying the theme from localStorage and Firestore updates
   useEffect(() => {
-    let initialColor = DEFAULT_COLOR;
-    // On first client load, try to get color from localStorage for immediate application.
+    let lightColor = DEFAULT_COLOR_LIGHT;
+    let darkColor = DEFAULT_COLOR_DARK;
+
+    // Apply from localStorage first
     try {
-      const storedColor = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_COLOR_KEY) : null;
-      if (storedColor) {
-          initialColor = JSON.parse(storedColor);
-      }
+      const storedLightColor = window.localStorage.getItem(THEME_LIGHT_KEY);
+      if (storedLightColor) lightColor = JSON.parse(storedLightColor);
+
+      const storedDarkColor = window.localStorage.getItem(THEME_DARK_KEY);
+      if (storedDarkColor) darkColor = JSON.parse(storedDarkColor);
     } catch (e) {
       console.error("Failed to parse theme color from localStorage, reverting to default.", e);
-      // If parsing fails, remove the invalid item from localStorage
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(THEME_COLOR_KEY);
-      }
+      window.localStorage.removeItem(THEME_LIGHT_KEY);
+      window.localStorage.removeItem(THEME_DARK_KEY);
     }
-
-    document.documentElement.style.setProperty('--primary', initialColor);
-    updateThemeColorMeta(initialColor); // Update meta tag on initial load
-
+    
+    document.documentElement.style.setProperty('--primary-light-val', lightColor);
+    document.documentElement.style.setProperty('--primary-dark-val', darkColor);
 
     if (!firestore) return;
 
+    // Subscribe to real-time updates
     const themeRef = doc(firestore, 'appConfig', 'theme');
-    
-    // Subscribe to real-time updates for the theme document.
     const unsubscribe = onSnapshot(themeRef, (docSnap) => {
-      let newColor = DEFAULT_COLOR;
+      let newLightColor = DEFAULT_COLOR_LIGHT;
+      let newDarkColor = DEFAULT_COLOR_DARK;
+
       if (docSnap.exists()) {
         const data = docSnap.data() as ThemeConfig;
-        if (data.primaryColor) {
-          newColor = data.primaryColor;
-        }
-      }
-      // Update CSS variable and localStorage
-      document.documentElement.style.setProperty('--primary', newColor);
-      updateThemeColorMeta(newColor); // Update meta tag on change
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(THEME_COLOR_KEY, JSON.stringify(newColor));
+        newLightColor = data.primaryColor || DEFAULT_COLOR_LIGHT;
+        newDarkColor = data.primaryColorDark || newLightColor; // Fallback to light color if dark not set
       }
 
+      // Update CSS variables and localStorage
+      document.documentElement.style.setProperty('--primary-light-val', newLightColor);
+      document.documentElement.style.setProperty('--primary-dark-val', newDarkColor);
+      window.localStorage.setItem(THEME_LIGHT_KEY, JSON.stringify(newLightColor));
+      window.localStorage.setItem(THEME_DARK_KEY, JSON.stringify(newDarkColor));
     }, (error) => {
-        console.error("ThemeManager snapshot error: ", error);
-        // In case of error, revert to default and clear storage
-        const defaultColor = DEFAULT_COLOR;
-        document.documentElement.style.setProperty('--primary', defaultColor);
-        updateThemeColorMeta(defaultColor); // Revert meta tag
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(THEME_COLOR_KEY, JSON.stringify(defaultColor));
-        }
+      console.error("ThemeManager snapshot error: ", error);
     });
 
-    // Cleanup the subscription when the component unmounts.
     return () => unsubscribe();
-  }, [firestore]); // The effect re-runs if the firestore instance changes.
+  }, [firestore]);
 
-  return null; // This component does not render anything visible.
+  // This effect updates the meta tag when the theme changes
+  useEffect(() => {
+      if (typeof window === 'undefined') return;
+
+      const style = window.getComputedStyle(document.documentElement);
+      // We read the --primary variable which is correctly set by CSS for light/dark mode
+      const primaryColorValue = style.getPropertyValue('--primary');
+      
+      if(primaryColorValue) {
+        updateThemeColorMeta(primaryColorValue);
+      }
+      
+  }, [resolvedTheme]);
+
+
+  return null;
 }

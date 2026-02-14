@@ -7,6 +7,7 @@ import type { SubscriptionDialogConfig } from '@/lib/definitions';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { useLocale } from '@/hooks/use-locale';
 
 const DIALOG_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
 
@@ -14,6 +15,7 @@ export default function SubscriptionDialog() {
   const firestore = useFirestore();
   const [isOpen, setIsOpen] = useState(false);
   const [lastShown, setLastShown] = useLocalStorage<number>('subscriptionDialogLastShown', 0);
+  const { t } = useLocale();
 
   const subscriptionDialogRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'subscriptionDialog') : null, [firestore]);
   const { data: config, isLoading } = useDoc<SubscriptionDialogConfig>(subscriptionDialogRef);
@@ -56,10 +58,10 @@ export default function SubscriptionDialog() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex flex-row p-0 m-0 w-full border-t !justify-center !space-x-0">
-            <Button variant="ghost" onClick={handleClose} className="flex-1 rounded-none border-0 m-0 h-12 text-base font-medium text-primary hover:bg-secondary !mt-0">إلغاء</Button>
+            <Button variant="ghost" onClick={handleClose} className="flex-1 rounded-none border-0 m-0 h-12 text-base font-medium text-primary hover:bg-secondary !mt-0">{t('cancel')}</Button>
             <div className="w-px bg-border"/>
             <Button variant="ghost" asChild className="flex-1 rounded-none m-0 h-12 text-base font-bold text-primary hover:bg-secondary !mt-0">
-                <a href={config.link} target="_blank" rel="noopener noreferrer" onClick={handleClose}>اشتراك</a>
+                <a href={config.link} target="_blank" rel="noopener noreferrer" onClick={handleClose}>{t('subscribe')}</a>
             </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

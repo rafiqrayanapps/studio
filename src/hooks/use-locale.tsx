@@ -1,11 +1,17 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
+import ar from '@/lib/locales/ar.json';
+import en from '@/lib/locales/en.json';
 
 type Locale = 'ar' | 'en';
+type Translations = Record<string, string>;
+
+const locales: Record<Locale, Translations> = { ar, en };
 
 type LocaleContextType = {
   locale: Locale;
   setLocale: Dispatch<SetStateAction<Locale>>;
+  t: (key: string, params?: Record<string, string | number>) => string;
 };
 
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
@@ -17,7 +23,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // On mount, read locale from localStorage
     const storedLocale = localStorage.getItem('locale') as Locale | null;
-    if (storedLocale) {
+    if (storedLocale && ['ar', 'en'].includes(storedLocale)) {
       setLocale(storedLocale);
     }
     setIsMounted(true);
@@ -33,8 +39,24 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     }
   }, [locale, isMounted]);
 
+  const t = (key: string, params?: Record<string, string | number>): string => {
+    let translation = locales[locale][key] || key;
+    if (params) {
+      Object.keys(params).forEach(paramKey => {
+        translation = translation.replace(`{${paramKey}}`, String(params[paramKey]));
+      });
+    }
+    return translation;
+  };
+  
+  // To prevent hydration mismatch, we don't render the children until the component is mounted
+  // and the initial locale is determined from localStorage. The splash screen will be visible during this time.
+  if (!isMounted) {
+    return null;
+  }
+
   return (
-    <LocaleContext.Provider value={{ locale, setLocale }}>
+    <LocaleContext.Provider value={{ locale, setLocale, t }}>
       {children}
     </LocaleContext.Provider>
   );

@@ -12,26 +12,24 @@ import { useLocale } from '@/hooks/use-locale';
 export default function BottomNav() {
   const pathname = usePathname();
   const hasNewNotifications = useHasNewNotifications();
-  const [activeIndex, setActiveIndex] = useState(-1);
   const [isMounted, setIsMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
-  const { locale, setLocale } = useLocale();
+  const { locale, setLocale, t } = useLocale();
+
+  const navItems = [
+    { href: '/home', icon: Home, label: t('home') },
+    { href: '/favorites', icon: Heart, label: t('favorites') },
+    { href: '/notifications', icon: Bell, label: t('notifications') },
+  ];
+  
+  const activeIndex = useMemo(() => {
+    return navItems.findIndex(item => pathname.startsWith(item.href));
+  }, [pathname, navItems]);
+
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  const navItems = [
-    { href: '/home', icon: Home, label: 'الرئيسية' },
-    { href: '/favorites', icon: Heart, label: 'المفضلة' },
-    { href: '/notifications', icon: Bell, label: 'الإشعارات' },
-  ];
-  
-  useEffect(() => {
-    const currentActiveIndex = navItems.findIndex(item => pathname.startsWith(item.href));
-    setActiveIndex(currentActiveIndex);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
 
   if (pathname.startsWith('/admin') || pathname === '/') {
       return null;
@@ -62,12 +60,13 @@ export default function BottomNav() {
   // In RTL, items are right-to-left. [Lang, Home, Fav, Notif, Theme]
   // Centers from right: 10% (Lang), 30% (Home), 50% (Fav), 70% (Notif), 90% (Theme)
   // activeIndex corresponds to navItems, which are at bar indices 1, 2, 3.
-  const indicatorPositions = ['30%', '50%', '70%'];
+  const indicatorPositionsRTL = ['30%', '50%', '70%'];
+  const indicatorPositionsLTR = ['30%', '50%', '70%'];
 
   const indicatorStyle = {
-    right: activeIndex > -1 ? indicatorPositions[activeIndex] : '50%',
+    [locale === 'ar' ? 'right' : 'left']: activeIndex > -1 ? (locale === 'ar' ? indicatorPositionsRTL[activeIndex] : indicatorPositionsLTR[activeIndex]) : '50%',
     transform: 'translateX(50%)',
-    transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     opacity: activeIndex > -1 ? 1 : 0,
   };
 
@@ -90,6 +89,14 @@ export default function BottomNav() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden px-4 pb-4">
       <div className="relative max-w-sm mx-auto">
+        {/* The moving dot indicator */}
+        <div 
+          style={indicatorStyle}
+          className={cn(
+            "absolute -top-[6px] h-3 w-3 rounded-full bg-primary",
+            locale === 'ar' ? 'transform-gpu translate-x-1/2' : 'transform-gpu -translate-x-1/2'
+          )}
+        />
         {/* Main Nav Container */}
         <div className="bg-card rounded-full shadow-lg flex justify-around items-center h-14 w-full p-1 relative">
             <ActionButton onClick={toggleLocale}>
@@ -102,11 +109,6 @@ export default function BottomNav() {
               {isMounted && resolvedTheme === 'dark' ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
             </ActionButton>
         </div>
-        {/* The moving dot indicator */}
-        <div 
-          style={indicatorStyle}
-          className="absolute -top-[6px] h-3 w-3 rounded-full bg-primary"
-        />
       </div>
     </div>
   );

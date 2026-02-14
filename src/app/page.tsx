@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale } from '@/hooks/use-locale';
 
-type SplashState = 'loading' | 'welcoming';
-
-const AppLogo = () => (
-    <div className="flex flex-col items-center justify-center text-primary-foreground text-center w-full leading-tight">
-        <span className="text-5xl font-bold opacity-0 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>رفيق</span>
-        <div className="bg-primary-foreground text-primary px-5 py-1 mt-2 rounded-xl w-full opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-            <span className="text-4xl font-bold">المصمم</span>
+const AppLogo = () => {
+    const { t } = useLocale();
+    return (
+        <div className="flex flex-col items-center justify-center text-primary-foreground text-center w-full leading-tight">
+            <span className="text-5xl font-bold opacity-0 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>{t('designerCompanion')}</span>
+            <div className="bg-primary-foreground text-primary px-5 py-1 mt-2 rounded-xl w-full opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                <span className="text-4xl font-bold">{t('designer')}</span>
+            </div>
         </div>
-    </div>
-);
+    )
+};
 
 const LoadingDots = () => (
     <div className="flex items-center justify-center space-x-2" dir="ltr">
@@ -22,11 +24,14 @@ const LoadingDots = () => (
     </div>
 );
 
-const WelcomeMessage = () => (
-    <div className="animate-fade-in-up">
-        <h2 className="text-2xl font-bold text-primary-foreground">مرحبا بكم</h2>
-    </div>
-);
+const WelcomeMessage = () => {
+    const { t } = useLocale();
+    return (
+        <div className="animate-fade-in-up">
+            <h2 className="text-2xl font-bold text-primary-foreground">{t('welcome')}</h2>
+        </div>
+    )
+};
 
 
 export default function SplashPage() {

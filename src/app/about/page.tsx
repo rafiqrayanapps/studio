@@ -2,23 +2,28 @@
 import Header from '@/components/layout/Header';
 import BottomNav from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
+import { useLocale } from '@/hooks/use-locale';
 
-const AppLogo = () => (
-    <div className="bg-card p-8 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center w-full leading-tight">
-        <span className="text-5xl font-bold text-foreground">رفيق</span>
-        <div className="text-primary mt-2">
-            <span className="text-4xl font-bold">المصمم</span>
+const AppLogo = () => {
+    const { t } = useLocale();
+    return (
+        <div className="bg-card p-8 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center w-full leading-tight">
+            <span className="text-5xl font-bold text-foreground">{t('designerCompanion')}</span>
+            <div className="text-primary mt-2">
+                <span className="text-4xl font-bold">{t('designer')}</span>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 
 export default function AboutPage() {
+    const { t } = useLocale();
 
     return (
-        <div className="flex min-h-dvh flex-col bg-secondary" dir="rtl">
+        <div className="flex min-h-dvh flex-col bg-secondary">
             {/* The header provides the purple curved background */}
-            <Header title="حول التطبيق" />
+            <Header title={t('aboutApp')} />
 
             {/* This container sits on top of the header's curve */}
             <div className="flex-1 flex flex-col -mt-24 z-10 px-6 pb-24">
@@ -32,11 +37,11 @@ export default function AboutPage() {
                         </div>
 
                         {/* App Info */}
-                        <p className="text-lg text-muted-foreground mt-4">صنع من ❤️ لكم</p>
+                        <p className="text-lg text-muted-foreground mt-4">{t('madeWithLove')}</p>
 
                         <div className="mt-12 text-muted-foreground space-y-1 text-sm">
-                            <p>الإصدار 1.0.0</p>
-                            <p>جميع الحقوق محفوظة © 2026</p>
+                            <p>{t('version')} 1.0.0</p>
+                            <p>{t('allRightsReserved')} © 2026</p>
                         </div>
                     </div>
                 </main>
@@ -46,7 +51,7 @@ export default function AboutPage() {
                     <div className="max-w-md mx-auto">
                         <Button asChild size="lg" className="w-full h-14 rounded-full text-lg font-bold">
                             <a href="https://www.paypal.me/RyanSalah7" target="_blank" rel="noopener noreferrer">
-                                ادعم التطبيق
+                                {t('supportApp')}
                             </a>
                         </Button>
                     </div>
