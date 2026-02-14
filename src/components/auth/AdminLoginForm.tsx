@@ -10,18 +10,16 @@ import { useAuth } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Loader2, Mail, Lock, Frown } from 'lucide-react';
 import { FirebaseError } from 'firebase/app';
-import { useLocale } from '@/hooks/use-locale';
 
 
 export default function AdminLoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
-  const { t } = useLocale();
 
   const loginSchema = z.object({
-    email: z.string().email({ message: t('invalidEmail') }),
-    password: z.string().min(6, { message: t('passwordMinLength') }),
+    email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
+    password: z.string().min(6, { message: "يجب أن تكون كلمة المرور 6 أحرف على الأقل" }),
   });
 
   type LoginFormValues = z.infer<typeof loginSchema>;
@@ -45,9 +43,9 @@ export default function AdminLoginForm() {
     setError(null);
     signInWithEmailAndPassword(auth, data.email, data.password)
       .catch((error: FirebaseError) => {
-        let description = t('unexpectedError');
+        let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
         if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-          description = t('loginError');
+          description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
         }
         setError(description);
       })
@@ -59,8 +57,8 @@ export default function AdminLoginForm() {
   return (
     <>
       <div className="text-center text-primary-foreground">
-        <h1 className="text-5xl font-bold">{t('login')}</h1>
-        <p className="text-lg opacity-90">{t('continue')}</p>
+        <h1 className="text-5xl font-bold">تسجيل الدخول</h1>
+        <p className="text-lg opacity-90">للمتابعة</p>
       </div>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="relative">
@@ -114,7 +112,7 @@ export default function AdminLoginForm() {
           className="w-full h-12 rounded-full bg-primary-foreground text-primary text-lg font-bold hover:bg-primary-foreground/90 !mt-8"
           disabled={isSubmitting}
         >
-          {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : t('login')}
+          {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : "تسجيل الدخول"}
         </Button>
       </form>
     </>

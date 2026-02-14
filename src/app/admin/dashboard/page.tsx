@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, useAuth, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, LocalizedString } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,63 +22,56 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { getYouTubeVideoId, getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useLocale } from '@/hooks/use-locale';
-import { getLocalizedString } from '@/lib/locale-utils';
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
 
+// Helper to gracefully handle old localized data
+const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return field.ar || '';
+};
+
 const useFormSchemas = () => {
-    const { t } = useLocale();
-
-    const localizedStringSchema = z.object({
-        ar: z.string().min(1, t('textRequired')),
-        en: z.string().min(1, t('textRequired')),
-    });
-
-    const optionalLocalizedStringSchema = z.object({
-        ar: z.string().optional(),
-        en: z.string().optional(),
-    }).optional();
-
     const categorySchema = z.object({
-        name: localizedStringSchema,
+        name: z.string().min(1, "الاسم مطلوب"),
         parentId: z.string().optional(),
-        displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5'], { required_error: t('displayStyleRequired') }),
+        displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5'], { required_error: "نمط العرض مطلوب" }),
         fileTypes: z.string().optional(),
     });
 
     const contentItemSchema = z.object({
-        title: localizedStringSchema,
-        imageUrl: z.string().url(t('invalidUrl')).optional().or(z.literal('')),
-        downloadUrl: z.string().url(t('invalidUrl')).optional().or(z.literal('')),
+        title: z.string().min(1, "العنوان مطلوب"),
+        imageUrl: z.string().url("رابط غير صالح").optional().or(z.literal('')),
+        downloadUrl: z.string().url("رابط غير صالح").optional().or(z.literal('')),
         prompt: z.string().optional(),
-        instructions: optionalLocalizedStringSchema,
-        videoUrl: z.string().url(t('invalidUrl')).optional().or(z.literal('')),
+        instructions: z.string().optional(),
+        videoUrl: z.string().url("رابط غير صالح").optional().or(z.literal('')),
         screenshots: z.string().optional(),
         appVersion: z.string().optional(),
     });
 
     const subscriptionDialogSchema = z.object({
-        title: z.string().min(1, t('titleRequired')),
-        description: z.string().min(1, t('descriptionRequired')),
-        link: z.string().url(t('invalidUrl')),
+        title: z.string().min(1, "العنوان مطلوب"),
+        description: z.string().min(1, "الوصف مطلوب"),
+        link: z.string().url("رابط غير صالح"),
         enabled: z.boolean().default(false),
     });
 
     const shareLinkSchema = z.object({
-        url: z.string().url(t('invalidUrl')),
+        url: z.string().url("رابط غير صالح"),
         text: z.string().optional(),
         enabled: z.boolean().default(false),
     });
     
     const themeSchema = z.object({
-        primaryColor: z.string().min(1, t('colorCodeRequired')).regex(colorRegex, t('invalidHslFormat')),
-        primaryColorDark: z.string().optional().regex(colorRegex, {message: t('invalidHslFormat')}).or(z.literal('')),
+        primaryColor: z.string().min(1, "كود اللون مطلوب").regex(colorRegex, "صيغة اللون غير صحيحة. مثال: 350 72% 51%"),
+        primaryColorDark: z.string().optional().regex(colorRegex, {message: "صيغة اللون غير صحيحة. مثال: 350 72% 51%"}).or(z.literal('')),
     });
 
     const notificationSchema = z.object({
-        title: localizedStringSchema,
-        description: localizedStringSchema,
+        title: z.string().min(1, "العنوان مطلوب"),
+        description: z.string().min(1, "الوصف مطلوب"),
     });
 
     return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema };
@@ -96,7 +89,6 @@ export default function AdminDashboardPage() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const { t, locale } = useLocale();
 
   const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification', entity: WithId<CategoryType> | WithId<ContentItem> | WithId<NotificationType> } | null>(null);
 
@@ -161,24 +153,20 @@ export default function AdminDashboardPage() {
 
   // Forms
   const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema } = useFormSchemas();
-  const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: { ar: '', en: '' }, parentId: '', displayStyle: 'style1', fileTypes: '' } });
-  const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: { ar: '', en: '' }, imageUrl: '', downloadUrl: '', prompt: '', instructions: { ar: '', en: '' }, videoUrl: '', screenshots: '', appVersion: '' } });
+  const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '' } });
+  const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' } });
   const subscriptionDialogForm = useForm<SubscriptionDialogFormValues>({ resolver: zodResolver(subscriptionDialogSchema), defaultValues: { title: '', description: '', link: '', enabled: false } });
   const shareLinkForm = useForm<ShareLinkFormValues>({ resolver: zodResolver(shareLinkSchema), defaultValues: { url: '', text: '', enabled: false } });
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
-  const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: { ar: '', en: '' }, description: { ar: '', en: '' } } });
+  const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
 
 
   // Effects to reset forms when editing state changes
   useEffect(() => {
-    const defaultValues = { name: { ar: '', en: '' }, displayStyle: 'style1' as const, fileTypes: '', parentId: ''};
+    const defaultValues = { name: '', displayStyle: 'style1' as const, fileTypes: '', parentId: ''};
     if (editingCategory) {
-      const name = editingCategory.name;
       categoryForm.reset({ 
-        name: {
-          ar: typeof name === 'object' && name !== null ? (name as LocalizedString).ar : (typeof name === 'string' ? name : ''),
-          en: typeof name === 'object' && name !== null ? (name as LocalizedString).en : '',
-        },
+        name: getArabicString(editingCategory.name),
         displayStyle: editingCategory.displayStyle, 
         fileTypes: editingCategory.fileTypes || '',
         parentId: editingCategory.parentId || ''
@@ -191,19 +179,11 @@ export default function AdminDashboardPage() {
 
 
   useEffect(() => {
-    const defaultValues: ContentItemFormValues = { title: { ar: '', en: '' }, imageUrl: '', downloadUrl: '', prompt: '', instructions: { ar: '', en: '' }, videoUrl: '', screenshots: '', appVersion: '' };
+    const defaultValues: ContentItemFormValues = { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' };
     if (editingItem) {
-        const title = editingItem.title;
-        const instructions = editingItem.instructions;
         contentItemForm.reset({ 
-            title: {
-              ar: typeof title === 'object' && title !== null ? (title as LocalizedString).ar : (typeof title === 'string' ? title : ''),
-              en: typeof title === 'object' && title !== null ? (title as LocalizedString).en : '',
-            },
-            instructions: {
-              ar: typeof instructions === 'object' && instructions !== null ? (instructions as LocalizedString).ar : (typeof instructions === 'string' ? instructions : ''),
-              en: typeof instructions === 'object' && instructions !== null ? (instructions as LocalizedString).en : '',
-            },
+            title: getArabicString(editingItem.title),
+            instructions: getArabicString(editingItem.instructions),
             imageUrl: editingItem.imageUrl || '', 
             downloadUrl: editingItem.downloadUrl || '', 
             prompt: editingItem.prompt || '', 
@@ -252,7 +232,7 @@ export default function AdminDashboardPage() {
         parentId: parentId,
       };
       updateDocumentNonBlocking(doc(firestore, 'categories', editingCategory.id), dataToSave);
-      toast({ title: t('categoryUpdated') });
+      toast({ title: "تم تحديث القسم" });
       setEditingCategory(null);
     } else {
       const list = parentId ? (subCategories.get(parentId) || []) : mainCategories;
@@ -266,9 +246,9 @@ export default function AdminDashboardPage() {
         createdAt: serverTimestamp() 
       };
       addDocumentNonBlocking(collection(firestore, 'categories'), data);
-      toast({ title: parentId ? t('subcategoryAdded') : t('mainCategoryAdded') });
+      toast({ title: parentId ? "تم إضافة قسم فرعي" : "تم إضافة قسم رئيسي" });
     }
-    categoryForm.reset({ name: { ar: '', en: '' }, displayStyle: 'style1', fileTypes: '', parentId: ''});
+    categoryForm.reset({ name: '', displayStyle: 'style1', fileTypes: '', parentId: ''});
   };
 
   const onContentItemSubmit = (values: ContentItemFormValues) => {
@@ -279,12 +259,12 @@ export default function AdminDashboardPage() {
     let itemData: Partial<Omit<ContentItem, 'id' | 'createdAt'>> = { title: values.title };
 
     if (['style1', 'style2'].includes(category.displayStyle)) {
-        if (!values.imageUrl) { contentItemForm.setError('imageUrl', { message: t('imageUrlRequired') }); return; }
-        if (!values.downloadUrl) { contentItemForm.setError('downloadUrl', { message: t('downloadUrlRequired') }); return; }
+        if (!values.imageUrl) { contentItemForm.setError('imageUrl', { message: "رابط الصورة مطلوب" }); return; }
+        if (!values.downloadUrl) { contentItemForm.setError('downloadUrl', { message: "رابط التحميل مطلوب" }); return; }
         itemData = { ...itemData, imageUrl: values.imageUrl, downloadUrl: values.downloadUrl };
     } else if (category.displayStyle === 'style3') {
-        if (!values.imageUrl) { contentItemForm.setError('imageUrl', { message: t('imageUrlRequired') }); return; }
-        if (!values.prompt) { contentItemForm.setError('prompt', { message: t('promptRequired') }); return; }
+        if (!values.imageUrl) { contentItemForm.setError('imageUrl', { message: "رابط الصورة مطلوب" }); return; }
+        if (!values.prompt) { contentItemForm.setError('prompt', { message: "البرومبت مطلوب" }); return; }
         itemData = { 
             ...itemData, 
             imageUrl: values.imageUrl, 
@@ -293,13 +273,13 @@ export default function AdminDashboardPage() {
             downloadUrl: values.downloadUrl 
         };
     } else if (category.displayStyle === 'style4') {
-        if (!values.videoUrl) { contentItemForm.setError('videoUrl', { message: t('videoUrlRequired') }); return; }
+        if (!values.videoUrl) { contentItemForm.setError('videoUrl', { message: "رابط الفيديو مطلوب" }); return; }
         const videoId = getYouTubeVideoId(values.videoUrl);
-        if (!videoId) { contentItemForm.setError('videoUrl', { message: t('invalidYoutubeUrl') }); return; }
+        if (!videoId) { contentItemForm.setError('videoUrl', { message: "رابط يوتيوب غير صالح" }); return; }
         itemData = { ...itemData, videoUrl: values.videoUrl, imageUrl: getYouTubeThumbnailUrl(videoId) };
     } else if (category.displayStyle === 'style5') {
-        if (!values.imageUrl) { contentItemForm.setError('imageUrl', { message: t('iconUrlRequired') }); return; }
-        if (!values.downloadUrl) { contentItemForm.setError('downloadUrl', { message: t('downloadUrlRequired') }); return; }
+        if (!values.imageUrl) { contentItemForm.setError('imageUrl', { message: "رابط الأيقونة مطلوب" }); return; }
+        if (!values.downloadUrl) { contentItemForm.setError('downloadUrl', { message: "رابط التحميل مطلوب" }); return; }
         
         const screenshots = (values.screenshots || '').split(',').map(s => s.trim()).filter(s => s);
         itemData = { 
@@ -314,26 +294,26 @@ export default function AdminDashboardPage() {
 
     if (editingItem) {
       updateDocumentNonBlocking(doc(firestore, 'categories', selectedContentCategory, 'items', editingItem.id), itemData);
-      toast({ title: t('contentUpdated') });
+      toast({ title: "تم تحديث المحتوى" });
       setEditingItem(null);
     } else {
       const newOrder = sortedItems.length > 0 ? Math.max(...sortedItems.map(i => i.order ?? 0)) + 1 : 0;
       addDocumentNonBlocking(collection(firestore, 'categories', selectedContentCategory, 'items'), { ...itemData, order: newOrder, createdAt: serverTimestamp() });
-      toast({ title: t('contentAdded') });
+      toast({ title: "تم إضافة محتوى جديد" });
     }
-    contentItemForm.reset({ title: {ar: '', en: ''}, imageUrl: '', downloadUrl: '', prompt: '', instructions: {ar: '', en: ''}, videoUrl: '', screenshots: '', appVersion: '' });
+    contentItemForm.reset({ title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' });
   };
   
   const onSubscriptionDialogSubmit = (values: SubscriptionDialogFormValues) => {
     if (!firestore || !subscriptionDialogRef) return;
     setDocumentNonBlocking(subscriptionDialogRef, values, { merge: true });
-    toast({ title: t('dialogSettingsSaved') });
+    toast({ title: "تم حفظ إعدادات النافذة المنبثقة" });
   };
   
   const onShareLinkSubmit = (values: ShareLinkFormValues) => {
     if (!firestore || !shareLinkRef) return;
     setDocumentNonBlocking(shareLinkRef, values, { merge: true });
-    toast({ title: t('shareLinkSaved') });
+    toast({ title: "تم حفظ إعدادات رابط المشاركة" });
   };
   
   const onThemeSubmit = (values: ThemeFormValues) => {
@@ -343,13 +323,13 @@ export default function AdminDashboardPage() {
         primaryColorDark: values.primaryColorDark || values.primaryColor,
     };
     setDocumentNonBlocking(themeRef, dataToSave, { merge: true });
-    toast({ title: t('themeSaved') });
+    toast({ title: "تم حفظ لون الموقع" });
   };
 
   const onNotificationSubmit = (values: NotificationFormValues) => {
     if (!firestore) return;
     addDocumentNonBlocking(collection(firestore, 'notifications'), { ...values, createdAt: serverTimestamp() });
-    toast({ title: t('notificationSent') });
+    toast({ title: "تم إرسال الإشعار بنجاح" });
     notificationForm.reset();
   };
 
@@ -360,13 +340,13 @@ export default function AdminDashboardPage() {
     
     if(type === 'category') {
       deleteDocumentNonBlocking(doc(firestore, 'categories', entity.id));
-      toast({ title: t('categoryDeleted') });
+      toast({ title: "تم حذف القسم" });
     } else if (type === 'item' && selectedContentCategory){
        deleteDocumentNonBlocking(doc(firestore, 'categories', selectedContentCategory, 'items', entity.id));
-       toast({ title: t('contentDeleted') });
+       toast({ title: "تم حذف المحتوى" });
     } else if (type === 'notification') {
        deleteDocumentNonBlocking(doc(firestore, 'notifications', entity.id));
-       toast({ title: t('notificationDeleted') });
+       toast({ title: "تم حذف الإشعار" });
     }
     
     setDeletingEntity(null);
@@ -392,7 +372,7 @@ export default function AdminDashboardPage() {
         batch.update(doc(firestore, 'categories', targetItem.id), { order: currentItem.order });
 
         batch.commit().catch((e) => {
-          toast({ variant: 'destructive', title: t('orderUpdateFailed'), description: e.message });
+          toast({ variant: 'destructive', title: "فشل تحديث الترتيب", description: e.message });
         });
     }
   };
@@ -419,53 +399,52 @@ export default function AdminDashboardPage() {
         batch.update(targetItemRef, { order: currentItem.order });
 
         batch.commit().catch((e) => {
-          toast({ variant: 'destructive', title: t('orderUpdateFailed'), description: e.message });
+          toast({ variant: 'destructive', title: "فشل تحديث الترتيب", description: e.message });
         });
     }
   };
 
   const CategoryForm = () => (
     <div className="mb-6">
-        <h3 className="text-xl font-bold mb-4">{editingCategory ? t('editCategory') : t('addCategory')}</h3>
+        <h3 className="text-xl font-bold mb-4">{editingCategory ? "تعديل القسم" : "إضافة قسم جديد"}</h3>
         <Form {...categoryForm}>
           <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
-            <FormField control={categoryForm.control} name="name.ar" render={({ field }) => (<FormItem><FormLabel>اسم القسم (العربية)</FormLabel><FormControl><Input placeholder={t('categoryName')} {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={categoryForm.control} name="name.en" render={({ field }) => (<FormItem><FormLabel>Category Name (English)</FormLabel><FormControl><Input placeholder="Category Name" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={categoryForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>اسم القسم</FormLabel><FormControl><Input placeholder="اسم القسم" {...field} /></FormControl><FormMessage /></FormItem>)} />
             
             <FormField
                 control={categoryForm.control}
                 name="parentId"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>{t('mainCategoryOptional')}</FormLabel>
+                        <FormLabel>القسم الرئيسي (اختياري)</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl>
                                 <SelectTrigger>
-                                    <SelectValue placeholder={t('mainCategoryPlaceholder')} />
+                                    <SelectValue placeholder="جعله كقسم رئيسي" />
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectItem value="root">{t('mainCategory')}</SelectItem>
+                                <SelectItem value="root">-- قسم رئيسي --</SelectItem>
                                 {mainCategories.filter(cat => cat.id !== editingCategory?.id).map((cat) => ( // Prevent self-parenting
                                     <SelectItem key={cat.id} value={cat.id}>
-                                        {getLocalizedString(cat.name, locale)}
+                                        {getArabicString(cat.name)}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                         <FormDescription>
-                            {t('mainCategoryDescription')}
+                            إذا اخترت قسمًا، سيصبح هذا قسمًا فرعيًا له.
                         </FormDescription>
                         <FormMessage />
                     </FormItem>
                 )}
             />
 
-            <FormField control={categoryForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel>{t('displayStyle')}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="style1">{t('style1')}</SelectItem><SelectItem value="style2">{t('style2')}</SelectItem><SelectItem value="style3">{t('style3')}</SelectItem><SelectItem value="style4">{t('style4')}</SelectItem><SelectItem value="style5">{t('style5')}</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-            <FormField control={categoryForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel>{t('fileTypes')}</FormLabel><FormControl><Input placeholder="PSD, AI" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={categoryForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel>نمط العرض</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="style1">النمط الافقي</SelectItem><SelectItem value="style2">نمط 2</SelectItem><SelectItem value="style3">نمط 3 (برومبت)</SelectItem><SelectItem value="style4">نمط 4 (فيديو)</SelectItem><SelectItem value="style5">النمط 5 (بطاقة معرض)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={categoryForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel>صيغ الملفات (اختياري)</FormLabel><FormControl><Input placeholder="PSD, AI" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
             <div className="flex gap-2">
-                {editingCategory && <Button type="button" variant="secondary" onClick={() => { setEditingCategory(null); }} className="w-full">{t('cancel')}</Button>}
-                <Button type="submit" disabled={categoryForm.formState.isSubmitting} className="w-full">{editingCategory ? t('save') : t('add')}</Button>
+                {editingCategory && <Button type="button" variant="secondary" onClick={() => { setEditingCategory(null); }} className="w-full">إلغاء</Button>}
+                <Button type="submit" disabled={categoryForm.formState.isSubmitting} className="w-full">{editingCategory ? "حفظ" : "إضافة"}</Button>
             </div>
           </form>
         </Form>
@@ -477,52 +456,49 @@ export default function AdminDashboardPage() {
     if (!category) return null;
     return (
         <div className="mb-6">
-            <h3 className="text-xl font-bold mb-4">{editingItem ? t('editItem') : t('addItem')} {t('inCategory', { categoryName: getLocalizedString(category.name, locale) })}</h3>
+            <h3 className="text-xl font-bold mb-4">{editingItem ? "تعديل محتوى" : "إضافة محتوى جديد"} في "{getArabicString(category.name)}"</h3>
             <Form {...contentItemForm}>
                 <form onSubmit={contentItemForm.handleSubmit(onContentItemSubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
-                    <FormField control={contentItemForm.control} name="title.ar" render={({ field }) => <FormItem><FormLabel>العنوان (العربية)</FormLabel><FormControl><Input placeholder={t('title')} {...field} /></FormControl><FormMessage /></FormItem>} />
-                    <FormField control={contentItemForm.control} name="title.en" render={({ field }) => <FormItem><FormLabel>Title (English)</FormLabel><FormControl><Input placeholder="Title" {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField control={contentItemForm.control} name="title" render={({ field }) => <FormItem><FormLabel>العنوان</FormLabel><FormControl><Input placeholder="العنوان" {...field} /></FormControl><FormMessage /></FormItem>} />
                     
-                    {['style1', 'style2', 'style3'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>{t('imageUrl')}</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
-                    {category.displayStyle === 'style5' && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>{t('iconUrl')}</FormLabel><FormControl><Input placeholder="https://example.com/icon.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
+                    {['style1', 'style2', 'style3'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>رابط الصورة</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
+                    {category.displayStyle === 'style5' && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>رابط الأيقونة</FormLabel><FormControl><Input placeholder="https://example.com/icon.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
 
-                    {['style1', 'style2', 'style5'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>{t('downloadUrl')}</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
+                    {['style1', 'style2', 'style5'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>رابط التحميل</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
                     
                     {category.displayStyle === 'style3' && (
                         <>
-                            <FormField control={contentItemForm.control} name="instructions.ar" render={({ field }) => <FormItem><FormLabel>التعليمات (العربية - اختياري)</FormLabel><FormControl><Textarea placeholder={t('promptInstructionsPlaceholder')} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                            <FormField control={contentItemForm.control} name="instructions.en" render={({ field }) => <FormItem><FormLabel>Instructions (English - Optional)</FormLabel><FormControl><Textarea placeholder="Instructions for using the prompt..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                            <FormField control={contentItemForm.control} name="prompt" render={({ field }) => <FormItem><FormLabel>{t('prompt')}</FormLabel><FormControl><Textarea placeholder={t('promptPlaceholder')} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                            <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>{t('downloadUrlOptional')}</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormDescription>{t('downloadUrlDescription')}</FormDescription><FormMessage /></FormItem>} />
+                            <FormField control={contentItemForm.control} name="instructions" render={({ field }) => <FormItem><FormLabel>التعليمات (اختياري)</FormLabel><FormControl><Textarea placeholder="تعليمات استخدام البرومبت..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                            <FormField control={contentItemForm.control} name="prompt" render={({ field }) => <FormItem><FormLabel>البرومبت</FormLabel><FormControl><Textarea placeholder="نص البرومبت..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                            <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>رابط التحميل (اختياري)</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormDescription>إذا تم توفير رابط، سيظهر زر تحميل بجانب زر نسخ البرومبت.</FormDescription><FormMessage /></FormItem>} />
                         </>
                     )}
                     
                     {category.displayStyle === 'style5' && (
                        <>
-                        <FormField control={contentItemForm.control} name="appVersion" render={({ field }) => <FormItem><FormLabel>{t('appVersionOptional')}</FormLabel><FormControl><Input placeholder="1.0.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={contentItemForm.control} name="instructions.ar" render={({ field }) => <FormItem><FormLabel>الوصف (العربية - اختياري)</FormLabel><FormControl><Textarea placeholder={t('itemDescriptionPlaceholder')} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={contentItemForm.control} name="instructions.en" render={({ field }) => <FormItem><FormLabel>Description (English - Optional)</FormLabel><FormControl><Textarea placeholder="Item description..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={contentItemForm.control} name="appVersion" render={({ field }) => <FormItem><FormLabel>إصدار التطبيق (اختياري)</FormLabel><FormControl><Input placeholder="1.0.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={contentItemForm.control} name="instructions" render={({ field }) => <FormItem><FormLabel>الوصف (اختياري)</FormLabel><FormControl><Textarea placeholder="وصف العنصر..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
                        </>
                     )}
 
-                    {category.displayStyle === 'style4' && <FormField control={contentItemForm.control} name="videoUrl" render={({ field }) => <FormItem><FormLabel>{t('videoUrlYoutube')}</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
+                    {category.displayStyle === 'style4' && <FormField control={contentItemForm.control} name="videoUrl" render={({ field }) => <FormItem><FormLabel>رابط الفيديو (يوتيوب)</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
 
                     {category.displayStyle === 'style5' && <FormField control={contentItemForm.control} name="screenshots" render={({ field }) => (
                         <FormItem>
-                            <FormLabel>{t('galleryImagesOptional')}</FormLabel>
+                            <FormLabel>روابط صور المعرض (اختياري)</FormLabel>
                             <FormControl>
                                 <Textarea placeholder="https://.../img1.png, https://.../img2.png" {...field} value={field.value ?? ''} dir="ltr" />
                             </FormControl>
                             <FormDescription>
-                                {t('galleryImagesDescription')}
+                                ضع روابط الصور مفصولة بفاصلة (,).
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
                     )} />}
 
                     <div className="flex gap-2">
-                       {editingItem && <Button type="button" variant="secondary" onClick={() => setEditingItem(null)} className="w-full">{t('cancel')}</Button>}
-                       <Button type="submit" disabled={contentItemForm.formState.isSubmitting} className="w-full">{contentItemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : (editingItem ? t('save') : t('add'))}</Button>
+                       {editingItem && <Button type="button" variant="secondary" onClick={() => setEditingItem(null)} className="w-full">إلغاء</Button>}
+                       <Button type="submit" disabled={contentItemForm.formState.isSubmitting} className="w-full">{contentItemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : (editingItem ? "حفظ" : "إضافة")}</Button>
                     </div>
                 </form>
             </Form>
@@ -533,21 +509,21 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
-        <Header title={t('dashboard')} showMenu={false}>
+        <Header title="لوحة التحكم" showMenu={false}>
             <div className="flex-1" />
-            <Button variant="ghost" size="sm" onClick={() => auth.signOut()}><LogOut className="ml-2 h-4 w-4" />{t('logout')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => auth.signOut()}><LogOut className="ml-2 h-4 w-4" />تسجيل الخروج</Button>
         </Header>
         <main className="flex-1 container mx-auto max-w-4xl py-8 px-4 space-y-12">
             <div>
                 <CategoryForm />
         
-                <h3 className="text-xl font-bold my-4">{t('currentCategories')}</h3>
+                <h3 className="text-xl font-bold my-4">الأقسام الحالية</h3>
                 {isLoadingCategories ? <Skeleton className="h-40 w-full" /> : (
                     <Accordion type="single" collapsible className="w-full bg-card rounded-lg p-4 border">
                         {mainCategories.map((cat, index) => (
                             <AccordionItem value={cat.id} key={cat.id}>
                                 <AccordionTrigger>
-                                    <div className="flex-1 text-right">{getLocalizedString(cat.name, locale)}</div>
+                                    <div className="flex-1 text-right">{getArabicString(cat.name)}</div>
                                     <div className="flex items-center gap-2 mr-auto">
                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(cat, 'up') }} disabled={index === 0}>
                                             <span><ArrowUp/></span>
@@ -565,10 +541,10 @@ export default function AdminDashboardPage() {
                                 </AccordionTrigger>
                                 <AccordionContent className="p-4 bg-secondary rounded-md">
                                     <div className="space-y-2">
-                                        {(subCategories.get(cat.id) || []).length === 0 && <p className="text-muted-foreground text-center">{t('noSubcategories')}</p>}
+                                        {(subCategories.get(cat.id) || []).length === 0 && <p className="text-muted-foreground text-center">لا توجد أقسام فرعية.</p>}
                                         {(subCategories.get(cat.id) || []).map((subCat, subIndex) => (
                                              <div key={subCat.id} className="flex items-center bg-card p-2 rounded-md border">
-                                                 <p className="flex-1">{getLocalizedString(subCat.name, locale)}</p>
+                                                 <p className="flex-1">{getArabicString(subCat.name)}</p>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCat, 'up')} disabled={subIndex === 0}><ArrowUp/></Button>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCat, 'down')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {setEditingCategory(subCat); }}><Edit/></Button>
@@ -586,16 +562,16 @@ export default function AdminDashboardPage() {
             <div>
                 <Card className="mb-6">
                   <CardContent className="p-4 space-y-2">
-                    <Label>{t('selectCategoryToManage')}</Label>
+                    <Label>اختر قسمًا لعرض محتواه وتعديله</Label>
                      <Select onValueChange={setSelectedContentCategory} value={selectedContentCategory}>
-                      <SelectTrigger><SelectValue placeholder={t('selectCategory')} /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="اختر قسم..." /></SelectTrigger>
                       <SelectContent>
                           {mainCategories.map(cat => (
                               <SelectGroup key={cat.id}>
-                                  <SelectLabel>{getLocalizedString(cat.name, locale)}</SelectLabel>
-                                  <SelectItem value={cat.id}>{t('mainCategoryAsOption', { name: getLocalizedString(cat.name, locale) })}</SelectItem>
+                                  <SelectLabel>{getArabicString(cat.name)}</SelectLabel>
+                                  <SelectItem value={cat.id}>{getArabicString(cat.name)} (قسم رئيسي)</SelectItem>
                                   {(subCategories.get(cat.id) || []).map(subCat => (
-                                      <SelectItem key={subCat.id} value={subCat.id} className="pr-8">{getLocalizedString(subCat.name, locale)}</SelectItem>
+                                      <SelectItem key={subCat.id} value={subCat.id} className="pr-8">{getArabicString(subCat.name)}</SelectItem>
                                   ))}
                               </SelectGroup>
                           ))}
@@ -609,13 +585,13 @@ export default function AdminDashboardPage() {
                 {selectedContentCategory && (
                     <Card className="mt-6">
                         <CardHeader>
-                            <CardTitle>{t('currentContentInCategory', { categoryName: getLocalizedString(categoryMap.get(selectedContentCategory)?.name, locale) || '' })}</CardTitle>
+                            <CardTitle>المحتوى الحالي في "{getArabicString(categoryMap.get(selectedContentCategory)?.name) || ''}"</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2">
                                 {isLoadingItems ? <Skeleton className="h-10 w-full" /> : sortedItems.map((item, index) => (
                                     <div key={item.id} className="flex items-center bg-secondary p-2 rounded-md">
-                                        <p className="flex-1">{getLocalizedString(item.title, locale)}</p>
+                                        <p className="flex-1">{getArabicString(item.title)}</p>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveItem(item, 'up')} disabled={index === 0}><ArrowUp/></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveItem(item, 'down')} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
@@ -623,7 +599,7 @@ export default function AdminDashboardPage() {
                                     </div>
                                 ))}
                                 {!isLoadingItems && sortedItems.length === 0 && (
-                                    <p className="text-muted-foreground text-center p-4">{t('noContentYet')}</p>
+                                    <p className="text-muted-foreground text-center p-4">لا يوجد محتوى في هذا القسم بعد.</p>
                                 )}
                             </div>
                         </CardContent>
@@ -632,11 +608,11 @@ export default function AdminDashboardPage() {
             </div>
 
             <div>
-                <h2 className="text-2xl font-bold mb-4">{t('appSettings')}</h2>
+                <h2 className="text-2xl font-bold mb-4">إعدادات التطبيق</h2>
                 <div className="space-y-8">
                      <Card>
                         <CardHeader>
-                            <CardTitle>{t('themeSettings')}</CardTitle>
+                            <CardTitle>تغيير لون الموقع</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Form {...themeForm}>
@@ -646,12 +622,12 @@ export default function AdminDashboardPage() {
                                         name="primaryColor"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>{t('primaryColorLight')}</FormLabel>
+                                                <FormLabel>اللون الأساسي (الوضع الفاتح)</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="350 72% 51%" {...field} dir="ltr" />
                                                 </FormControl>
                                                 <FormDescription>
-                                                    {t('hslFormatDescription')}
+                                                    أدخل قيمة اللون بصيغة HSL بدون أقواس. مثال: 350 72% 51%
                                                 </FormDescription>
                                                 <FormMessage />
                                             </FormItem>
@@ -662,19 +638,19 @@ export default function AdminDashboardPage() {
                                         name="primaryColorDark"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>{t('primaryColorDark')}</FormLabel>
+                                                <FormLabel>اللون الأساسي (الوضع الليلي)</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="350 72% 51%" {...field} dir="ltr" value={field.value ?? ''}/>
                                                 </FormControl>
                                                  <FormDescription>
-                                                    {t('hslFormatDescription')}
+                                                    أدخل قيمة اللون بصيغة HSL بدون أقواس. مثال: 350 72% 51%
                                                 </FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                     <Button type="submit" disabled={themeForm.formState.isSubmitting} className="w-full">
-                                      {themeForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : t('saveColor')}
+                                      {themeForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ اللون"}
                                     </Button>
                                 </form>
                             </Form>
@@ -682,17 +658,17 @@ export default function AdminDashboardPage() {
                     </Card>
                      <Card>
                         <CardHeader>
-                            <CardTitle>{t('subscriptionDialogSettings')}</CardTitle>
+                            <CardTitle>إعدادات النافذة المنبثقة للاشتراك</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Form {...subscriptionDialogForm}>
                                 <form onSubmit={subscriptionDialogForm.handleSubmit(onSubscriptionDialogSubmit)} className="space-y-6">
-                                    <FormField control={subscriptionDialogForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">{t('enableDialog')}</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
-                                    <FormField control={subscriptionDialogForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>{t('dialogTitle')}</FormLabel><FormControl><Input placeholder={t('designerCompanion')} {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={subscriptionDialogForm.control} name="description" render={({ field }) => ( <FormItem><FormLabel>{t('dialogText')}</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={subscriptionDialogForm.control} name="link" render={({ field }) => ( <FormItem><FormLabel>{t('subscriptionLink')}</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={subscriptionDialogForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">تفعيل النافذة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
+                                    <FormField control={subscriptionDialogForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>عنوان النافذة</FormLabel><FormControl><Input placeholder="رفيق المصمم" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={subscriptionDialogForm.control} name="description" render={({ field }) => ( <FormItem><FormLabel>نص النافذة</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={subscriptionDialogForm.control} name="link" render={({ field }) => ( <FormItem><FormLabel>رابط الاشتراك</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
                                     <Button type="submit" disabled={subscriptionDialogForm.formState.isSubmitting} className="w-full">
-                                      {subscriptionDialogForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : t('saveSettings')}
+                                      {subscriptionDialogForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الإعدادات"}
                                     </Button>
                                 </form>
                             </Form>
@@ -700,16 +676,16 @@ export default function AdminDashboardPage() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>{t('shareLinkSettings')}</CardTitle>
+                            <CardTitle>إعدادات رابط مشاركة التطبيق</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Form {...shareLinkForm}>
                                 <form onSubmit={shareLinkForm.handleSubmit(onShareLinkSubmit)} className="space-y-6">
-                                     <FormField control={shareLinkForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">{t('enableShareButton')}</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
-                                     <FormField control={shareLinkForm.control} name="url" render={({ field }) => ( <FormItem><FormLabel>{t('shareUrl')}</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
-                                     <FormField control={shareLinkForm.control} name="text" render={({ field }) => ( <FormItem><FormLabel>{t('shareTextOptional')}</FormLabel><FormControl><Textarea placeholder="..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={shareLinkForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">تفعيل زر المشاركة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
+                                     <FormField control={shareLinkForm.control} name="url" render={({ field }) => ( <FormItem><FormLabel>رابط المشاركة</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={shareLinkForm.control} name="text" render={({ field }) => ( <FormItem><FormLabel>نص المشاركة (اختياري)</FormLabel><FormControl><Textarea placeholder="..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                     <Button type="submit" disabled={shareLinkForm.formState.isSubmitting} className="w-full">
-                                      {shareLinkForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : t('saveSettings')}
+                                      {shareLinkForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الإعدادات"}
                                     </Button>
                                 </form>
                             </Form>
@@ -717,17 +693,15 @@ export default function AdminDashboardPage() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>{t('sendNewNotification')}</CardTitle>
+                            <CardTitle>إرسال إشعار جديد</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Form {...notificationForm}>
                                 <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
-                                    <FormField control={notificationForm.control} name="title.ar" render={({ field }) => ( <FormItem><FormLabel>عنوان الإشعار (العربية)</FormLabel><FormControl><Input placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={notificationForm.control} name="title.en" render={({ field }) => ( <FormItem><FormLabel>Notification Title (English)</FormLabel><FormControl><Input placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={notificationForm.control} name="description.ar" render={({ field }) => ( <FormItem><FormLabel>نص الإشعار (العربية)</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={notificationForm.control} name="description.en" render={({ field }) => ( <FormItem><FormLabel>Notification Text (English)</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={notificationForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>عنوان الإشعار</FormLabel><FormControl><Input placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={notificationForm.control} name="description" render={({ field }) => ( <FormItem><FormLabel>نص الإشعار</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                                     <Button type="submit" disabled={notificationForm.formState.isSubmitting} className="w-full">
-                                      {notificationForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : t('sendNotification')}
+                                      {notificationForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "إرسال الإشعار"}
                                     </Button>
                                 </form>
                             </Form>
@@ -735,19 +709,19 @@ export default function AdminDashboardPage() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>{t('previousNotifications')}</CardTitle>
+                            <CardTitle>الإشعارات السابقة</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2 max-h-72 overflow-y-auto">
                                 {isLoadingNotifications ? <Skeleton className="h-10 w-full" /> : (notifications && notifications.length > 0) ? notifications.map((notif) => (
                                     <div key={notif.id} className="flex items-center bg-secondary p-2 rounded-md">
                                         <div className="flex-1">
-                                            <p className="font-bold">{getLocalizedString(notif.title, locale)}</p>
-                                            <p className="text-sm text-muted-foreground">{getLocalizedString(notif.description, locale)}</p>
+                                            <p className="font-bold">{getArabicString(notif.title)}</p>
+                                            <p className="text-sm text-muted-foreground">{getArabicString(notif.description)}</p>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'notification', entity: notif })}><Trash2/></Button>
                                     </div>
-                                )) : <p className="text-muted-foreground text-center p-4">{t('noPreviousNotifications')}</p>}
+                                )) : <p className="text-muted-foreground text-center p-4">لا توجد إشعارات سابقة.</p>}
                             </div>
                         </CardContent>
                     </Card>
@@ -755,7 +729,7 @@ export default function AdminDashboardPage() {
             </div>
         </main>
         <AlertDialog open={!!deletingEntity} onOpenChange={(open) => !open && setDeletingEntity(null)}>
-          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle><AlertDialogDescription>{t('deleteConfirmation', {name: getLocalizedString(deletingEntity?.entity.name, locale) || getLocalizedString(deletingEntity?.entity.title, locale) || ''})}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle><AlertDialogDescription>سيتم حذف "{getArabicString(deletingEntity?.entity.name) || getArabicString(deletingEntity?.entity.title) || ''}". هذا الإجراء لا يمكن التراجع عنه.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>إلغاء</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">حذف</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
        </AlertDialog>
     </div>
   );

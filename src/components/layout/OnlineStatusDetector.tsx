@@ -2,12 +2,10 @@
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useLocale } from '@/hooks/use-locale';
 
 export default function OnlineStatusDetector() {
   const { toast } = useToast();
   const router = useRouter();
-  const { t } = useLocale();
 
   useEffect(() => {
     // This effect runs on the client and handles online/offline events.
@@ -15,8 +13,8 @@ export default function OnlineStatusDetector() {
     // 1. Check if we just came back from the offline page.
     if (typeof window !== 'undefined' && sessionStorage.getItem('connectionRestored') === 'true') {
       toast({
-        title: t('connectionRestored'),
-        description: t('backOnline'),
+        title: "تم استعادة الاتصال",
+        description: "أهلاً بعودتك! أنت متصل بالإنترنت الآن.",
         duration: 5000,
       });
       sessionStorage.removeItem('connectionRestored');
@@ -25,8 +23,8 @@ export default function OnlineStatusDetector() {
     // 2. Event listener for going online while already in the app.
     const handleOnline = () => {
       toast({
-        title: t('connectionRestored'),
-        description: t('backOnline'),
+        title: "تم استعادة الاتصال",
+        description: "أهلاً بعودتك! أنت متصل بالإنترنت الآن.",
         duration: 5000,
       });
     };
@@ -47,7 +45,7 @@ export default function OnlineStatusDetector() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [toast, router, t]);
+  }, [toast, router]);
 
   return null; // This component does not render anything.
 }

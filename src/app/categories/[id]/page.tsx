@@ -20,16 +20,19 @@ import { cn } from '@/lib/utils';
 import { getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
-import { useLocale } from '@/hooks/use-locale';
-import { getLocalizedString } from '@/lib/locale-utils';
 
+// Helper to gracefully handle old localized data
+const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return field.ar || '';
+};
 
 export default function CategoryPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
   const firestore = useFirestore();
-  const { t, locale } = useLocale();
   
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,10 +85,10 @@ export default function CategoryPage() {
   const toggleFavorite = (item: WithId<ContentItem>) => {
     const isCurrentlyFavorite = isFavorite(item.id);
     if (isCurrentlyFavorite) {
-      toast({ title: t('favoriteRemoved') });
+      toast({ title: "تمت الإزالة من المفضلة" });
       setFavorites(prev => prev.filter(fav => fav.id !== item.id));
     } else {
-      toast({ title: t('favoriteAdded') });
+      toast({ title: "تمت الإضافة إلى المفضلة" });
       setFavorites(prev => [...prev, item]);
     }
   };
@@ -93,13 +96,13 @@ export default function CategoryPage() {
 
   const filteredSubCategories = useMemo(() => {
     if (!subCategories) return [];
-    return subCategories.filter((cat) => getLocalizedString(cat.name, locale).toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [subCategories, searchTerm, locale]);
+    return subCategories.filter((cat) => getArabicString(cat.name).toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [subCategories, searchTerm]);
 
   const filteredItems = useMemo(() => {
     if (!displayItems) return [];
-    return displayItems.filter((item) => getLocalizedString(item.title, locale).toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayItems, searchTerm, locale]);
+    return displayItems.filter((item) => getArabicString(item.title).toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayItems, searchTerm]);
 
 
   // The page is only in a "loading" state if we are fetching data AND have no cached data to show.
@@ -138,16 +141,16 @@ export default function CategoryPage() {
                 className="flex flex-col text-center group relative gap-y-3 opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
               >
-                <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{getLocalizedString(item.title, locale)}</h3>
+                <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{getArabicString(item.title)}</h3>
                 <div className="relative cursor-pointer aspect-square w-full" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {item.imageUrl && <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover rounded-lg shadow-md" />}
+                    {item.imageUrl && <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover rounded-lg shadow-md" />}
                     <FavoriteButton item={item} />
                 </div>
                 <div className="w-full mt-auto">
                      <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                         <Button className="w-full">
                             <Download className="ml-2 h-4 w-4" />
-                            {t('download')}
+                            تحميل
                         </Button>
                     </a>
                 </div>
@@ -164,11 +167,11 @@ export default function CategoryPage() {
                 className="flex flex-col text-center group gap-y-3 opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
               >
-                 <h3 className="font-bold text-base">{getLocalizedString(item.title, locale)}</h3>
+                 <h3 className="font-bold text-base">{getArabicString(item.title)}</h3>
                 <div className="relative w-full cursor-pointer" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                     {item.imageUrl && <Image 
                       src={item.imageUrl} 
-                      alt={getLocalizedString(item.title, locale)}
+                      alt={getArabicString(item.title)}
                       width={500} 
                       height={300}
                       className="w-full h-auto object-cover rounded-lg shadow-md"
@@ -179,7 +182,7 @@ export default function CategoryPage() {
                     <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                     <Button className="w-full">
                         <Download className="ml-2 h-4 w-4" />
-                        {t('download')}
+                        تحميل
                     </Button>
                     </a>
                 </div>
@@ -193,18 +196,18 @@ export default function CategoryPage() {
             const handleCopy = () => {
                 if (item.prompt) {
                     navigator.clipboard.writeText(item.prompt);
-                    toast({ title: t('promptCopied') });
+                    toast({ title: "تم نسخ البرومبت!" });
                 }
             };
             return (
                 <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group relative">
                     <CardContent className="p-4 flex flex-col flex-1 gap-4">
-                        <h3 className="font-bold text-xl text-center">{getLocalizedString(item.title, locale)}</h3>
+                        <h3 className="font-bold text-xl text-center">{getArabicString(item.title)}</h3>
 
                         <div className="relative cursor-pointer w-full rounded-lg overflow-hidden">
                             {item.imageUrl && <Image 
                               src={item.imageUrl} 
-                              alt={getLocalizedString(item.title, locale)}
+                              alt={getArabicString(item.title)}
                               width={500} 
                               height={300}
                               className="w-full h-auto object-cover"
@@ -215,26 +218,26 @@ export default function CategoryPage() {
 
                         {item.instructions && (
                             <div className="space-y-2">
-                                <h4 className="font-semibold text-foreground">{t('instructions')}</h4>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{getLocalizedString(item.instructions, locale)}</p>
+                                <h4 className="font-semibold text-foreground">التعليمات</h4>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{getArabicString(item.instructions)}</p>
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <h4 className="font-semibold text-foreground">{t('prompt')}</h4>
+                            <h4 className="font-semibold text-foreground">البرومبت</h4>
                             <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted border-transparent" dir="ltr" />
                         </div>
                         
                         <div className="flex flex-col sm:flex-row gap-2 mt-auto">
                             <Button variant="default" className="w-full" onClick={handleCopy}>
                                 <Copy className="ml-2 h-4 w-4" />
-                                {t('copy')} {t('prompt')}
+                                نسخ البرومبت
                             </Button>
                             {item.downloadUrl && (
                                 <Button asChild variant="secondary" className="w-full">
                                     <a href={item.downloadUrl} target="_blank" rel="noopener noreferrer">
                                         <Download className="ml-2 h-4 w-4" />
-                                        {t('download')}
+                                        تحميل
                                     </a>
                                 </Button>
                             )}
@@ -263,13 +266,13 @@ export default function CategoryPage() {
                     >
                         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
                             <div className="pb-2">
-                                <h3 className="font-bold text-lg text-center">{getLocalizedString(item.title, locale)}</h3>
+                                <h3 className="font-bold text-lg text-center">{getArabicString(item.title)}</h3>
                             </div>
                             
                             <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="relative block">
                                 <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
                                     <FavoriteButton item={item} />
-                                    {item.imageUrl && <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover" />}
+                                    {item.imageUrl && <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover" />}
                                 </div>
                             </a>
                             
@@ -277,7 +280,7 @@ export default function CategoryPage() {
                                 <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="w-full">
                                     <Button variant="secondary" className="w-full">
                                         <PlayCircle className="ml-2 h-4 w-4" />
-                                        {t('watchVideo')}
+                                        مشاهدة الفيديو
                                     </Button>
                                 </a>
                             </div>
@@ -298,12 +301,12 @@ export default function CategoryPage() {
                     <Card className="p-4 flex flex-col gap-4 bg-card text-card-foreground shadow-md rounded-2xl border">
                         <div className="flex gap-4 items-start">
                             {item.imageUrl && (
-                                <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
+                                <Image src={item.imageUrl} alt={getArabicString(item.title)} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
                             )}
                             <div className="flex-1">
-                                <h3 className="font-bold text-xl">{getLocalizedString(item.title, locale)}</h3>
-                                {item.appVersion && <p className="text-primary font-semibold text-sm">{t('version')} {item.appVersion}</p>}
-                                <p className="text-muted-foreground text-sm mt-1">{getLocalizedString(item.instructions, locale)}</p>
+                                <h3 className="font-bold text-xl">{getArabicString(item.title)}</h3>
+                                {item.appVersion && <p className="text-primary font-semibold text-sm">الإصدار {item.appVersion}</p>}
+                                <p className="text-muted-foreground text-sm mt-1">{getArabicString(item.instructions)}</p>
                             </div>
                         </div>
                         {item.screenshots && item.screenshots.length > 0 && (
@@ -314,14 +317,14 @@ export default function CategoryPage() {
                                     opts={{ 
                                         align: 'start', 
                                         dragFree: true,
-                                        direction: locale,
+                                        direction: 'rtl',
                                     }}>
                                     <CarouselContent className="-ml-1">
                                         {item.screenshots.map((ss, i) => (
                                             <CarouselItem key={i} className="basis-4/5 pl-1">
                                                 <Image
                                                     src={ss}
-                                                    alt={t('screenshotAlt', { title: getLocalizedString(item.title, locale), index: i + 1 })}
+                                                    alt={`لقطة شاشة ${i + 1} لـ ${getArabicString(item.title)}`}
                                                     width={1080}
                                                     height={1920}
                                                     sizes="(max-width: 768px) 80vw, 40vw"
@@ -338,7 +341,7 @@ export default function CategoryPage() {
                         <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" className="w-full mt-2">
                             <Button className="w-full">
                                 <Download className="ml-2 h-4 w-4" />
-                                {t('download')}
+                                تحميل
                             </Button>
                         </a>
                     </Card>
@@ -361,14 +364,14 @@ export default function CategoryPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
         <div className="sticky top-0 z-20">
-             <Header showMenu={false} title={categoryLoading ? '...' : (getLocalizedString(category?.name, locale) || t('unknownCategory'))}>
+             <Header showMenu={false} title={categoryLoading ? '...' : (getArabicString(category?.name) || "قسم غير معروف")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-10">
               <div className="pb-4 px-6">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input placeholder={t('search')} className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Input placeholder="ابحث..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -377,8 +380,8 @@ export default function CategoryPage() {
       <main className="flex-1 px-6 pt-2 pb-24">
         {categoryError && !isLoading ? (
             <div className="text-center text-destructive p-12 bg-destructive/10 rounded-2xl mt-4 space-y-2">
-                <AlertTriangle className="mx-auto h-8 w-8" /><h3 className="font-bold text-lg">{t('errorLoadingCategory')}</h3>
-                <p className="text-sm">{t('noPermission')}</p>
+                <AlertTriangle className="mx-auto h-8 w-8" /><h3 className="font-bold text-lg">خطأ في تحميل القسم</h3>
+                <p className="text-sm">لم نتمكن من العثور على هذا القسم أو ليس لديك إذن لعرضه.</p>
             </div>
         ) : isLoading ? (
           <div className="space-y-8 mt-6">
@@ -398,7 +401,7 @@ export default function CategoryPage() {
                     <Link href={`/categories/${cat.id}`} passHref>
                        <div className="relative bg-primary p-4 text-primary-foreground rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm h-full min-h-36">
                         {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
-                        <p className="font-bold text-lg text-center">{getLocalizedString(cat.name, locale)}</p>
+                        <p className="font-bold text-lg text-center">{getArabicString(cat.name)}</p>
                       </div>
                     </Link>
                   </div>
@@ -407,7 +410,7 @@ export default function CategoryPage() {
             )}
             {renderContent()}
             {(!filteredSubCategories || filteredSubCategories.length === 0) && (!filteredItems || filteredItems.length === 0) && !isLoading && (
-                 <div className="text-center text-muted-foreground p-12"><p>{t('noContent')}</p></div>
+                 <div className="text-center text-muted-foreground p-12"><p>لا يوجد محتوى في هذا القسم بعد.</p></div>
             )}
           </div>
         )}
@@ -416,7 +419,7 @@ export default function CategoryPage() {
        <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
           <DialogHeader>
-            <DialogTitle className="sr-only">{t('imagePreview')}</DialogTitle>
+            <DialogTitle className="sr-only">معاينة الصورة</DialogTitle>
           </DialogHeader>
           {selectedImage && <Image src={selectedImage} alt="Preview" width={1200} height={800} className="w-full h-auto max-h-[90vh] object-contain rounded-lg" />}
         </DialogContent>

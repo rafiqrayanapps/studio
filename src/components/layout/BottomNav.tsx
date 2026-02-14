@@ -2,25 +2,23 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Heart, Bell, Moon, Sun, Globe } from 'lucide-react';
+import { Home, Heart, Bell, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
 import { useEffect, useState, useMemo } from 'react';
 import { useTheme } from 'next-themes';
-import { useLocale } from '@/hooks/use-locale';
 
 export default function BottomNav() {
   const pathname = usePathname();
   const hasNewNotifications = useHasNewNotifications();
   const [isMounted, setIsMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
-  const { locale, setLocale, t } = useLocale();
 
   const navItems = useMemo(() => [
-    { href: '/home', icon: Home, label: t('home') },
-    { href: '/favorites', icon: Heart, label: t('favorites') },
-    { href: '/notifications', icon: Bell, label: t('notifications') },
-  ], [t]);
+    { href: '/home', icon: Home, label: 'الرئيسية' },
+    { href: '/favorites', icon: Heart, label: 'المفضلة' },
+    { href: '/notifications', icon: Bell, label: 'الإشعارات' },
+  ], []);
   
   const activeIndex = useMemo(() => {
     return navItems.findIndex(item => pathname.startsWith(item.href));
@@ -38,11 +36,11 @@ export default function BottomNav() {
   useEffect(() => {
     // This effect runs only on the client, after the component has mounted
     // and the locale is hydrated from localStorage. This prevents hydration mismatch.
-    const isRTL = locale === 'ar';
+    const isRTL = true; // Always RTL now
 
-    // Positions for Home, Favorites, Notifications
-    const indicatorPositionsLTR = ['10%', '30%', '50%'];
-    const indicatorPositionsRTL = ['90%', '70%', '50%'];
+    // Positions for Home, Favorites, Notifications out of 4 total items
+    const indicatorPositionsLTR = ['12.5%', '37.5%', '62.5%'];
+    const indicatorPositionsRTL = ['87.5%', '62.5%', '37.5%'];
 
     const positions = isRTL ? indicatorPositionsRTL : indicatorPositionsLTR;
 
@@ -61,7 +59,7 @@ export default function BottomNav() {
         // Hide indicator if no item is active
         setIndicatorStyle({ opacity: 0 });
     }
-  }, [activeIndex, locale]);
+  }, [activeIndex]);
 
 
   if (pathname.startsWith('/admin') || pathname === '/') {
@@ -93,10 +91,6 @@ export default function BottomNav() {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
-  const toggleLocale = () => {
-    setLocale(locale === 'ar' ? 'en' : 'ar');
-  };
-
   const ActionButton = ({ onClick, children }: { onClick: () => void, children: React.ReactNode }) => (
       <button onClick={onClick} className="flex flex-col items-center justify-center text-center group flex-1">
           <div className="relative text-muted-foreground group-hover:text-primary transition-colors">
@@ -116,10 +110,6 @@ export default function BottomNav() {
         {/* Main Nav Container */}
         <div className="bg-card rounded-full shadow-lg flex justify-around items-center h-14 w-full p-1 relative">
             {navItems.map(item => <NavLink key={item.href} {...item} />)}
-
-            <ActionButton onClick={toggleLocale}>
-              <Globe className="h-6 w-6" />
-            </ActionButton>
             
             <ActionButton onClick={toggleTheme}>
               {isMounted && resolvedTheme === 'dark' ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}

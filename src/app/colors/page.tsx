@@ -7,7 +7,6 @@ import { RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import BottomNav from '@/components/layout/BottomNav';
-import { useLocale } from '@/hooks/use-locale';
 
 const palettes = [
   { name: 'أزرق سماوي', shades: ['#93C5FD', '#60A5FA', '#3B82F6'], tints: ['#EFF6FF', '#BFDBFE'] },
@@ -24,12 +23,11 @@ const palettes = [
 
 const CopyableColorChip = ({ hex }: { hex: string }) => {
     const { toast } = useToast();
-    const { t } = useLocale();
     const copyToClipboard = () => {
         navigator.clipboard.writeText(hex);
         toast({
-            title: t('copied'),
-            description: t('colorCopied', { hex }),
+            title: "تم النسخ!",
+            description: `اللون ${hex} تم نسخه إلى الحافظة.`,
         });
     }
   return (
@@ -43,7 +41,6 @@ const CopyableColorChip = ({ hex }: { hex: string }) => {
 
 export default function ColorsPage() {
   const [paletteIndex, setPaletteIndex] = useState(0);
-  const { t } = useLocale();
 
   const handleNextPalette = () => {
     setPaletteIndex((prevIndex) => (prevIndex + 1) % palettes.length);
@@ -55,14 +52,14 @@ export default function ColorsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
-      <Header title={t('colorCoordinator')}/>
+      <Header title="منسق الألوان"/>
       <main className="flex-1 px-4 pb-24 -mt-8">
         <div className="container mx-auto max-w-2xl">
           <div className="bg-card rounded-2xl p-4 space-y-6">
               <div className="flex justify-between items-center px-2">
                     <Button variant="ghost" size="sm" onClick={handleNextPalette}>
                       <RefreshCw className="ml-2 h-4 w-4"/>
-                      {t('next')}
+                      التالي
                   </Button>
                   <h3 className="text-xl font-bold">{mainPalette.name}</h3>
               </div>

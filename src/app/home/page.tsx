@@ -11,13 +11,17 @@ import Link from 'next/link';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { useLocale } from '@/hooks/use-locale';
-import { getLocalizedString } from '@/lib/locale-utils';
+
+// Helper to gracefully handle old localized data
+const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return field.ar || '';
+};
 
 export default function HomePage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
-  const { t, locale } = useLocale();
 
   // 1. Read from localStorage cache first.
   const [cachedCategories, setCachedCategories] = useLocalStorage<WithId<CategoryType>[]>('allCategoriesCache', []);
@@ -46,8 +50,8 @@ export default function HomePage() {
     const all = displayCategories || [];
     const filtered = all.filter(cat => !cat.parentId);
     if (!searchTerm) return filtered;
-    return filtered.filter(cat => getLocalizedString(cat.name, locale).toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayCategories, searchTerm, locale]);
+    return filtered.filter(cat => getArabicString(cat.name).toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayCategories, searchTerm]);
 
   // Show skeleton only on the very first load when there's no cache and we are waiting for Firestore.
   const isLoading = isLoadingLive && cachedCategories.length === 0;
@@ -55,12 +59,12 @@ export default function HomePage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
       <div className="sticky top-0 z-20">
-          <Header title={t('designerCompanion')} />
+          <Header title="رفيق المصمم" />
           <div className="relative z-10 -mt-10">
               <div className="pb-4 px-6">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input placeholder={t('searchForSection')} className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Input placeholder="ابحث عن القسم..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -73,7 +77,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <p className="text-muted-foreground text-sm mb-4">{mainCategories.length} {t('sections')}</p>
+            <p className="text-muted-foreground text-sm mb-4">{mainCategories.length} قسم</p>
             <div className="grid grid-cols-2 gap-4">
               {mainCategories.map((cat, index) => (
                 <div
@@ -87,7 +91,7 @@ export default function HomePage() {
                   >
                     <div className="relative bg-primary text-primary-foreground p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm aspect-square text-center">
                       {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
-                      <p className="font-bold text-lg">{getLocalizedString(cat.name, locale)}</p>
+                      <p className="font-bold text-lg">{getArabicString(cat.name)}</p>
                     </div>
                   </Link>
                 </div>

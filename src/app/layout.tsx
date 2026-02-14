@@ -7,7 +7,6 @@ import ThemeManager from '@/components/theme/ThemeManager';
 import ServiceWorkerRegistrar from '@/components/layout/ServiceWorkerRegistrar';
 import OnlineStatusDetector from '@/components/layout/OnlineStatusDetector';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
-import { LocaleProvider } from '@/hooks/use-locale';
 
 export const metadata: Metadata = {
   applicationName: 'رفيق المصمم',
@@ -33,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html suppressHydrationWarning>
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="hsl(350 72% 51%)" />
         {/* The theme-color meta tag is now managed by ThemeManager.tsx */}
@@ -46,14 +45,12 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased')}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <LocaleProvider>
             <FirebaseClientProvider>
               <ThemeManager />
               <OnlineStatusDetector />
               <ServiceWorkerRegistrar />
               {children}
             </FirebaseClientProvider>
-          </LocaleProvider>
         </ThemeProvider>
         <Toaster />
       </body>

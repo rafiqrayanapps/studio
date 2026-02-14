@@ -10,13 +10,17 @@ import { Bell, BellRing } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
-import { useLocale } from '@/hooks/use-locale';
-import { getLocalizedString } from '@/lib/locale-utils';
+
+// Helper to gracefully handle old localized data
+const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return field.ar || '';
+};
 
 export default function NotificationsPage() {
   const firestore = useFirestore();
   const [, setLastSeenTimestamp] = useLocalStorage<number | null>('lastSeenNotificationTimestamp', null);
-  const { t, locale } = useLocale();
 
   const notificationsQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc')) : null,
@@ -42,7 +46,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
-      <Header title={t('notifications')} />
+      <Header title="الإشعارات" />
       <main className="flex-1 px-4 pt-4 pb-24">
         <div className="container mx-auto max-w-2xl space-y-4">
           {isLoading ? (
@@ -66,22 +70,22 @@ export default function NotificationsPage() {
                     <BellRing className="h-6 w-6" />
                   </div>
                   <div className="flex-1">
-                    <CardTitle>{getLocalizedString(notif.title, locale)}</CardTitle>
+                    <CardTitle>{getArabicString(notif.title)}</CardTitle>
                     <CardDescription className="text-xs mt-1">
                       {safeFormatFirebaseTimestamp(notif.createdAt)}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{getLocalizedString(notif.description, locale)}</p>
+                  <p className="text-muted-foreground">{getArabicString(notif.description)}</p>
                 </CardContent>
               </Card>
             ))
           ) : (
             <div className="text-center text-muted-foreground p-12 mt-10 bg-card rounded-2xl">
               <Bell className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="font-bold text-lg">{t('noNewNotifications')}</h3>
-              <p className="mt-1">{t('weWillNotify')}</p>
+              <h3 className="font-bold text-lg">لا توجد إشعارات جديدة</h3>
+              <p className="mt-1">سنعلمك عند وصول أي جديد.</p>
             </div>
           )}
         </div>

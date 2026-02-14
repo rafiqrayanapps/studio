@@ -13,8 +13,13 @@ import { Textarea } from '@/components/ui/textarea';
 import BottomNav from '@/components/layout/BottomNav';
 import { WithId } from '@/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useLocale } from '@/hooks/use-locale';
-import { getLocalizedString } from '@/lib/locale-utils';
+
+// Helper to gracefully handle old localized data
+const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return field.ar || '';
+};
 
 // Reusable Remove Button
 const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
@@ -30,12 +35,11 @@ const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
 // A component for Prompt-based items (Style 3)
 const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void }) => {
   const { toast } = useToast();
-  const { t, locale } = useLocale();
 
   const handleCopy = () => {
     if (item.prompt) {
       navigator.clipboard.writeText(item.prompt);
-      toast({ title: t('promptCopied') });
+      toast({ title: "تم نسخ البرومبت!" });
     }
   };
 
@@ -44,24 +48,24 @@ const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Content
       {item.imageUrl && (
         <div className="relative w-full cursor-pointer aspect-video bg-muted" onClick={() => onImageClick(item.imageUrl!)}>
           <RemoveButton onRemove={() => onRemove(item.id)} />
-          <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover" />
+          <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover" />
         </div>
       )}
       <CardContent className="p-4 flex flex-col flex-1 gap-4 text-right">
-        <h3 className="font-bold text-xl text-center">{getLocalizedString(item.title, locale)}</h3>
+        <h3 className="font-bold text-xl text-center">{getArabicString(item.title)}</h3>
         {item.instructions && (
           <div className="space-y-2">
-            <h4 className="font-semibold text-foreground">{t('instructions')}</h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{getLocalizedString(item.instructions, locale)}</p>
+            <h4 className="font-semibold text-foreground">التعليمات</h4>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{getArabicString(item.instructions)}</p>
           </div>
         )}
         <div className="space-y-2">
-          <h4 className="font-semibold text-foreground">{t('prompt')}</h4>
+          <h4 className="font-semibold text-foreground">البرومبت</h4>
           <Textarea readOnly value={item.prompt} className="h-28 bg-muted border-transparent" dir="ltr" />
         </div>
         <Button variant="default" className="w-full mt-auto" onClick={handleCopy}>
           <Copy className="ml-2 h-4 w-4" />
-          {t('copy')} {t('prompt')}
+          نسخ البرومبت
         </Button>
       </CardContent>
     </Card>
@@ -70,17 +74,16 @@ const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Content
 
 // A component for Video-based items (Style 4)
 const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove: (id: string) => void }) => {
-    const { t, locale } = useLocale();
     return (
         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
             <div className="pb-2">
-                <h3 className="font-bold text-lg text-center">{getLocalizedString(item.title, locale)}</h3>
+                <h3 className="font-bold text-lg text-center">{getArabicString(item.title)}</h3>
             </div>
             
             <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="relative block">
                 <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
                     <RemoveButton onRemove={() => onRemove(item.id)} />
-                    {item.imageUrl && <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover" />}
+                    {item.imageUrl && <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover" />}
                 </div>
             </a>
             
@@ -88,7 +91,7 @@ const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove
                 <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="w-full">
                     <Button variant="secondary" className="w-full">
                         <PlayCircle className="ml-2 h-4 w-4" />
-                        {t('watchVideo')}
+                        مشاهدة الفيديو
                     </Button>
                 </a>
             </div>
@@ -98,21 +101,20 @@ const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove
 
 // A component for Downloadable items (Style 1/2)
 const DownloadItemCard = ({ item, onRemove, onImageClick }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void }) => {
-    const { t, locale } = useLocale();
     return (
         <div className="flex flex-col text-center group gap-y-3">
-            <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{getLocalizedString(item.title, locale)}</h3>
+            <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{getArabicString(item.title)}</h3>
             {item.imageUrl && (
               <div className="relative w-full cursor-pointer aspect-square bg-muted rounded-lg shadow-md overflow-hidden" onClick={() => onImageClick(item.imageUrl!)}>
                 <RemoveButton onRemove={() => onRemove(item.id)} />
-                <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover" />
+                <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover" />
               </div>
             )}
             <div className="w-full mt-auto">
               <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer">
                 <Button className="w-full">
                   <Download className="ml-2 h-4 w-4" />
-                  {t('download')}
+                  تحميل
                 </Button>
               </a>
             </div>
@@ -124,16 +126,16 @@ const DownloadItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Conte
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const { toast, t, locale } = useToast();
+  const { toast } = useToast();
 
   const removeFromFavorites = (itemId: string) => {
     setFavorites(prevFavorites => prevFavorites.filter(item => item.id !== itemId));
-    toast({ title: t('favoriteRemoved') });
+    toast({ title: "تمت الإزالة من المفضلة" });
   };
 
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
-      <Header title={t('favorites')} />
+      <Header title="المفضلة" />
       <main className="flex-1 px-6 pt-4 pb-24">
         {favorites.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -150,8 +152,8 @@ export default function FavoritesPage() {
         ) : (
           <div className="text-center text-muted-foreground p-12 mt-10 bg-card rounded-2xl">
             <Heart className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="font-bold text-lg">{t('favoritesListEmpty')}</h3>
-            <p className="mt-1">{t('addContentToFavorites')}</p>
+            <h3 className="font-bold text-lg">قائمة المفضلة فارغة</h3>
+            <p className="mt-1">أضف بعض المحتوى إلى مفضلتك لتجده هنا لاحقاً.</p>
           </div>
         )}
       </main>

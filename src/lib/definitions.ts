@@ -2,14 +2,9 @@
 
 export type DisplayStyle = 'style1' | 'style2' | 'style3' | 'style4' | 'style5';
 
-export type LocalizedString = {
-  ar: string;
-  en: string;
-};
-
 export interface Category {
   id: string;
-  name: LocalizedString | string;
+  name: string;
   parentId: string | null;
   displayStyle: DisplayStyle;
   fileTypes?: string;
@@ -19,12 +14,12 @@ export interface Category {
 
 export interface ContentItem {
   id: string;
-  title: LocalizedString | string;
+  title: string;
   imageUrl: string;
   downloadUrl?: string;
   prompt?: string;
   videoUrl?: string;
-  instructions?: LocalizedString | string;
+  instructions?: string;
   createdAt?: any;
   order?: number;
   screenshots?: string[];
@@ -51,10 +46,7 @@ export interface ThemeConfig {
 
 export interface Notification {
   id: string;
-  title: LocalizedString | string;
-  description: LocalizedString | string;
+  title: string;
+  description: string;
   createdAt: any; // Using any for Firebase Timestamp
 }
-    
-
-    
