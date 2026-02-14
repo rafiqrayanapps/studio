@@ -6,6 +6,8 @@ import { FirebaseClientProvider } from '@/firebase';
 import ThemeManager from '@/components/theme/ThemeManager';
 import ServiceWorkerRegistrar from '@/components/layout/ServiceWorkerRegistrar';
 import OnlineStatusDetector from '@/components/layout/OnlineStatusDetector';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { LocaleProvider } from '@/hooks/use-locale';
 
 export const metadata: Metadata = {
   applicationName: 'رفيق المصمم',
@@ -31,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" suppressHydrationWarning>
+    <html suppressHydrationWarning>
       <head>
         {/* The theme-color meta tag is now managed by ThemeManager.tsx */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -42,12 +44,16 @@ export default function RootLayout({
         />
       </head>
       <body className={cn('font-body antialiased')}>
-        <FirebaseClientProvider>
-          <ThemeManager />
-          <OnlineStatusDetector />
-          <ServiceWorkerRegistrar />
-          {children}
-        </FirebaseClientProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <LocaleProvider>
+            <FirebaseClientProvider>
+              <ThemeManager />
+              <OnlineStatusDetector />
+              <ServiceWorkerRegistrar />
+              {children}
+            </FirebaseClientProvider>
+          </LocaleProvider>
+        </ThemeProvider>
         <Toaster />
       </body>
     </html>
