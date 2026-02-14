@@ -307,13 +307,42 @@
         "whatsapp",
         "createdAt"
       ]
+    },
+    "WhitelistEntry": {
+      "title": "Whitelist Entry",
+      "description": "An entry for a user who is whitelisted for a specific role.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role assigned to the user.",
+          "enum": [
+            "admin",
+            "pro"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the entry was created."
+        }
+      },
+      "required": [
+        "email",
+        "role",
+        "createdAt"
+      ]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "anonymous",
-      "google.com"
+      "anonymous"
     ]
   },
   "firestore": {
@@ -417,8 +446,18 @@
           },
           "description": "Stores user subscription requests."
         }
+      },
+      {
+        "path": "/whitelist/{email}",
+        "definition": {
+          "entityName": "WhitelistEntry",
+          "schema": {
+            "$ref": "#/backend/entities/WhitelistEntry"
+          },
+          "description": "Stores whitelisted users by email. Admins can add users here to grant them 'admin' or 'pro' roles, which can then be processed by backend functions to set custom claims."
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings like the subscription dialog. A new collection 'subscriptionRequests' is added to store user subscription requests publicly."
+    "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings. A `subscriptionRequests` collection stores user requests. A `whitelist` collection is added to allow admins to grant roles to users by email."
   }
 }

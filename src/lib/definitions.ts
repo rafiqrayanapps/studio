@@ -59,3 +59,10 @@ export interface UserProfile {
   createdAt: any; // Firebase Timestamp
   subscriptionTier: 'free' | 'pro';
 }
+
+export interface WhitelistEntry {
+  id: string;
+  email: string;
+  role: 'admin' | 'pro';
+  createdAt: any;
+}

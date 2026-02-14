@@ -4,11 +4,11 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -74,7 +74,12 @@ const useFormSchemas = () => {
         description: z.string().min(1, "الوصف مطلوب"),
     });
 
-    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema };
+    const whitelistSchema = z.object({
+        email: z.string().email("البريد الإلكتروني غير صالح."),
+        role: z.enum(['admin', 'pro'], { required_error: "الدور مطلوب." }),
+    });
+
+    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema };
 }
 
 type CategoryFormValues = z.infer<Return<(typeof useFormSchemas)>['categorySchema']>;
@@ -83,6 +88,7 @@ type SubscriptionDialogFormValues = z.infer<Return<(typeof useFormSchemas)>['sub
 type ShareLinkFormValues = z.infer<Return<(typeof useFormSchemas)>['shareLinkSchema']>;
 type ThemeFormValues = z.infer<Return<(typeof useFormSchemas)>['themeSchema']>;
 type NotificationFormValues = z.infer<Return<(typeof useFormSchemas)>['notificationSchema']>;
+type WhitelistFormValues = z.infer<Return<(typeof useFormSchemas)>['whitelistSchema']>;
 
 
 export default function AdminDashboardPage() {
@@ -90,7 +96,7 @@ export default function AdminDashboardPage() {
   const auth = useAuth();
   const { toast } = useToast();
 
-  const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification', entity: WithId<CategoryType> | WithId<ContentItem> | WithId<NotificationType> } | null>(null);
+  const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification' | 'whitelist', entity: WithId<CategoryType> | WithId<ContentItem> | WithId<NotificationType> | WithId<WhitelistEntry> } | null>(null);
 
   // Categories state
   const [editingCategory, setEditingCategory] = useState<WithId<CategoryType> | null>(null);
@@ -119,6 +125,9 @@ export default function AdminDashboardPage() {
   
   const notificationsCollectionQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc')) : null, [firestore]);
   const { data: notifications, isLoading: isLoadingNotifications } = useCollection<NotificationType>(notificationsCollectionQuery);
+
+  const whitelistCollectionQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'whitelist'), orderBy('createdAt', 'desc')) : null, [firestore]);
+  const { data: whitelistedUsers, isLoading: isLoadingWhitelist } = useCollection<WhitelistEntry>(whitelistCollectionQuery);
 
 
   useEffect(() => {
@@ -152,13 +161,14 @@ export default function AdminDashboardPage() {
   
 
   // Forms
-  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema } = useFormSchemas();
+  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema } = useFormSchemas();
   const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '' } });
   const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' } });
   const subscriptionDialogForm = useForm<SubscriptionDialogFormValues>({ resolver: zodResolver(subscriptionDialogSchema), defaultValues: { title: '', description: '', link: '', enabled: false } });
   const shareLinkForm = useForm<ShareLinkFormValues>({ resolver: zodResolver(shareLinkSchema), defaultValues: { url: '', text: '', enabled: false } });
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
+  const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', role: 'pro' } });
 
 
   // Effects to reset forms when editing state changes
@@ -333,6 +343,17 @@ export default function AdminDashboardPage() {
     notificationForm.reset();
   };
 
+  const onWhitelistSubmit = (values: WhitelistFormValues) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, 'whitelist', values.email);
+    setDocumentNonBlocking(docRef, {
+      ...values,
+      createdAt: serverTimestamp()
+    }, { merge: true });
+    toast({ title: "تم تفعيل المستخدم" });
+    whitelistForm.reset();
+  };
+
 
   const handleDelete = () => {
     if (!firestore || !deletingEntity) return;
@@ -347,6 +368,9 @@ export default function AdminDashboardPage() {
     } else if (type === 'notification') {
        deleteDocumentNonBlocking(doc(firestore, 'notifications', entity.id));
        toast({ title: "تم حذف الإشعار" });
+    } else if (type === 'whitelist') {
+       deleteDocumentNonBlocking(doc(firestore, 'whitelist', entity.id));
+       toast({ title: "تم إزالة المستخدم من القائمة البيضاء" });
     }
     
     setDeletingEntity(null);
@@ -725,11 +749,76 @@ export default function AdminDashboardPage() {
                             </div>
                         </CardContent>
                     </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>تفعيل المستخدمين</CardTitle>
+                            <CardDescription>أضف مستخدمين إلى القائمة البيضاء لمنحهم صلاحيات "Admin" أو "Pro".</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Form {...whitelistForm}>
+                                <form onSubmit={whitelistForm.handleSubmit(onWhitelistSubmit)} className="space-y-6">
+                                    <FormField control={whitelistForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>البريد الإلكتروني للمشترك</FormLabel><FormControl><Input placeholder="user@example.com" {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={whitelistForm.control} name="role" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>الصلاحية</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="pro">Pro</SelectItem>
+                                                    <SelectItem value="admin">Admin</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <Button type="submit" disabled={whitelistForm.formState.isSubmitting} className="w-full">
+                                    {whitelistForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "تفعيل"}
+                                    </Button>
+                                </form>
+                            </Form>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>المستخدمون المفعلون</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2 max-h-72 overflow-y-auto">
+                                {isLoadingWhitelist ? <Skeleton className="h-10 w-full" /> : (whitelistedUsers && whitelistedUsers.length > 0) ? whitelistedUsers.map((user) => (
+                                    <div key={user.id} className="flex items-center bg-secondary p-2 rounded-md">
+                                        <div className="flex-1">
+                                            <p className="font-bold">{user.email}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                الصلاحية: <span className="font-semibold text-primary">{user.role === 'admin' ? 'Admin' : 'Pro'}</span>
+                                            </p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'whitelist', entity: user })}><Trash2/></Button>
+                                    </div>
+                                )) : <p className="text-muted-foreground text-center p-4">لا يوجد مستخدمون في القائمة البيضاء.</p>}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </main>
         <AlertDialog open={!!deletingEntity} onOpenChange={(open) => !open && setDeletingEntity(null)}>
-          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle><AlertDialogDescription>سيتم حذف "{getArabicString(deletingEntity?.entity.name) || getArabicString(deletingEntity?.entity.title) || ''}". هذا الإجراء لا يمكن التراجع عنه.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>إلغاء</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">حذف</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                <AlertDialogDescription>
+                    سيتم حذف "
+                    {deletingEntity?.type === 'whitelist' 
+                        ? (deletingEntity.entity as WhitelistEntry).email 
+                        : (getArabicString(deletingEntity?.entity.name) || getArabicString(deletingEntity?.entity.title) || '')
+                    }
+                    ". هذا الإجراء لا يمكن التراجع عنه.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">حذف</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
        </AlertDialog>
     </div>
   );
