@@ -6,17 +6,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useAuth, useFirestore } from '@/firebase';
+import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, Key, Frown } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
+import type { WhitelistEntry } from '@/lib/definitions';
 
 const formSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
@@ -33,8 +33,8 @@ export default function UnifiedLoginForm() {
   const [error, setError] = useState<string | null>(null);
   
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
-  const { toast } = useToast();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
@@ -52,44 +52,88 @@ export default function UnifiedLoginForm() {
     form.reset(); // Reset form fields on role change
   };
 
+  const handleAdminLogin = async (data: LoginFormValues) => {
+    if (!data.password) {
+      form.setError('password', { message: 'كلمة المرور مطلوبة' });
+      return;
+    }
+    try {
+      await signInWithEmailAndPassword(auth, data.email, data.password);
+      router.push('/admin/dashboard');
+    } catch (e: any) {
+       let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
+      if (e instanceof FirebaseError) {
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+          description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+        }
+      }
+      setError(description);
+    }
+  };
+
+  const handleProActivation = async (data: LoginFormValues) => {
+    if (!data.activationCode) {
+      form.setError('activationCode', { message: 'الرجاء إدخال كود التفعيل.' });
+      return;
+    }
+
+    try {
+      const whitelistRef = doc(firestore, 'whitelist', data.email);
+      const whitelistSnap = await getDoc(whitelistRef);
+
+      if (!whitelistSnap.exists()) {
+        throw new Error("البريد الإلكتروني أو كود التفعيل غير صالح.");
+      }
+
+      const whitelistData = whitelistSnap.data() as WhitelistEntry;
+
+      if (whitelistData.role !== 'pro' || whitelistData.activationCode !== data.activationCode) {
+        throw new Error("البريد الإلكتروني أو كود التفعيل غير صالح.");
+      }
+
+      if (whitelistData.claimedByUid) {
+        throw new Error("هذا الكود تم استخدامه مسبقًا.");
+      }
+      
+      // Code is valid and unused, proceed with activation
+      const userCredential = await signInAnonymously(auth);
+      const user = userCredential.user;
+
+      const batch = writeBatch(firestore);
+      
+      // Mark the code as used
+      batch.update(whitelistRef, { claimedByUid: user.uid });
+      
+      // Create a user profile with pro status
+      const userProfileRef = doc(firestore, 'users', user.uid);
+      batch.set(userProfileRef, {
+        email: data.email,
+        subscriptionTier: 'pro',
+        createdAt: serverTimestamp(),
+        displayName: 'Pro User',
+      });
+
+      await batch.commit();
+
+      // The onAuthStateChanged listener will handle redirection
+      router.push('/home');
+
+    } catch (e: any) {
+      setError(e.message || "فشل التفعيل. الرجاء التأكد من بياناتك.");
+    }
+  };
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     setError(null);
 
     if (role === 'admin') {
-      if (!data.password) {
-        form.setError('password', { message: 'كلمة المرور مطلوبة' });
-        setIsSubmitting(false);
-        return;
-      }
-      try {
-        await signInWithEmailAndPassword(auth, data.email, data.password);
-        router.push('/admin/dashboard');
-      } catch (e: any) {
-         let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
-        if (e instanceof FirebaseError) {
-          if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
-            description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
-          }
-        }
-        setError(description);
-      } finally {
-        setIsSubmitting(false);
-      }
+      await handleAdminLogin(data);
     } else if (role === 'pro') {
-      // Placeholder for Pro user activation
-      if (!data.activationCode || data.activationCode.length < 6) {
-         form.setError('activationCode', { message: 'الرجاء إدخال كود تفعيل صالح.' });
-         setIsSubmitting(false);
-         return;
-      }
-      console.log('Pro Activation Attempt:', data);
-      toast({
-        title: "قيد التطوير",
-        description: "ميزة تفعيل حساب برو غير متاحة بعد.",
-      });
-      setIsSubmitting(false);
+      await handleProActivation(data);
     }
+    
+    setIsSubmitting(false);
   };
 
   return (
@@ -217,7 +261,7 @@ export default function UnifiedLoginForm() {
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
+              {isSubmitting ? <Loader2 className="animate-spin" /> : (role === 'pro' ? 'تفعيل الحساب' : 'تسجيل الدخول')}
             </Button>
           </CardFooter>
         </form>

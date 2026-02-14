@@ -67,6 +67,7 @@ export interface WhitelistEntry {
   role: 'admin' | 'pro';
   activationCode?: string;
   createdAt: any;
+  claimedByUid?: string;
 }
 
 export interface PricingPlan {

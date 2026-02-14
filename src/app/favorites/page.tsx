@@ -7,12 +7,14 @@ import type { ContentItem } from '@/lib/definitions';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Download, Copy, Trash2, Heart, PlayCircle } from 'lucide-react';
+import { Download, Copy, Trash2, Heart, PlayCircle, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import BottomNav from '@/components/layout/BottomNav';
 import { WithId } from '@/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useUserProfile } from '@/hooks/use-user-profile';
+import { useRouter } from 'next/navigation';
 
 // Reusable Remove Button
 const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
@@ -26,8 +28,9 @@ const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
 );
 
 // A component for Prompt-based items (Style 3)
-const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void }) => {
+const PromptItemCard = ({ item, onRemove, onImageClick, isLocked }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void, isLocked: boolean }) => {
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleCopy = () => {
     if (item.prompt) {
@@ -39,7 +42,7 @@ const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Content
   return (
     <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group">
       {item.imageUrl && (
-        <div className="relative w-full cursor-pointer aspect-video bg-muted" onClick={() => onImageClick(item.imageUrl!)}>
+        <div className="relative w-full cursor-pointer aspect-video bg-muted" onClick={() => !isLocked && onImageClick(item.imageUrl!)}>
           <RemoveButton onRemove={() => onRemove(item.id)} />
           <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
         </div>
@@ -54,11 +57,19 @@ const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Content
         )}
         <div className="space-y-2">
           <h4 className="font-semibold text-foreground">البرومبت</h4>
-          <Textarea readOnly value={item.prompt} className="h-28 bg-muted border-transparent" dir="ltr" />
+           {isLocked ? (
+              <div className="h-28 bg-muted rounded-md flex flex-col items-center justify-center text-center p-4 gap-2">
+                  <Lock className="h-6 w-6 text-muted-foreground" />
+                  <p className="text-muted-foreground font-semibold">محتوى حصري للمشتركين</p>
+                  <Button size="sm" variant="secondary" onClick={() => router.push('/pricing')}>الترقية الآن</Button>
+              </div>
+          ) : (
+            <Textarea readOnly value={item.prompt} className="h-28 bg-muted border-transparent" dir="ltr" />
+          )}
         </div>
-        <Button variant="default" className="w-full mt-auto" onClick={handleCopy}>
-          <Copy className="ml-2 h-4 w-4" />
-          نسخ البرومبت
+        <Button variant="default" className="w-full mt-auto" onClick={handleCopy} disabled={isLocked}>
+          {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Copy className="ml-2 h-4 w-4" />}
+          {isLocked ? 'الترقية للنسخ' : 'نسخ البرومبت'}
         </Button>
       </CardContent>
     </Card>
@@ -93,23 +104,22 @@ const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove
 };
 
 // A component for Downloadable items (Style 1/2)
-const DownloadItemCard = ({ item, onRemove, onImageClick }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void }) => {
+const DownloadItemCard = ({ item, onRemove, onImageClick, isLocked }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void, isLocked: boolean }) => {
+    const router = useRouter();
     return (
         <div className="flex flex-col text-center group gap-y-3">
             <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
             {item.imageUrl && (
-              <div className="relative w-full cursor-pointer aspect-square bg-muted rounded-lg shadow-md overflow-hidden" onClick={() => onImageClick(item.imageUrl!)}>
+              <div className="relative w-full cursor-pointer aspect-square bg-muted rounded-lg shadow-md overflow-hidden" onClick={() => !isLocked && onImageClick(item.imageUrl!)}>
                 <RemoveButton onRemove={() => onRemove(item.id)} />
                 <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
               </div>
             )}
             <div className="w-full mt-auto">
-              <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer">
-                <Button className="w-full">
-                  <Download className="ml-2 h-4 w-4" />
-                  تحميل
-                </Button>
-              </a>
+              <Button className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
+                {isLocked ? 'الترقية للتحميل' : 'تحميل'}
+              </Button>
             </div>
         </div>
     );
@@ -120,6 +130,7 @@ export default function FavoritesPage() {
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const { toast } = useToast();
+  const { isPro, isAdmin } = useUserProfile();
 
   const removeFromFavorites = (itemId: string) => {
     setFavorites(prevFavorites => prevFavorites.filter(item => item.id !== itemId));
@@ -133,13 +144,14 @@ export default function FavoritesPage() {
         {favorites.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {favorites.map((item) => {
+              const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
               if (item.prompt) {
-                return <PromptItemCard key={item.id} item={item} onRemove={removeFromFavorites} onImageClick={setSelectedImage} />;
+                return <PromptItemCard key={item.id} item={item} onRemove={removeFromFavorites} onImageClick={setSelectedImage} isLocked={isLocked} />;
               }
               if (item.videoUrl) {
                 return <VideoItemCard key={item.id} item={item} onRemove={removeFromFavorites} />;
               }
-              return <DownloadItemCard key={item.id} item={item} onRemove={removeFromFavorites} onImageClick={setSelectedImage} />;
+              return <DownloadItemCard key={item.id} item={item} onRemove={removeFromFavorites} onImageClick={setSelectedImage} isLocked={isLocked} />;
             })}
           </div>
         ) : (

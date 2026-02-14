@@ -7,20 +7,19 @@ type SplashState = 'loading' | 'welcoming';
 
 const AppLogo = () => {
     return (
-        <div className="flex flex-col items-center justify-center text-primary-foreground text-center w-full leading-tight">
-            <span className="text-5xl font-bold opacity-0 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>رفيق المصمم</span>
-            <div className="bg-primary-foreground text-primary px-5 py-1 mt-2 rounded-xl w-full opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                <span className="text-4xl font-bold">المصمم</span>
+        <div className="flex flex-col items-center justify-center text-primary-foreground text-center w-full max-w-xs leading-tight">
+            <span className="text-4xl font-bold opacity-0 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>رفيق المصمم</span>
+            <div className="bg-primary-foreground text-primary px-4 py-0.5 mt-2 rounded-lg w-full opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                <span className="text-3xl font-bold">المصمم</span>
             </div>
         </div>
     )
 };
 
-const LoadingDots = () => (
-    <div className="flex items-center justify-center space-x-2" dir="ltr">
-        <div className="h-3 w-3 bg-primary-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-        <div className="h-3 w-3 bg-primary-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-        <div className="h-3 w-3 bg-primary-foreground rounded-full animate-bounce"></div>
+const WelcomeLoader = () => (
+    <div className="relative h-10 w-10">
+        <div className="absolute inset-0 bg-primary-foreground/20 rounded-full animate-ripple"></div>
+        <div className="absolute inset-0 bg-primary-foreground/20 rounded-full animate-ripple" style={{ animationDelay: '0.5s' }}></div>
     </div>
 );
 
@@ -58,8 +57,8 @@ export default function SplashPage() {
         <div className="z-10 flex flex-1 flex-col items-center justify-center gap-16">
             <AppLogo />
             
-            <div className="h-10">
-                {splashState === 'loading' ? <LoadingDots /> : <WelcomeMessage />}
+            <div className="h-10 flex items-center justify-center">
+                {splashState === 'loading' ? <WelcomeLoader /> : <WelcomeMessage />}
             </div>
         </div>
     </div>

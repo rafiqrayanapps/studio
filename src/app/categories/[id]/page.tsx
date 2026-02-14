@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { cn } from '@/lib/utils';
-import { getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -98,10 +97,8 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!displayItems) return [];
-    const allItems = displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-    if (isPro || isAdmin) return allItems;
-    return allItems.filter(item => item.visibility === 'public');
-  }, [displayItems, searchTerm, isPro, isAdmin]);
+    return displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayItems, searchTerm]);
 
 
   // The page is only in a "loading" state if we are fetching data AND have no cached data to show.
@@ -134,7 +131,9 @@ export default function CategoryPage() {
       case 'style1':
         return (
           <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-            {typedItems.map((item, index) => (
+            {typedItems.map((item, index) => {
+              const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
+              return (
               <div
                 key={item.id}
                 className="flex flex-col text-center group relative gap-y-3 opacity-0 animate-fade-in-up"
@@ -147,21 +146,21 @@ export default function CategoryPage() {
                     <FavoriteButton item={item} />
                 </div>
                 <div className="w-full mt-auto">
-                     <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                        <Button className="w-full">
-                            <Download className="ml-2 h-4 w-4" />
-                            تحميل
-                        </Button>
-                    </a>
+                     <Button className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                        {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
+                        {isLocked ? 'الترقية للتحميل' : 'تحميل'}
+                    </Button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         );
       case 'style2':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {typedItems.map((item, index) => (
+            {typedItems.map((item, index) => {
+              const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
+              return (
               <div
                 key={item.id}
                 className="flex flex-col text-center group gap-y-3 opacity-0 animate-fade-in-up"
@@ -180,20 +179,20 @@ export default function CategoryPage() {
                     <FavoriteButton item={item} />
                 </div>
                 <div className="w-full">
-                    <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                    <Button className="w-full">
-                        <Download className="ml-2 h-4 w-4" />
-                        تحميل
+                    <Button className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                        {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
+                        {isLocked ? 'الترقية للتحميل' : 'تحميل'}
                     </Button>
-                    </a>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         );
       case 'style3':
         const Style3Item = ({ item }: { item: WithId<ContentItem> }) => {
             const { toast } = useToast();
+            const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
+
             const handleCopy = () => {
                 if (item.prompt) {
                     navigator.clipboard.writeText(item.prompt);
@@ -227,20 +226,28 @@ export default function CategoryPage() {
 
                         <div className="space-y-2">
                             <h4 className="font-semibold text-foreground">البرومبت</h4>
-                            <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted border-transparent" dir="ltr" />
+                            {isLocked ? (
+                                <div className="h-28 bg-muted rounded-md flex flex-col items-center justify-center text-center p-4 gap-2">
+                                    <Lock className="h-6 w-6 text-muted-foreground" />
+                                    <p className="text-muted-foreground font-semibold">محتوى حصري للمشتركين</p>
+                                    <Button size="sm" variant="secondary" onClick={() => router.push('/pricing')}>الترقية الآن</Button>
+                                </div>
+                            ) : (
+                                <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted border-transparent" dir="ltr" />
+                            )}
                         </div>
                         
                         <div className="flex flex-col sm:flex-row gap-2 mt-auto">
-                            <Button variant="default" className="w-full" onClick={handleCopy}>
-                                <Copy className="ml-2 h-4 w-4" />
-                                نسخ البرومبت
+                            <Button variant="default" className="w-full" onClick={handleCopy} disabled={isLocked}>
+                                {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Copy className="ml-2 h-4 w-4" />}
+                                {isLocked ? 'الترقية للنسخ' : 'نسخ البرومبت'}
                             </Button>
                             {item.downloadUrl && (
-                                <Button asChild variant="secondary" className="w-full">
-                                    <a href={item.downloadUrl} target="_blank" rel="noopener noreferrer">
-                                        <Download className="ml-2 h-4 w-4" />
-                                        تحميل
-                                    </a>
+                                <Button asChild variant="secondary" className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                                    <span>
+                                        {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
+                                        {isLocked ? 'الترقية للتحميل' : 'تحميل'}
+                                    </span>
                                 </Button>
                             )}
                         </div>
@@ -295,6 +302,7 @@ export default function CategoryPage() {
         case 'style5':
             const Style5Item = ({ item }: { item: WithId<ContentItem> }) => {
                 const [emblaApi, setEmblaApi] = useState<CarouselApi>()
+                const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
                 
                 const handleImageClick = (imageUrl: string) => {
                     setSelectedImage(imageUrl);
@@ -341,12 +349,12 @@ export default function CategoryPage() {
                                 </Carousel>
                             </div>
                         )}
-                        <a href={item.downloadUrl || '#'} target="_blank" rel="noopener noreferrer" className="w-full mt-2">
-                            <Button className="w-full">
-                                <Download className="ml-2 h-4 w-4" />
-                                تحميل
+                        <div className="w-full mt-2">
+                            <Button className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                                {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
+                                {isLocked ? 'الترقية للتحميل' : 'تحميل'}
                             </Button>
-                        </a>
+                        </div>
                     </Card>
                 );
             }
