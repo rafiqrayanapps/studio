@@ -18,7 +18,7 @@ import {
   Share2,
   LogOut
 } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
@@ -26,8 +26,16 @@ import { signOut } from 'firebase/auth';
 import LoginButton from '../auth/LoginButton';
 
 const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
-  const { user, auth: firebaseAuth } = useFirebase();
+  const { user, isUserLoading } = useUser();
+  const firebaseAuth = useAuth();
   const firestore = useFirestore();
+  const [canShare, setCanShare] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      setCanShare(true);
+    }
+  }, []);
 
   const shareLinkRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'shareLink') : null, [firestore]);
   const { data: shareLinkConfig } = useDoc<ShareLinkConfig>(shareLinkRef);
@@ -40,7 +48,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
   ];
 
   const handleShare = async () => {
-    if (typeof navigator !== 'undefined' && navigator.share && shareLinkConfig?.enabled && shareLinkConfig.url) {
+    if (canShare && shareLinkConfig?.enabled && shareLinkConfig.url) {
       try {
         await navigator.share({
           title: "رفيق المصمم",
@@ -55,7 +63,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
     }
   };
 
-  const isAdmin = user?.providerData.some(p => p.providerId === 'password');
+  const isAdmin = !isUserLoading && user?.providerData.some(p => p.providerId === 'password');
 
   return (
     <header className={cn(
@@ -130,7 +138,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                             </li>
                         )}
                         
-                        {shareLinkConfig?.enabled && typeof navigator !== 'undefined' && navigator.share && (
+                        {shareLinkConfig?.enabled && canShare && (
                            <li>
                               <div className="block group cursor-pointer" onClick={handleShare}>
                                 <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
