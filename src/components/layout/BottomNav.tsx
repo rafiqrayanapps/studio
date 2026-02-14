@@ -40,15 +40,16 @@ export default function BottomNav() {
     // and the locale is hydrated from localStorage. This prevents hydration mismatch.
     const isRTL = locale === 'ar';
 
-    const indicatorPositionsLTR = ['30%', '50%', '70%'];
-    const indicatorPositionsRTL = ['70%', '50%', '30%']; // RTL is visually reversed
+    // Positions for Home, Favorites, Notifications
+    const indicatorPositionsLTR = ['10%', '30%', '50%'];
+    const indicatorPositionsRTL = ['90%', '70%', '50%'];
 
     const positions = isRTL ? indicatorPositionsRTL : indicatorPositionsLTR;
 
     if (activeIndex > -1) {
         const positionProp = isRTL ? 'right' : 'left';
         const positionValue = positions[activeIndex];
-        const transformValue = isRTL ? 'translateX(50%)' : 'translateX(-50%)';
+        const transformValue = 'translateX(-50%)'; // The dot is centered on the position
 
         setIndicatorStyle({
             [positionProp]: positionValue,
@@ -114,11 +115,11 @@ export default function BottomNav() {
         />
         {/* Main Nav Container */}
         <div className="bg-card rounded-full shadow-lg flex justify-around items-center h-14 w-full p-1 relative">
+            {navItems.map(item => <NavLink key={item.href} {...item} />)}
+
             <ActionButton onClick={toggleLocale}>
               <Globe className="h-6 w-6" />
             </ActionButton>
-
-            {navItems.map(item => <NavLink key={item.href} {...item} />)}
             
             <ActionButton onClick={toggleTheme}>
               {isMounted && resolvedTheme === 'dark' ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}

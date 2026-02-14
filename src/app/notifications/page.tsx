@@ -11,11 +11,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 import { useLocale } from '@/hooks/use-locale';
+import { getLocalizedString } from '@/lib/locale-utils';
 
 export default function NotificationsPage() {
   const firestore = useFirestore();
   const [, setLastSeenTimestamp] = useLocalStorage<number | null>('lastSeenNotificationTimestamp', null);
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const notificationsQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc')) : null,
@@ -65,14 +66,14 @@ export default function NotificationsPage() {
                     <BellRing className="h-6 w-6" />
                   </div>
                   <div className="flex-1">
-                    <CardTitle>{notif.title}</CardTitle>
+                    <CardTitle>{getLocalizedString(notif.title, locale)}</CardTitle>
                     <CardDescription className="text-xs mt-1">
                       {safeFormatFirebaseTimestamp(notif.createdAt)}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{notif.description}</p>
+                  <p className="text-muted-foreground">{getLocalizedString(notif.description, locale)}</p>
                 </CardContent>
               </Card>
             ))

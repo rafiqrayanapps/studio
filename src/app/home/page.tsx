@@ -12,11 +12,12 @@ import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { useLocale } from '@/hooks/use-locale';
+import { getLocalizedString } from '@/lib/locale-utils';
 
 export default function HomePage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   // 1. Read from localStorage cache first.
   const [cachedCategories, setCachedCategories] = useLocalStorage<WithId<CategoryType>[]>('allCategoriesCache', []);
@@ -45,8 +46,8 @@ export default function HomePage() {
     const all = displayCategories || [];
     const filtered = all.filter(cat => !cat.parentId);
     if (!searchTerm) return filtered;
-    return filtered.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayCategories, searchTerm]);
+    return filtered.filter(cat => getLocalizedString(cat.name, locale).toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayCategories, searchTerm, locale]);
 
   // Show skeleton only on the very first load when there's no cache and we are waiting for Firestore.
   const isLoading = isLoadingLive && cachedCategories.length === 0;
@@ -86,7 +87,7 @@ export default function HomePage() {
                   >
                     <div className="relative bg-primary text-primary-foreground p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm aspect-square text-center">
                       {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
-                      <p className="font-bold text-lg">{cat.name}</p>
+                      <p className="font-bold text-lg">{getLocalizedString(cat.name, locale)}</p>
                     </div>
                   </Link>
                 </div>

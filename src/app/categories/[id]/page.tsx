@@ -21,6 +21,7 @@ import { getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { useLocale } from '@/hooks/use-locale';
+import { getLocalizedString } from '@/lib/locale-utils';
 
 
 export default function CategoryPage() {
@@ -92,13 +93,13 @@ export default function CategoryPage() {
 
   const filteredSubCategories = useMemo(() => {
     if (!subCategories) return [];
-    return subCategories.filter((cat) => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [subCategories, searchTerm]);
+    return subCategories.filter((cat) => getLocalizedString(cat.name, locale).toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [subCategories, searchTerm, locale]);
 
   const filteredItems = useMemo(() => {
     if (!displayItems) return [];
-    return displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayItems, searchTerm]);
+    return displayItems.filter((item) => getLocalizedString(item.title, locale).toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayItems, searchTerm, locale]);
 
 
   // The page is only in a "loading" state if we are fetching data AND have no cached data to show.
@@ -137,9 +138,9 @@ export default function CategoryPage() {
                 className="flex flex-col text-center group relative gap-y-3 opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
               >
-                <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
+                <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{getLocalizedString(item.title, locale)}</h3>
                 <div className="relative cursor-pointer aspect-square w-full" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover rounded-lg shadow-md" />}
+                    {item.imageUrl && <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover rounded-lg shadow-md" />}
                     <FavoriteButton item={item} />
                 </div>
                 <div className="w-full mt-auto">
@@ -163,11 +164,11 @@ export default function CategoryPage() {
                 className="flex flex-col text-center group gap-y-3 opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
               >
-                 <h3 className="font-bold text-base">{item.title}</h3>
+                 <h3 className="font-bold text-base">{getLocalizedString(item.title, locale)}</h3>
                 <div className="relative w-full cursor-pointer" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                     {item.imageUrl && <Image 
                       src={item.imageUrl} 
-                      alt={item.title}
+                      alt={getLocalizedString(item.title, locale)}
                       width={500} 
                       height={300}
                       className="w-full h-auto object-cover rounded-lg shadow-md"
@@ -198,12 +199,12 @@ export default function CategoryPage() {
             return (
                 <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group relative">
                     <CardContent className="p-4 flex flex-col flex-1 gap-4">
-                        <h3 className="font-bold text-xl text-center">{item.title}</h3>
+                        <h3 className="font-bold text-xl text-center">{getLocalizedString(item.title, locale)}</h3>
 
                         <div className="relative cursor-pointer w-full rounded-lg overflow-hidden">
                             {item.imageUrl && <Image 
                               src={item.imageUrl} 
-                              alt={item.title}
+                              alt={getLocalizedString(item.title, locale)}
                               width={500} 
                               height={300}
                               className="w-full h-auto object-cover"
@@ -215,7 +216,7 @@ export default function CategoryPage() {
                         {item.instructions && (
                             <div className="space-y-2">
                                 <h4 className="font-semibold text-foreground">{t('instructions')}</h4>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{item.instructions}</p>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{getLocalizedString(item.instructions, locale)}</p>
                             </div>
                         )}
 
@@ -262,13 +263,13 @@ export default function CategoryPage() {
                     >
                         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
                             <div className="pb-2">
-                                <h3 className="font-bold text-lg text-center">{item.title}</h3>
+                                <h3 className="font-bold text-lg text-center">{getLocalizedString(item.title, locale)}</h3>
                             </div>
                             
                             <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="relative block">
                                 <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
                                     <FavoriteButton item={item} />
-                                    {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
+                                    {item.imageUrl && <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover" />}
                                 </div>
                             </a>
                             
@@ -287,6 +288,8 @@ export default function CategoryPage() {
         );
         case 'style5':
             const Style5Item = ({ item }: { item: WithId<ContentItem> }) => {
+                const [emblaApi, setEmblaApi] = useState<CarouselApi>()
+                
                 const handleImageClick = (imageUrl: string) => {
                     setSelectedImage(imageUrl);
                 };
@@ -295,17 +298,18 @@ export default function CategoryPage() {
                     <Card className="p-4 flex flex-col gap-4 bg-card text-card-foreground shadow-md rounded-2xl border">
                         <div className="flex gap-4 items-start">
                             {item.imageUrl && (
-                                <Image src={item.imageUrl} alt={item.title} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
+                                <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
                             )}
                             <div className="flex-1">
-                                <h3 className="font-bold text-xl">{item.title}</h3>
+                                <h3 className="font-bold text-xl">{getLocalizedString(item.title, locale)}</h3>
                                 {item.appVersion && <p className="text-primary font-semibold text-sm">{t('version')} {item.appVersion}</p>}
-                                <p className="text-muted-foreground text-sm mt-1">{item.instructions}</p>
+                                <p className="text-muted-foreground text-sm mt-1">{getLocalizedString(item.instructions, locale)}</p>
                             </div>
                         </div>
                         {item.screenshots && item.screenshots.length > 0 && (
                             <div className="relative">
                                 <Carousel 
+                                    setApi={setEmblaApi}
                                     className="w-full" 
                                     opts={{ 
                                         align: 'start', 
@@ -317,7 +321,7 @@ export default function CategoryPage() {
                                             <CarouselItem key={i} className="basis-4/5 pl-1">
                                                 <Image
                                                     src={ss}
-                                                    alt={t('screenshotAlt', { title: item.title, index: i + 1 })}
+                                                    alt={t('screenshotAlt', { title: getLocalizedString(item.title, locale), index: i + 1 })}
                                                     width={1080}
                                                     height={1920}
                                                     sizes="(max-width: 768px) 80vw, 40vw"
@@ -357,7 +361,7 @@ export default function CategoryPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
         <div className="sticky top-0 z-20">
-             <Header showMenu={false} title={categoryLoading ? '...' : (category?.name || t('unknownCategory'))}>
+             <Header showMenu={false} title={categoryLoading ? '...' : (getLocalizedString(category?.name, locale) || t('unknownCategory'))}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-10">
@@ -394,7 +398,7 @@ export default function CategoryPage() {
                     <Link href={`/categories/${cat.id}`} passHref>
                        <div className="relative bg-primary p-4 text-primary-foreground rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm h-full min-h-36">
                         {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
-                        <p className="font-bold text-lg text-center">{cat.name}</p>
+                        <p className="font-bold text-lg text-center">{getLocalizedString(cat.name, locale)}</p>
                       </div>
                     </Link>
                   </div>

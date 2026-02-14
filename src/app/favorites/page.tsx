@@ -14,6 +14,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { WithId } from '@/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useLocale } from '@/hooks/use-locale';
+import { getLocalizedString } from '@/lib/locale-utils';
 
 // Reusable Remove Button
 const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
@@ -29,7 +30,7 @@ const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
 // A component for Prompt-based items (Style 3)
 const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void }) => {
   const { toast } = useToast();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const handleCopy = () => {
     if (item.prompt) {
@@ -43,15 +44,15 @@ const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Content
       {item.imageUrl && (
         <div className="relative w-full cursor-pointer aspect-video bg-muted" onClick={() => onImageClick(item.imageUrl!)}>
           <RemoveButton onRemove={() => onRemove(item.id)} />
-          <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
+          <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover" />
         </div>
       )}
       <CardContent className="p-4 flex flex-col flex-1 gap-4 text-right">
-        <h3 className="font-bold text-xl text-center">{item.title}</h3>
+        <h3 className="font-bold text-xl text-center">{getLocalizedString(item.title, locale)}</h3>
         {item.instructions && (
           <div className="space-y-2">
             <h4 className="font-semibold text-foreground">{t('instructions')}</h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{item.instructions}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{getLocalizedString(item.instructions, locale)}</p>
           </div>
         )}
         <div className="space-y-2">
@@ -69,17 +70,17 @@ const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Content
 
 // A component for Video-based items (Style 4)
 const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove: (id: string) => void }) => {
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     return (
         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
             <div className="pb-2">
-                <h3 className="font-bold text-lg text-center">{item.title}</h3>
+                <h3 className="font-bold text-lg text-center">{getLocalizedString(item.title, locale)}</h3>
             </div>
             
             <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="relative block">
                 <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
                     <RemoveButton onRemove={() => onRemove(item.id)} />
-                    {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
+                    {item.imageUrl && <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover" />}
                 </div>
             </a>
             
@@ -97,14 +98,14 @@ const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove
 
 // A component for Downloadable items (Style 1/2)
 const DownloadItemCard = ({ item, onRemove, onImageClick }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void }) => {
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     return (
         <div className="flex flex-col text-center group gap-y-3">
-            <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
+            <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{getLocalizedString(item.title, locale)}</h3>
             {item.imageUrl && (
               <div className="relative w-full cursor-pointer aspect-square bg-muted rounded-lg shadow-md overflow-hidden" onClick={() => onImageClick(item.imageUrl!)}>
                 <RemoveButton onRemove={() => onRemove(item.id)} />
-                <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
+                <Image src={item.imageUrl} alt={getLocalizedString(item.title, locale)} fill className="object-cover" />
               </div>
             )}
             <div className="w-full mt-auto">
@@ -123,8 +124,7 @@ const DownloadItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Conte
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const { toast } = useToast();
-  const { t } = useLocale();
+  const { toast, t, locale } = useToast();
 
   const removeFromFavorites = (itemId: string) => {
     setFavorites(prevFavorites => prevFavorites.filter(item => item.id !== itemId));

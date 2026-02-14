@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, useAuth, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, LocalizedString } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,25 +23,36 @@ import { getYouTubeVideoId, getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useLocale } from '@/hooks/use-locale';
+import { getLocalizedString } from '@/lib/locale-utils';
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
 
 const useFormSchemas = () => {
     const { t } = useLocale();
 
+    const localizedStringSchema = z.object({
+        ar: z.string().min(1, t('textRequired')),
+        en: z.string().min(1, t('textRequired')),
+    });
+
+    const optionalLocalizedStringSchema = z.object({
+        ar: z.string().optional(),
+        en: z.string().optional(),
+    }).optional();
+
     const categorySchema = z.object({
-        name: z.string().min(1, t('nameRequired')),
+        name: localizedStringSchema,
         parentId: z.string().optional(),
         displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5'], { required_error: t('displayStyleRequired') }),
         fileTypes: z.string().optional(),
     });
 
     const contentItemSchema = z.object({
-        title: z.string().min(1, t('titleRequired')),
+        title: localizedStringSchema,
         imageUrl: z.string().url(t('invalidUrl')).optional().or(z.literal('')),
         downloadUrl: z.string().url(t('invalidUrl')).optional().or(z.literal('')),
         prompt: z.string().optional(),
-        instructions: z.string().optional(),
+        instructions: optionalLocalizedStringSchema,
         videoUrl: z.string().url(t('invalidUrl')).optional().or(z.literal('')),
         screenshots: z.string().optional(),
         appVersion: z.string().optional(),
@@ -66,8 +77,8 @@ const useFormSchemas = () => {
     });
 
     const notificationSchema = z.object({
-        title: z.string().min(1, t('titleRequired')),
-        description: z.string().min(1, t('textRequired')),
+        title: localizedStringSchema,
+        description: localizedStringSchema,
     });
 
     return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema };
@@ -85,7 +96,7 @@ export default function AdminDashboardPage() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification', entity: WithId<CategoryType> | WithId<ContentItem> | WithId<NotificationType> } | null>(null);
 
@@ -150,39 +161,52 @@ export default function AdminDashboardPage() {
 
   // Forms
   const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema } = useFormSchemas();
-  const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '' } });
-  const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' } });
+  const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: { ar: '', en: '' }, parentId: '', displayStyle: 'style1', fileTypes: '' } });
+  const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: { ar: '', en: '' }, imageUrl: '', downloadUrl: '', prompt: '', instructions: { ar: '', en: '' }, videoUrl: '', screenshots: '', appVersion: '' } });
   const subscriptionDialogForm = useForm<SubscriptionDialogFormValues>({ resolver: zodResolver(subscriptionDialogSchema), defaultValues: { title: '', description: '', link: '', enabled: false } });
   const shareLinkForm = useForm<ShareLinkFormValues>({ resolver: zodResolver(shareLinkSchema), defaultValues: { url: '', text: '', enabled: false } });
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
-  const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
+  const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: { ar: '', en: '' }, description: { ar: '', en: '' } } });
 
 
   // Effects to reset forms when editing state changes
   useEffect(() => {
+    const defaultValues = { name: { ar: '', en: '' }, displayStyle: 'style1' as const, fileTypes: '', parentId: ''};
     if (editingCategory) {
+      const name = editingCategory.name;
       categoryForm.reset({ 
-        name: editingCategory.name, 
+        name: {
+          ar: typeof name === 'object' && name !== null ? (name as LocalizedString).ar : (typeof name === 'string' ? name : ''),
+          en: typeof name === 'object' && name !== null ? (name as LocalizedString).en : '',
+        },
         displayStyle: editingCategory.displayStyle, 
         fileTypes: editingCategory.fileTypes || '',
         parentId: editingCategory.parentId || ''
       });
     }
     else {
-        categoryForm.reset({ name: '', displayStyle: 'style1', fileTypes: '', parentId: '' });
+        categoryForm.reset(defaultValues);
     }
   }, [editingCategory, categoryForm]);
 
 
   useEffect(() => {
-    const defaultValues: ContentItemFormValues = { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' };
+    const defaultValues: ContentItemFormValues = { title: { ar: '', en: '' }, imageUrl: '', downloadUrl: '', prompt: '', instructions: { ar: '', en: '' }, videoUrl: '', screenshots: '', appVersion: '' };
     if (editingItem) {
+        const title = editingItem.title;
+        const instructions = editingItem.instructions;
         contentItemForm.reset({ 
-            title: editingItem.title, 
+            title: {
+              ar: typeof title === 'object' && title !== null ? (title as LocalizedString).ar : (typeof title === 'string' ? title : ''),
+              en: typeof title === 'object' && title !== null ? (title as LocalizedString).en : '',
+            },
+            instructions: {
+              ar: typeof instructions === 'object' && instructions !== null ? (instructions as LocalizedString).ar : (typeof instructions === 'string' ? instructions : ''),
+              en: typeof instructions === 'object' && instructions !== null ? (instructions as LocalizedString).en : '',
+            },
             imageUrl: editingItem.imageUrl || '', 
             downloadUrl: editingItem.downloadUrl || '', 
             prompt: editingItem.prompt || '', 
-            instructions: editingItem.instructions || '', 
             videoUrl: editingItem.videoUrl || '',
             screenshots: (editingItem.screenshots || []).join(', '),
             appVersion: editingItem.appVersion || '',
@@ -244,7 +268,7 @@ export default function AdminDashboardPage() {
       addDocumentNonBlocking(collection(firestore, 'categories'), data);
       toast({ title: parentId ? t('subcategoryAdded') : t('mainCategoryAdded') });
     }
-    categoryForm.reset({ name: '', displayStyle: 'style1', fileTypes: '', parentId: ''});
+    categoryForm.reset({ name: { ar: '', en: '' }, displayStyle: 'style1', fileTypes: '', parentId: ''});
   };
 
   const onContentItemSubmit = (values: ContentItemFormValues) => {
@@ -281,7 +305,7 @@ export default function AdminDashboardPage() {
         itemData = { 
             ...itemData, 
             imageUrl: values.imageUrl, 
-            instructions: values.instructions || '', 
+            instructions: values.instructions, 
             downloadUrl: values.downloadUrl, 
             screenshots,
             appVersion: values.appVersion || '',
@@ -297,7 +321,7 @@ export default function AdminDashboardPage() {
       addDocumentNonBlocking(collection(firestore, 'categories', selectedContentCategory, 'items'), { ...itemData, order: newOrder, createdAt: serverTimestamp() });
       toast({ title: t('contentAdded') });
     }
-    contentItemForm.reset({ title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' });
+    contentItemForm.reset({ title: {ar: '', en: ''}, imageUrl: '', downloadUrl: '', prompt: '', instructions: {ar: '', en: ''}, videoUrl: '', screenshots: '', appVersion: '' });
   };
   
   const onSubscriptionDialogSubmit = (values: SubscriptionDialogFormValues) => {
@@ -405,7 +429,8 @@ export default function AdminDashboardPage() {
         <h3 className="text-xl font-bold mb-4">{editingCategory ? t('editCategory') : t('addCategory')}</h3>
         <Form {...categoryForm}>
           <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
-            <FormField control={categoryForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>{t('categoryName')}</FormLabel><FormControl><Input placeholder={t('categoryName')} {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={categoryForm.control} name="name.ar" render={({ field }) => (<FormItem><FormLabel>اسم القسم (العربية)</FormLabel><FormControl><Input placeholder={t('categoryName')} {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={categoryForm.control} name="name.en" render={({ field }) => (<FormItem><FormLabel>Category Name (English)</FormLabel><FormControl><Input placeholder="Category Name" {...field} /></FormControl><FormMessage /></FormItem>)} />
             
             <FormField
                 control={categoryForm.control}
@@ -423,7 +448,7 @@ export default function AdminDashboardPage() {
                                 <SelectItem value="root">{t('mainCategory')}</SelectItem>
                                 {mainCategories.filter(cat => cat.id !== editingCategory?.id).map((cat) => ( // Prevent self-parenting
                                     <SelectItem key={cat.id} value={cat.id}>
-                                        {cat.name}
+                                        {getLocalizedString(cat.name, locale)}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -452,10 +477,11 @@ export default function AdminDashboardPage() {
     if (!category) return null;
     return (
         <div className="mb-6">
-            <h3 className="text-xl font-bold mb-4">{editingItem ? t('editItem') : t('addItem')} {t('inCategory', { categoryName: category.name })}</h3>
+            <h3 className="text-xl font-bold mb-4">{editingItem ? t('editItem') : t('addItem')} {t('inCategory', { categoryName: getLocalizedString(category.name, locale) })}</h3>
             <Form {...contentItemForm}>
                 <form onSubmit={contentItemForm.handleSubmit(onContentItemSubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
-                    <FormField control={contentItemForm.control} name="title" render={({ field }) => <FormItem><FormLabel>{t('title')}</FormLabel><FormControl><Input placeholder={t('title')} {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField control={contentItemForm.control} name="title.ar" render={({ field }) => <FormItem><FormLabel>العنوان (العربية)</FormLabel><FormControl><Input placeholder={t('title')} {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField control={contentItemForm.control} name="title.en" render={({ field }) => <FormItem><FormLabel>Title (English)</FormLabel><FormControl><Input placeholder="Title" {...field} /></FormControl><FormMessage /></FormItem>} />
                     
                     {['style1', 'style2', 'style3'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>{t('imageUrl')}</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
                     {category.displayStyle === 'style5' && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>{t('iconUrl')}</FormLabel><FormControl><Input placeholder="https://example.com/icon.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
@@ -464,7 +490,8 @@ export default function AdminDashboardPage() {
                     
                     {category.displayStyle === 'style3' && (
                         <>
-                            <FormField control={contentItemForm.control} name="instructions" render={({ field }) => <FormItem><FormLabel>{t('instructionsOptional')}</FormLabel><FormControl><Textarea placeholder={t('promptInstructionsPlaceholder')} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                            <FormField control={contentItemForm.control} name="instructions.ar" render={({ field }) => <FormItem><FormLabel>التعليمات (العربية - اختياري)</FormLabel><FormControl><Textarea placeholder={t('promptInstructionsPlaceholder')} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                            <FormField control={contentItemForm.control} name="instructions.en" render={({ field }) => <FormItem><FormLabel>Instructions (English - Optional)</FormLabel><FormControl><Textarea placeholder="Instructions for using the prompt..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
                             <FormField control={contentItemForm.control} name="prompt" render={({ field }) => <FormItem><FormLabel>{t('prompt')}</FormLabel><FormControl><Textarea placeholder={t('promptPlaceholder')} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
                             <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>{t('downloadUrlOptional')}</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormDescription>{t('downloadUrlDescription')}</FormDescription><FormMessage /></FormItem>} />
                         </>
@@ -473,7 +500,8 @@ export default function AdminDashboardPage() {
                     {category.displayStyle === 'style5' && (
                        <>
                         <FormField control={contentItemForm.control} name="appVersion" render={({ field }) => <FormItem><FormLabel>{t('appVersionOptional')}</FormLabel><FormControl><Input placeholder="1.0.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={contentItemForm.control} name="instructions" render={({ field }) => <FormItem><FormLabel>{t('descriptionOptional')}</FormLabel><FormControl><Textarea placeholder={t('itemDescriptionPlaceholder')} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={contentItemForm.control} name="instructions.ar" render={({ field }) => <FormItem><FormLabel>الوصف (العربية - اختياري)</FormLabel><FormControl><Textarea placeholder={t('itemDescriptionPlaceholder')} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={contentItemForm.control} name="instructions.en" render={({ field }) => <FormItem><FormLabel>Description (English - Optional)</FormLabel><FormControl><Textarea placeholder="Item description..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
                        </>
                     )}
 
@@ -519,7 +547,7 @@ export default function AdminDashboardPage() {
                         {mainCategories.map((cat, index) => (
                             <AccordionItem value={cat.id} key={cat.id}>
                                 <AccordionTrigger>
-                                    <div className="flex-1 text-right">{cat.name}</div>
+                                    <div className="flex-1 text-right">{getLocalizedString(cat.name, locale)}</div>
                                     <div className="flex items-center gap-2 mr-auto">
                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(cat, 'up') }} disabled={index === 0}>
                                             <span><ArrowUp/></span>
@@ -540,7 +568,7 @@ export default function AdminDashboardPage() {
                                         {(subCategories.get(cat.id) || []).length === 0 && <p className="text-muted-foreground text-center">{t('noSubcategories')}</p>}
                                         {(subCategories.get(cat.id) || []).map((subCat, subIndex) => (
                                              <div key={subCat.id} className="flex items-center bg-card p-2 rounded-md border">
-                                                 <p className="flex-1">{subCat.name}</p>
+                                                 <p className="flex-1">{getLocalizedString(subCat.name, locale)}</p>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCat, 'up')} disabled={subIndex === 0}><ArrowUp/></Button>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCat, 'down')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {setEditingCategory(subCat); }}><Edit/></Button>
@@ -564,10 +592,10 @@ export default function AdminDashboardPage() {
                       <SelectContent>
                           {mainCategories.map(cat => (
                               <SelectGroup key={cat.id}>
-                                  <SelectLabel>{cat.name}</SelectLabel>
-                                  <SelectItem value={cat.id}>{t('mainCategoryAsOption', { name: cat.name })}</SelectItem>
+                                  <SelectLabel>{getLocalizedString(cat.name, locale)}</SelectLabel>
+                                  <SelectItem value={cat.id}>{t('mainCategoryAsOption', { name: getLocalizedString(cat.name, locale) })}</SelectItem>
                                   {(subCategories.get(cat.id) || []).map(subCat => (
-                                      <SelectItem key={subCat.id} value={subCat.id} className="pr-8">{subCat.name}</SelectItem>
+                                      <SelectItem key={subCat.id} value={subCat.id} className="pr-8">{getLocalizedString(subCat.name, locale)}</SelectItem>
                                   ))}
                               </SelectGroup>
                           ))}
@@ -581,13 +609,13 @@ export default function AdminDashboardPage() {
                 {selectedContentCategory && (
                     <Card className="mt-6">
                         <CardHeader>
-                            <CardTitle>{t('currentContentInCategory', { categoryName: categoryMap.get(selectedContentCategory)?.name || '' })}</CardTitle>
+                            <CardTitle>{t('currentContentInCategory', { categoryName: getLocalizedString(categoryMap.get(selectedContentCategory)?.name, locale) || '' })}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2">
                                 {isLoadingItems ? <Skeleton className="h-10 w-full" /> : sortedItems.map((item, index) => (
                                     <div key={item.id} className="flex items-center bg-secondary p-2 rounded-md">
-                                        <p className="flex-1">{item.title}</p>
+                                        <p className="flex-1">{getLocalizedString(item.title, locale)}</p>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveItem(item, 'up')} disabled={index === 0}><ArrowUp/></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveItem(item, 'down')} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
@@ -694,8 +722,10 @@ export default function AdminDashboardPage() {
                         <CardContent>
                             <Form {...notificationForm}>
                                 <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
-                                    <FormField control={notificationForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>{t('notificationTitle')}</FormLabel><FormControl><Input placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={notificationForm.control} name="description" render={({ field }) => ( <FormItem><FormLabel>{t('notificationText')}</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={notificationForm.control} name="title.ar" render={({ field }) => ( <FormItem><FormLabel>عنوان الإشعار (العربية)</FormLabel><FormControl><Input placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={notificationForm.control} name="title.en" render={({ field }) => ( <FormItem><FormLabel>Notification Title (English)</FormLabel><FormControl><Input placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={notificationForm.control} name="description.ar" render={({ field }) => ( <FormItem><FormLabel>نص الإشعار (العربية)</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={notificationForm.control} name="description.en" render={({ field }) => ( <FormItem><FormLabel>Notification Text (English)</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                                     <Button type="submit" disabled={notificationForm.formState.isSubmitting} className="w-full">
                                       {notificationForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : t('sendNotification')}
                                     </Button>
@@ -712,8 +742,8 @@ export default function AdminDashboardPage() {
                                 {isLoadingNotifications ? <Skeleton className="h-10 w-full" /> : (notifications && notifications.length > 0) ? notifications.map((notif) => (
                                     <div key={notif.id} className="flex items-center bg-secondary p-2 rounded-md">
                                         <div className="flex-1">
-                                            <p className="font-bold">{notif.title}</p>
-                                            <p className="text-sm text-muted-foreground">{notif.description}</p>
+                                            <p className="font-bold">{getLocalizedString(notif.title, locale)}</p>
+                                            <p className="text-sm text-muted-foreground">{getLocalizedString(notif.description, locale)}</p>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'notification', entity: notif })}><Trash2/></Button>
                                     </div>
@@ -725,7 +755,7 @@ export default function AdminDashboardPage() {
             </div>
         </main>
         <AlertDialog open={!!deletingEntity} onOpenChange={(open) => !open && setDeletingEntity(null)}>
-          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle><AlertDialogDescription>{t('deleteConfirmation', {name: deletingEntity?.entity.name || deletingEntity?.entity.title || ''})}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle><AlertDialogDescription>{t('deleteConfirmation', {name: getLocalizedString(deletingEntity?.entity.name, locale) || getLocalizedString(deletingEntity?.entity.title, locale) || ''})}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
        </AlertDialog>
     </div>
   );
