@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from '@/hooks/use-locale';
 
+type SplashState = 'loading' | 'welcoming';
+
 const AppLogo = () => {
     const { t } = useLocale();
     return (
@@ -38,18 +40,6 @@ export default function SplashPage() {
   const router = useRouter();
   const [splashState, setSplashState] = useState<SplashState>('loading');
   
-  // Logic to apply theme from localStorage immediately
-  useEffect(() => {
-    try {
-        const storedColor = window.localStorage.getItem('primaryColor');
-        if (storedColor) {
-            const color = JSON.parse(storedColor);
-            document.documentElement.style.setProperty('--primary', color);
-        }
-    } catch (e) {
-        console.error("Failed to parse theme from localStorage", e);
-    }
-  }, []);
 
   useEffect(() => {
     const loadingTimer = setTimeout(() => {
