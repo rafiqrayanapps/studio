@@ -17,10 +17,9 @@ import {
   ChevronLeft,
   Share2,
   Star,
-  User as UserIcon,
+  Info,
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import UserProfileButton from './UserProfileButton';
@@ -42,7 +41,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
   const navItems = [
     { href: '/home', label: "الرئيسيه" },
     { href: '/colors', label: "منسق الالوان" },
-    { href: '/pricing', label: "الاشتراك", icon: Star },
+    { href: '/about', label: "حول التطبيق", icon: Info },
   ];
 
   const handleShare = async () => {
@@ -103,17 +102,15 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                             <Link href={item.href} className="block group">
                                 <SheetClose asChild>
                                     <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                                    <span className={cn("font-semibold text-lg", item.icon && "text-yellow-500")}>{item.label}</span>
-                                    {item.icon ? <item.icon className="h-5 w-5 text-yellow-500" /> : <ChevronLeft className="h-5 w-5 text-muted-foreground" />}
+                                    <span className={cn("font-semibold text-lg", item.icon && "text-primary")}>{item.label}</span>
+                                    {item.icon ? <item.icon className="h-5 w-5 text-primary" /> : <ChevronLeft className="h-5 w-5 text-muted-foreground" />}
                                     </div>
                                 </SheetClose>
                             </Link>
                           </li>
                         ))}
                         
-                        <li>
-                          <UserProfileButton />
-                        </li>
+                        <UserProfileButton />
                         
                         {shareLinkConfig?.enabled && canShare && (
                            <li>
