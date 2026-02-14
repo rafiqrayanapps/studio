@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -31,6 +32,7 @@ export default function CategoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const { toast } = useToast();
+  const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
 
   // --- START CACHING STRATEGY ---
   const [cachedAllCategories, setCachedAllCategories] = useLocalStorage<WithId<Category>[]>('allCategoriesCache', []);
@@ -70,8 +72,10 @@ export default function CategoryPage() {
 
   const subCategories = useMemo(() => {
     if (!displayAllCategories) return [];
-    return displayAllCategories.filter((cat) => cat.parentId === id).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
-  }, [displayAllCategories, id]);
+    const allSub = displayAllCategories.filter((cat) => cat.parentId === id).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+    if (isPro || isAdmin) return allSub;
+    return allSub.filter(cat => cat.visibility === 'public');
+  }, [displayAllCategories, id, isPro, isAdmin]);
 
   const isFavorite = (itemId: string) => favorites.some(item => item.id === itemId);
 
@@ -94,12 +98,14 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!displayItems) return [];
-    return displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayItems, searchTerm]);
+    const allItems = displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (isPro || isAdmin) return allItems;
+    return allItems.filter(item => item.visibility === 'public');
+  }, [displayItems, searchTerm, isPro, isAdmin]);
 
 
   // The page is only in a "loading" state if we are fetching data AND have no cached data to show.
-  const isLoading = (categoryLoading && !category) || (subCategoriesLoading && cachedAllCategories.length === 0) || (itemsLoading && cachedItems.length === 0);
+  const isLoading = (categoryLoading && !category) || (subCategoriesLoading && cachedAllCategories.length === 0) || (itemsLoading && cachedItems.length === 0) || isUserLoading;
 
   const FavoriteButton = ({ item }: { item: WithId<ContentItem> }) => (
      <Button 
@@ -136,6 +142,7 @@ export default function CategoryPage() {
               >
                 <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
                 <div className="relative cursor-pointer aspect-square w-full" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                    {item.visibility === 'pro' && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
                     {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover rounded-lg shadow-md" />}
                     <FavoriteButton item={item} />
                 </div>
@@ -162,6 +169,7 @@ export default function CategoryPage() {
               >
                  <h3 className="font-bold text-base">{item.title}</h3>
                 <div className="relative w-full cursor-pointer" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                    {item.visibility === 'pro' && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
                     {item.imageUrl && <Image 
                       src={item.imageUrl} 
                       alt={item.title}
@@ -198,6 +206,7 @@ export default function CategoryPage() {
                         <h3 className="font-bold text-xl text-center">{item.title}</h3>
 
                         <div className="relative cursor-pointer w-full rounded-lg overflow-hidden">
+                            {item.visibility === 'pro' && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
                             {item.imageUrl && <Image 
                               src={item.imageUrl} 
                               alt={item.title}
@@ -258,6 +267,7 @@ export default function CategoryPage() {
                         style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
                     >
                         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
+                             {item.visibility === 'pro' && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-300 z-10" />}
                             <div className="pb-2">
                                 <h3 className="font-bold text-lg text-center">{item.title}</h3>
                             </div>
@@ -297,7 +307,7 @@ export default function CategoryPage() {
                                 <Image src={item.imageUrl} alt={item.title} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
                             )}
                             <div className="flex-1">
-                                <h3 className="font-bold text-xl">{item.title}</h3>
+                                <h3 className="font-bold text-xl flex items-center gap-2">{item.title} {item.visibility === 'pro' && <Crown className="h-5 w-5 text-yellow-500" />}</h3>
                                 {item.appVersion && <p className="text-primary font-semibold text-sm">الإصدار {item.appVersion}</p>}
                                 <p className="text-muted-foreground text-sm mt-1">{item.instructions}</p>
                             </div>
@@ -393,6 +403,7 @@ export default function CategoryPage() {
                   >
                     <Link href={`/categories/${cat.id}`} passHref>
                        <div className="relative bg-primary p-4 text-primary-foreground rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm h-full min-h-36">
+                        {cat.visibility === 'pro' && <Crown className="absolute top-2 left-2 h-5 w-5 text-yellow-300 z-10" />}
                         {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
                         <p className="font-bold text-lg text-center">{cat.name}</p>
                       </div>

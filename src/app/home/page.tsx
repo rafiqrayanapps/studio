@@ -5,16 +5,18 @@ import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, Crown } from 'lucide-react';
 import BottomNav from '@/components/layout/BottomNav';
 import Link from 'next/link';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 export default function HomePage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
+  const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
 
   // 1. Read from localStorage cache first.
   const [cachedCategories, setCachedCategories] = useLocalStorage<WithId<CategoryType>[]>('allCategoriesCache', []);
@@ -41,13 +43,20 @@ export default function HomePage() {
   // Filter for main categories from the current display data (cached or live)
   const mainCategories = useMemo(() => {
     const all = displayCategories || [];
-    const filtered = all.filter(cat => !cat.parentId);
-    if (!searchTerm) return filtered;
-    return filtered.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayCategories, searchTerm]);
+    const main = all.filter(cat => !cat.parentId);
+
+    // Admins and Pro users see all main categories.
+    const visibleForUser = (isPro || isAdmin) 
+        ? main 
+        : main.filter(cat => cat.visibility === 'public');
+    
+    // Then filter by search term.
+    if (!searchTerm) return visibleForUser;
+    return visibleForUser.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayCategories, searchTerm, isPro, isAdmin]);
 
   // Show skeleton only on the very first load when there's no cache and we are waiting for Firestore.
-  const isLoading = isLoadingLive && cachedCategories.length === 0;
+  const isLoading = (isLoadingLive && cachedCategories.length === 0) || isUserLoading;
 
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
@@ -83,6 +92,7 @@ export default function HomePage() {
                     passHref
                   >
                     <div className="relative bg-primary text-primary-foreground p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm aspect-square text-center">
+                      {cat.visibility === 'pro' && <Crown className="absolute top-2 left-2 h-5 w-5 text-yellow-300" />}
                       {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
                       <p className="font-bold text-lg">{cat.name}</p>
                     </div>

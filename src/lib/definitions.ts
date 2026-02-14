@@ -10,6 +10,7 @@ export interface Category {
   fileTypes?: string;
   createdAt?: any;
   order?: number;
+  visibility: 'public' | 'pro';
 }
 
 export interface ContentItem {
@@ -24,6 +25,7 @@ export interface ContentItem {
   order?: number;
   screenshots?: string[];
   appVersion?: string;
+  visibility: 'public' | 'pro';
 }
 
 export interface SubscriptionDialogConfig {
@@ -65,4 +67,18 @@ export interface WhitelistEntry {
   role: 'admin' | 'pro';
   activationCode?: string;
   createdAt: any;
+}
+
+export interface PricingPlan {
+  id: string;
+  name: string;
+  price: string;
+  currency: string;
+  frequency: string;
+  description: string;
+  features: string[];
+  isFeatured: boolean;
+  order: number;
+  enabled: boolean;
+  link?: string;
 }

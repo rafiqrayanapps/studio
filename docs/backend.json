@@ -76,12 +76,18 @@
         "order": {
           "type": "number",
           "description": "A number used for ordering categories."
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Determines who can see the category.",
+          "enum": [ "public", "pro" ]
         }
       },
       "required": [
         "name",
         "createdAt",
-        "displayStyle"
+        "displayStyle",
+        "visibility"
       ]
     },
     "ContentItem": {
@@ -136,13 +142,41 @@
         "appVersion": {
           "type": "string",
           "description": "The version of the application/item. Used for style5."
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Determines who can see the content item.",
+          "enum": [ "public", "pro" ]
         }
       },
       "required": [
         "title",
         "imageUrl",
-        "createdAt"
+        "createdAt",
+        "visibility"
       ]
+    },
+    "PricingPlan": {
+      "title": "Pricing Plan",
+      "description": "Defines a subscription plan for the application.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the plan." },
+        "price": { "type": "string", "description": "The price of the plan (e.g., '25', '10')." },
+        "currency": { "type": "string", "description": "The currency symbol or code (e.g., 'ر.س', '$')." },
+        "frequency": { "type": "string", "description": "The billing frequency (e.g., '/شهرياً', '/monthly')." },
+        "description": { "type": "string", "description": "A short description of the plan." },
+        "features": {
+          "type": "array",
+          "description": "A list of features included in the plan.",
+          "items": { "type": "string" }
+        },
+        "isFeatured": { "type": "boolean", "description": "Whether this plan should be highlighted." },
+        "order": { "type": "number", "description": "A number for ordering the plans." },
+        "enabled": { "type": "boolean", "description": "Whether this plan is active and visible." },
+        "link": { "type": "string", "format": "uri", "description": "Optional URL for the subscription button." }
+      },
+      "required": ["name", "price", "currency", "description", "features", "isFeatured", "order", "enabled"]
     },
     "Suggestion": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -399,6 +433,16 @@
             "$ref": "#/backend/entities/ContentItem"
           },
           "description": "Stores content items within a specific category."
+        }
+      },
+      {
+        "path": "/pricingPlans/{planId}",
+        "definition": {
+          "entityName": "PricingPlan",
+          "schema": {
+            "$ref": "#/backend/entities/PricingPlan"
+          },
+          "description": "Stores the available subscription plans."
         }
       },
       {

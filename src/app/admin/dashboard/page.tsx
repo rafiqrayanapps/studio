@@ -4,9 +4,9 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -22,6 +22,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { getYouTubeVideoId, getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
 
@@ -31,6 +32,7 @@ const useFormSchemas = () => {
         parentId: z.string().optional(),
         displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5'], { required_error: "نمط العرض مطلوب" }),
         fileTypes: z.string().optional(),
+        visibility: z.enum(['public', 'pro']).default('public'),
     });
 
     const contentItemSchema = z.object({
@@ -42,6 +44,19 @@ const useFormSchemas = () => {
         videoUrl: z.string().url("رابط غير صالح").optional().or(z.literal('')),
         screenshots: z.string().optional(),
         appVersion: z.string().optional(),
+        visibility: z.enum(['public', 'pro']).default('public'),
+    });
+    
+    const pricingPlanSchema = z.object({
+        name: z.string().min(1, "اسم الخطة مطلوب"),
+        price: z.string().min(1, "السعر مطلوب"),
+        currency: z.string().min(1, "العملة مطلوبة"),
+        frequency: z.string().min(1, "التكرار مطلوب"),
+        description: z.string().min(1, "الوصف مطلوب"),
+        features: z.string().min(1, "الميزات مطلوبة (مفصولة بفاصلة)"),
+        isFeatured: z.boolean().default(false),
+        enabled: z.boolean().default(true),
+        link: z.string().url("رابط غير صالح").optional().or(z.literal('')),
     });
 
     const subscriptionDialogSchema = z.object({
@@ -59,7 +74,7 @@ const useFormSchemas = () => {
     
     const themeSchema = z.object({
         primaryColor: z.string().min(1, "كود اللون مطلوب").regex(colorRegex, "صيغة اللون غير صحيحة. مثال: 350 72% 51%"),
-        primaryColorDark: z.string().regex(colorRegex, { message: "صيغة اللون غير صحيحة. مثال: 350 72% 51%" }).or(z.literal('')).optional(),
+        primaryColorDark: z.string().regex(colorRegex, { message: "صيغة اللون غير صحيحة. مثال: 350 72% 51%" }).or(z.literal("")).optional(),
     });
 
     const notificationSchema = z.object({
@@ -73,7 +88,7 @@ const useFormSchemas = () => {
         role: z.enum(['admin', 'pro'], { required_error: "الدور مطلوب." }),
     });
 
-    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema };
+    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema };
 }
 
 type CategoryFormValues = z.infer<Return<(typeof useFormSchemas)>['categorySchema']>;
@@ -83,6 +98,7 @@ type ShareLinkFormValues = z.infer<Return<(typeof useFormSchemas)>['shareLinkSch
 type ThemeFormValues = z.infer<Return<(typeof useFormSchemas)>['themeSchema']>;
 type NotificationFormValues = z.infer<Return<(typeof useFormSchemas)>['notificationSchema']>;
 type WhitelistFormValues = z.infer<Return<(typeof useFormSchemas)>['whitelistSchema']>;
+type PricingPlanFormValues = z.infer<Return<(typeof useFormSchemas)>['pricingPlanSchema']>;
 
 
 export default function AdminDashboardPage() {
@@ -90,7 +106,7 @@ export default function AdminDashboardPage() {
   const auth = useAuth();
   const { toast } = useToast();
 
-  const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification' | 'whitelist', entity: WithId<CategoryType> | WithId<ContentItem> | WithId<NotificationType> | WithId<WhitelistEntry> } | null>(null);
+  const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification' | 'whitelist' | 'plan', entity: WithId<any> } | null>(null);
 
   // Categories state
   const [editingCategory, setEditingCategory] = useState<WithId<CategoryType> | null>(null);
@@ -99,6 +115,9 @@ export default function AdminDashboardPage() {
   const [selectedContentCategory, setSelectedContentCategory] = useState<string>('');
   const [editingItem, setEditingItem] = useState<WithId<ContentItem> | null>(null);
   const [sortedItems, setSortedItems] = useState<WithId<ContentItem>[]>([]);
+  
+  // Pricing plans state
+  const [editingPlan, setEditingPlan] = useState<WithId<PricingPlan> | null>(null);
 
 
   // Data fetching
@@ -122,6 +141,9 @@ export default function AdminDashboardPage() {
 
   const whitelistCollectionQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'whitelist'), orderBy('createdAt', 'desc')) : null, [firestore]);
   const { data: whitelistedUsers, isLoading: isLoadingWhitelist } = useCollection<WhitelistEntry>(whitelistCollectionQuery);
+  
+  const pricingPlansQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pricingPlans'), orderBy('order', 'asc')) : null, [firestore]);
+  const { data: pricingPlans, isLoading: isLoadingPlans } = useCollection<PricingPlan>(pricingPlansQuery);
 
 
   useEffect(() => {
@@ -155,9 +177,10 @@ export default function AdminDashboardPage() {
   
 
   // Forms
-  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema } = useFormSchemas();
-  const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '' } });
-  const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' } });
+  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema } = useFormSchemas();
+  const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '', visibility: 'public' } });
+  const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' } });
+  const pricingPlanForm = useForm<PricingPlanFormValues>({ resolver: zodResolver(pricingPlanSchema), defaultValues: { name: '', price: '', currency: 'ر.س', frequency: '/شهرياً', description: '', features: '', isFeatured: false, enabled: true, link: '' } });
   const subscriptionDialogForm = useForm<SubscriptionDialogFormValues>({ resolver: zodResolver(subscriptionDialogSchema), defaultValues: { title: '', description: '', link: '', enabled: false } });
   const shareLinkForm = useForm<ShareLinkFormValues>({ resolver: zodResolver(shareLinkSchema), defaultValues: { url: '', text: '', enabled: false } });
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
@@ -167,13 +190,14 @@ export default function AdminDashboardPage() {
 
   // Effects to reset forms when editing state changes
   useEffect(() => {
-    const defaultValues = { name: '', displayStyle: 'style1' as const, fileTypes: '', parentId: ''};
+    const defaultValues = { name: '', displayStyle: 'style1' as const, fileTypes: '', parentId: '', visibility: 'public' as const};
     if (editingCategory) {
       categoryForm.reset({ 
         name: editingCategory.name,
         displayStyle: editingCategory.displayStyle, 
         fileTypes: editingCategory.fileTypes || '',
-        parentId: editingCategory.parentId || ''
+        parentId: editingCategory.parentId || '',
+        visibility: editingCategory.visibility || 'public',
       });
     }
     else {
@@ -183,7 +207,7 @@ export default function AdminDashboardPage() {
 
 
   useEffect(() => {
-    const defaultValues: ContentItemFormValues = { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' };
+    const defaultValues: ContentItemFormValues = { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' };
     if (editingItem) {
         contentItemForm.reset({ 
             title: editingItem.title,
@@ -194,11 +218,23 @@ export default function AdminDashboardPage() {
             videoUrl: editingItem.videoUrl || '',
             screenshots: (editingItem.screenshots || []).join(', '),
             appVersion: editingItem.appVersion || '',
+            visibility: editingItem.visibility || 'public',
         });
     }
     else contentItemForm.reset(defaultValues);
   }, [editingItem, contentItemForm]);
   
+   useEffect(() => {
+    if (editingPlan) {
+      pricingPlanForm.reset({
+        ...editingPlan,
+        features: editingPlan.features.join(', '),
+      });
+    } else {
+      pricingPlanForm.reset({ name: '', price: '', currency: 'ر.س', frequency: '/شهرياً', description: '', features: '', isFeatured: false, enabled: true, link: '' });
+    }
+  }, [editingPlan, pricingPlanForm]);
+
   useEffect(() => {
     if (subscriptionDialogData) {
         subscriptionDialogForm.reset(subscriptionDialogData);
@@ -234,6 +270,7 @@ export default function AdminDashboardPage() {
         displayStyle: values.displayStyle,
         fileTypes: values.fileTypes,
         parentId: parentId,
+        visibility: values.visibility,
       };
       updateDocumentNonBlocking(doc(firestore, 'categories', editingCategory.id), dataToSave);
       toast({ title: "تم تحديث القسم" });
@@ -245,14 +282,15 @@ export default function AdminDashboardPage() {
         name: values.name,
         displayStyle: values.displayStyle,
         fileTypes: values.fileTypes,
-        parentId, 
+        parentId,
+        visibility: values.visibility, 
         order: newOrder, 
         createdAt: serverTimestamp() 
       };
       addDocumentNonBlocking(collection(firestore, 'categories'), data);
       toast({ title: parentId ? "تم إضافة قسم فرعي" : "تم إضافة قسم رئيسي" });
     }
-    categoryForm.reset({ name: '', displayStyle: 'style1', fileTypes: '', parentId: ''});
+    categoryForm.reset({ name: '', displayStyle: 'style1', fileTypes: '', parentId: '', visibility: 'public' });
   };
 
   const onContentItemSubmit = (values: ContentItemFormValues) => {
@@ -260,7 +298,7 @@ export default function AdminDashboardPage() {
     const category = categoryMap.get(selectedContentCategory);
     if (!category) return;
     
-    let itemData: Partial<Omit<ContentItem, 'id' | 'createdAt'>> = { title: values.title };
+    let itemData: Partial<Omit<ContentItem, 'id' | 'createdAt'>> = { title: values.title, visibility: values.visibility };
 
     if (['style1', 'style2'].includes(category.displayStyle)) {
         if (!values.imageUrl) { contentItemForm.setError('imageUrl', { message: "رابط الصورة مطلوب" }); return; }
@@ -305,7 +343,27 @@ export default function AdminDashboardPage() {
       addDocumentNonBlocking(collection(firestore, 'categories', selectedContentCategory, 'items'), { ...itemData, order: newOrder, createdAt: serverTimestamp() });
       toast({ title: "تم إضافة محتوى جديد" });
     }
-    contentItemForm.reset({ title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' });
+    contentItemForm.reset({ title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' });
+  };
+
+  const onPricingPlanSubmit = (values: PricingPlanFormValues) => {
+    if (!firestore) return;
+    
+    const planData = {
+      ...values,
+      features: values.features.split(',').map(f => f.trim()).filter(f => f),
+    };
+
+    if (editingPlan) {
+      updateDocumentNonBlocking(doc(firestore, 'pricingPlans', editingPlan.id), planData);
+      toast({ title: 'تم تحديث خطة الأسعار' });
+      setEditingPlan(null);
+    } else {
+      const newOrder = pricingPlans ? (pricingPlans.length > 0 ? Math.max(...pricingPlans.map(p => p.order ?? 0)) + 1 : 0) : 0;
+      addDocumentNonBlocking(collection(firestore, 'pricingPlans'), { ...planData, order: newOrder });
+      toast({ title: 'تم إضافة خطة أسعار جديدة' });
+    }
+    pricingPlanForm.reset();
   };
   
   const onSubscriptionDialogSubmit = (values: SubscriptionDialogFormValues) => {
@@ -365,62 +423,33 @@ export default function AdminDashboardPage() {
     } else if (type === 'whitelist') {
        deleteDocumentNonBlocking(doc(firestore, 'whitelist', entity.id));
        toast({ title: "تم إزالة المستخدم من القائمة البيضاء" });
+    } else if (type === 'plan') {
+       deleteDocumentNonBlocking(doc(firestore, 'pricingPlans', entity.id));
+       toast({ title: "تم حذف خطة الأسعار" });
     }
     
     setDeletingEntity(null);
   };
   
-  const handleMove = (categoryToMove: WithId<CategoryType>, direction: 'up' | 'down') => {
+  const handleMove = (list: WithId<{order?: number}>[], index: number, direction: 'up' | 'down', collectionPath: string) => {
     if (!firestore) return;
-    const list = categoryToMove.parentId ? (subCategories.get(categoryToMove.parentId) || []) : mainCategories;
-    if (!list) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
 
-    const currentIndex = list.findIndex(c => c.id === categoryToMove.id);
-    if (currentIndex === -1) return;
-    
-    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (targetIndex < 0 || targetIndex >= list.length) return;
-    
+
     const batch = writeBatch(firestore);
-    const currentItem = list[currentIndex];
+    const currentItem = list[index];
     const targetItem = list[targetIndex];
 
     if (currentItem && targetItem) {
-        batch.update(doc(firestore, 'categories', currentItem.id), { order: targetItem.order });
-        batch.update(doc(firestore, 'categories', targetItem.id), { order: currentItem.order });
-
+        batch.update(doc(firestore, collectionPath, currentItem.id), { order: targetItem.order });
+        batch.update(doc(firestore, collectionPath, targetItem.id), { order: currentItem.order });
         batch.commit().catch((e) => {
           toast({ variant: 'destructive', title: "فشل تحديث الترتيب", description: e.message });
         });
     }
   };
 
-  const handleMoveItem = (itemToMove: WithId<ContentItem>, direction: 'up' | 'down') => {
-    if (!firestore || !selectedContentCategory) return;
-    
-    const list = sortedItems;
-    const currentIndex = list.findIndex(i => i.id === itemToMove.id);
-    if (currentIndex === -1) return;
-    
-    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= list.length) return;
-    
-    const batch = writeBatch(firestore);
-    const currentItem = list[currentIndex];
-    const targetItem = list[targetIndex];
-
-    if (currentItem && targetItem) {
-        const currentItemRef = doc(firestore, 'categories', selectedContentCategory, 'items', currentItem.id);
-        const targetItemRef = doc(firestore, 'categories', selectedContentCategory, 'items', targetItem.id);
-
-        batch.update(currentItemRef, { order: targetItem.order });
-        batch.update(targetItemRef, { order: currentItem.order });
-
-        batch.commit().catch((e) => {
-          toast({ variant: 'destructive', title: "فشل تحديث الترتيب", description: e.message });
-        });
-    }
-  };
 
   const CategoryForm = () => (
     <div className="mb-6">
@@ -460,6 +489,7 @@ export default function AdminDashboardPage() {
 
             <FormField control={categoryForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel>نمط العرض</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="style1">النمط الافقي</SelectItem><SelectItem value="style2">نمط 2</SelectItem><SelectItem value="style3">نمط 3 (برومبت)</SelectItem><SelectItem value="style4">نمط 4 (فيديو)</SelectItem><SelectItem value="style5">النمط 5 (بطاقة معرض)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={categoryForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel>صيغ الملفات (اختياري)</FormLabel><FormControl><Input placeholder="PSD, AI" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={categoryForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel>الصلاحية</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="public" id="cat-public" /><Label htmlFor="cat-public">عام</Label></FormItem><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="pro" id="cat-pro" /><Label htmlFor="cat-pro">برو</Label></FormItem></RadioGroup><FormMessage /></FormItem>)} />
             <div className="flex gap-2">
                 {editingCategory && <Button type="button" variant="secondary" onClick={() => { setEditingCategory(null); }} className="w-full">إلغاء</Button>}
                 <Button type="submit" disabled={categoryForm.formState.isSubmitting} className="w-full">{editingCategory ? "حفظ" : "إضافة"}</Button>
@@ -514,6 +544,8 @@ export default function AdminDashboardPage() {
                         </FormItem>
                     )} />}
 
+                    <FormField control={contentItemForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel>الصلاحية</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="public" id="item-public" /><Label htmlFor="item-public">عام</Label></FormItem><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="pro" id="item-pro" /><Label htmlFor="item-pro">برو</Label></FormItem></RadioGroup><FormMessage /></FormItem>)} />
+
                     <div className="flex gap-2">
                        {editingItem && <Button type="button" variant="secondary" onClick={() => setEditingItem(null)} className="w-full">إلغاء</Button>}
                        <Button type="submit" disabled={contentItemForm.formState.isSubmitting} className="w-full">{contentItemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : (editingItem ? "حفظ" : "إضافة")}</Button>
@@ -541,12 +573,15 @@ export default function AdminDashboardPage() {
                         {mainCategories.map((cat, index) => (
                             <AccordionItem value={cat.id} key={cat.id}>
                                 <AccordionTrigger>
-                                    <div className="flex-1 text-right">{cat.name}</div>
+                                    <div className="flex items-center gap-2 flex-1 text-right">
+                                        {cat.name}
+                                        {cat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}
+                                    </div>
                                     <div className="flex items-center gap-2 mr-auto">
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(cat, 'up') }} disabled={index === 0}>
+                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'up', 'categories') }} disabled={index === 0}>
                                             <span><ArrowUp/></span>
                                         </Button>
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(cat, 'down') }} disabled={index === mainCategories.length - 1}>
+                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'down', 'categories') }} disabled={index === mainCategories.length - 1}>
                                             <span><ArrowDown/></span>
                                         </Button>
                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); }}>
@@ -562,9 +597,9 @@ export default function AdminDashboardPage() {
                                         {(subCategories.get(cat.id) || []).length === 0 && <p className="text-muted-foreground text-center">لا توجد أقسام فرعية.</p>}
                                         {(subCategories.get(cat.id) || []).map((subCat, subIndex) => (
                                              <div key={subCat.id} className="flex items-center bg-card p-2 rounded-md border">
-                                                 <p className="flex-1">{subCat.name}</p>
-                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCat, 'up')} disabled={subIndex === 0}><ArrowUp/></Button>
-                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCat, 'down')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
+                                                 <p className="flex-1 flex items-center gap-2">{subCat.name} {subCat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
+                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'up', 'categories')} disabled={subIndex === 0}><ArrowUp/></Button>
+                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'down', 'categories')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {setEditingCategory(subCat); }}><Edit/></Button>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'category', entity: subCat })}><Trash2/></Button>
                                              </div>
@@ -609,9 +644,9 @@ export default function AdminDashboardPage() {
                             <div className="space-y-2">
                                 {isLoadingItems ? <Skeleton className="h-10 w-full" /> : sortedItems.map((item, index) => (
                                     <div key={item.id} className="flex items-center bg-secondary p-2 rounded-md">
-                                        <p className="flex-1">{item.title}</p>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveItem(item, 'up')} disabled={index === 0}><ArrowUp/></Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveItem(item, 'down')} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
+                                        <p className="flex-1 flex items-center gap-2">{item.title} {item.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'up', `categories/${selectedContentCategory}/items`)} disabled={index === 0}><ArrowUp/></Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'down', `categories/${selectedContentCategory}/items`)} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'item', entity: item })}><Trash2/></Button>
                                     </div>
@@ -628,6 +663,53 @@ export default function AdminDashboardPage() {
             <div>
                 <h2 className="text-2xl font-bold mb-4">إعدادات التطبيق</h2>
                 <div className="space-y-8">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>إدارة خطط الأسعار</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="mb-6">
+                                <h3 className="text-lg font-bold mb-4">{editingPlan ? 'تعديل الخطة' : 'إضافة خطة جديدة'}</h3>
+                                <Form {...pricingPlanForm}>
+                                <form onSubmit={pricingPlanForm.handleSubmit(onPricingPlanSubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField control={pricingPlanForm.control} name="name" render={({ field }) => <FormItem><FormLabel>اسم الخطة</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                                        <FormField control={pricingPlanForm.control} name="price" render={({ field }) => <FormItem><FormLabel>السعر</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                                        <FormField control={pricingPlanForm.control} name="currency" render={({ field }) => <FormItem><FormLabel>العملة</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                                        <FormField control={pricingPlanForm.control} name="frequency" render={({ field }) => <FormItem><FormLabel>التكرار</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    </div>
+                                    <FormField control={pricingPlanForm.control} name="description" render={({ field }) => <FormItem><FormLabel>الوصف</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={pricingPlanForm.control} name="features" render={({ field }) => <FormItem><FormLabel>الميزات</FormLabel><FormControl><Textarea {...field} /></FormControl><FormDescription>افصل بين الميزات بفاصلة (,)</FormDescription><FormMessage /></FormItem>} />
+                                    <FormField control={pricingPlanForm.control} name="link" render={({ field }) => <FormItem><FormLabel>رابط الزر (اختياري)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    <div className="flex justify-between items-center">
+                                        <FormField control={pricingPlanForm.control} name="isFeatured" render={({ field }) => <FormItem className="flex items-center gap-2"><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>مميزة؟</FormLabel></FormItem>} />
+                                        <FormField control={pricingPlanForm.control} name="enabled" render={({ field }) => <FormItem className="flex items-center gap-2"><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>مفعلة؟</FormLabel></FormItem>} />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {editingPlan && <Button type="button" variant="secondary" onClick={() => { setEditingPlan(null); pricingPlanForm.reset(); }} className="w-full">إلغاء</Button>}
+                                        <Button type="submit" disabled={pricingPlanForm.formState.isSubmitting} className="w-full">{editingPlan ? 'حفظ' : 'إضافة'}</Button>
+                                    </div>
+                                </form>
+                                </Form>
+                            </div>
+                             <h3 className="text-lg font-bold my-4">الخطط الحالية</h3>
+                                {isLoadingPlans ? <Skeleton className="h-20 w-full" /> : (
+                                <div className="space-y-2">
+                                    {(pricingPlans || []).map((plan, index) => (
+                                    <div key={plan.id} className="flex items-center bg-secondary p-2 rounded-md">
+                                        <p className="flex-1 font-semibold">{plan.name} ({plan.price} {plan.currency}{plan.frequency})</p>
+                                        <div className="flex items-center gap-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(pricingPlans!, index, 'up', 'pricingPlans')} disabled={index === 0}><ArrowUp/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(pricingPlans!, index, 'down', 'pricingPlans')} disabled={index === pricingPlans!.length - 1}><ArrowDown/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingPlan(plan)}><Edit/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'plan', entity: plan })}><Trash2/></Button>
+                                        </div>
+                                    </div>
+                                    ))}
+                                </div>
+                                )}
+                        </CardContent>
+                    </Card>
                      <Card>
                         <CardHeader>
                             <CardTitle>تغيير لون الموقع</CardTitle>

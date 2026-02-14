@@ -16,18 +16,16 @@ import {
   Menu,
   ChevronLeft,
   Share2,
-  LogOut,
-  Star
+  Star,
+  User as UserIcon,
 } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
-import { signOut } from 'firebase/auth';
+import UserProfileButton from './UserProfileButton';
 
 const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
-  const { user, isUserLoading } = useUser();
-  const firebaseAuth = useAuth();
   const firestore = useFirestore();
   const [canShare, setCanShare] = React.useState(false);
 
@@ -42,9 +40,9 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
   const { data: shareLinkConfig } = useDoc<ShareLinkConfig>(shareLinkRef);
   
   const navItems = [
-    { href: '/home', label: "الرئيسيه", external: false },
-    { href: '/colors', label: "منسق الالوان", external: false },
-    { href: '/subscribe', label: "اشتراك", external: false, icon: Star },
+    { href: '/home', label: "الرئيسيه" },
+    { href: '/colors', label: "منسق الالوان" },
+    { href: '/pricing', label: "الاشتراك", icon: Star },
   ];
 
   const handleShare = async () => {
@@ -62,8 +60,6 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
       }
     }
   };
-
-  const isAdmin = !isUserLoading && user?.providerData.some(p => p.providerId === 'password');
 
   return (
     <header className={cn(
@@ -104,49 +100,20 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                         
                         {navItems.map((item) => (
                           <li key={item.label}>
-                             {item.external ? (
-                                <a href={item.href} target="_blank" rel="noopener noreferrer" className="block group">
-                                  <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
+                            <Link href={item.href} className="block group">
+                                <SheetClose asChild>
+                                    <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
                                     <span className={cn("font-semibold text-lg", item.icon && "text-yellow-500")}>{item.label}</span>
                                     {item.icon ? <item.icon className="h-5 w-5 text-yellow-500" /> : <ChevronLeft className="h-5 w-5 text-muted-foreground" />}
-                                  </div>
-                                </a>
-                             ) : (
-                                <Link href={item.href} className="block group">
-                                  <SheetClose asChild>
-                                      <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                                        <span className={cn("font-semibold text-lg", item.icon && "text-yellow-500")}>{item.label}</span>
-                                        {item.icon ? <item.icon className="h-5 w-5 text-yellow-500" /> : <ChevronLeft className="h-5 w-5 text-muted-foreground" />}
-                                      </div>
-                                  </SheetClose>
-                                </Link>
-                             )}
+                                    </div>
+                                </SheetClose>
+                            </Link>
                           </li>
                         ))}
                         
-                        {isAdmin ? (
-                            <li>
-                                <Link href={'/admin/dashboard'} className="block group">
-                                  <SheetClose asChild>
-                                      <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                                        <span className="font-semibold text-lg">لوحة التحكم</span>
-                                        <ChevronLeft className="h-5 w-5 text-muted-foreground" />
-                                      </div>
-                                  </SheetClose>
-                                </Link>
-                            </li>
-                        ) : (
-                           <li>
-                              <Link href={'/login'} className="block group">
-                                <SheetClose asChild>
-                                    <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                                      <span className="font-semibold text-lg">الدخول</span>
-                                      <ChevronLeft className="h-5 w-5 text-muted-foreground" />
-                                    </div>
-                                </SheetClose>
-                              </Link>
-                          </li>
-                        )}
+                        <li>
+                          <UserProfileButton />
+                        </li>
                         
                         {shareLinkConfig?.enabled && canShare && (
                            <li>
@@ -154,17 +121,6 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                                 <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
                                   <span className="font-semibold text-lg">مشاركة التطبيق</span>
                                   <Share2 className="h-5 w-5 text-muted-foreground" />
-                                </div>
-                              </div>
-                           </li>
-                        )}
-
-                        {isAdmin && (
-                             <li>
-                              <div className="block group cursor-pointer" onClick={() => signOut(firebaseAuth)}>
-                                <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary text-destructive">
-                                  <span className="font-semibold text-lg">تسجيل الخروج (Admin)</span>
-                                  <LogOut className="h-5 w-5" />
                                 </div>
                               </div>
                            </li>

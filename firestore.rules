@@ -8,38 +8,85 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Publicly readable collections
-    match /categories/{document=**} {
-      allow read: if true;
-      allow write: if isSignedIn();
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserRole() {
+      // Helper to safely access user's subscription tier from their profile.
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier;
+    }
+    
+    function isPro() {
+      // A user is 'pro' if their profile's subscriptionTier is 'pro',
+      // or if they are in the whitelist with the 'pro' role.
+      return isSignedIn() && (getUserRole() == 'pro' ||
+             (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
+              get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'pro'));
+    }
+
+    function isAdmin() {
+      // An admin is explicitly defined in the whitelist collection by their email.
+      return isSignedIn() && exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
+             get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'admin';
+    }
+
+    // --- Content Rules ---
+    match /categories/{categoryId} {
+      // Public categories are readable by everyone. Pro categories only by pro/admin users.
+      allow read: if resource.data.visibility == 'public' || isPro() || isAdmin();
+      // Only admins can create, update, or delete categories.
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId}/items/{itemId} {
+      // An item's access depends on both its own visibility and its parent category's visibility.
+      // Pro/Admin users can see everything.
+      // Public users can only see items marked public within categories marked public.
+      allow read: if (resource.data.visibility == 'public' && get(parent).data.visibility == 'public') || isPro() || isAdmin();
+      // Only admins can write content items.
+      allow write: if isAdmin();
+    }
+
+    // --- App Configuration Rules ---
+    match /pricingPlans/{planId} {
+        // Pricing plans are public to read.
+        allow read: if true;
+        // Only admins can manage pricing plans.
+        allow write: if isAdmin();
     }
     
     match /appConfig/{docId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     match /notifications/{notificationId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     
-    // User-specific data
+    // --- User Data Rules ---
     match /users/{userId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        // Users can read and write their own profile.
+        allow read, write: if isOwner(userId);
     }
     
     match /users/{userId}/suggestions/{suggestionId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        // Users can manage their own suggestions.
+        allow read, write: if isOwner(userId);
     }
 
     match /subscriptionRequests/{requestId} {
+      // Anyone can create a subscription request.
       allow create: if true;
-      allow read, write: if isSignedIn();
+      // Only admins can read or manage requests.
+      allow read, write: if isAdmin();
     }
 
     match /whitelist/{email} {
-      allow read, write: if isSignedIn();
+      // Only admins can manage the whitelist.
+      allow read, write: if isAdmin();
     }
   }
 }
