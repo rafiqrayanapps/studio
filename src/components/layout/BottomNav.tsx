@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Home, Heart, Bell, Moon, Sun, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useTheme } from 'next-themes';
 import { useLocale } from '@/hooks/use-locale';
 
@@ -16,11 +16,11 @@ export default function BottomNav() {
   const { resolvedTheme, setTheme } = useTheme();
   const { locale, setLocale, t } = useLocale();
 
-  const navItems = [
+  const navItems = useMemo(() => [
     { href: '/home', icon: Home, label: t('home') },
     { href: '/favorites', icon: Heart, label: t('favorites') },
     { href: '/notifications', icon: Bell, label: t('notifications') },
-  ];
+  ], [t]);
   
   const activeIndex = useMemo(() => {
     return navItems.findIndex(item => pathname.startsWith(item.href));
@@ -30,6 +30,38 @@ export default function BottomNav() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({
+    opacity: 0,
+  });
+
+  useEffect(() => {
+    // This effect runs only on the client, after the component has mounted
+    // and the locale is hydrated from localStorage. This prevents hydration mismatch.
+    const isRTL = locale === 'ar';
+
+    const indicatorPositionsLTR = ['30%', '50%', '70%'];
+    const indicatorPositionsRTL = ['70%', '50%', '30%']; // RTL is visually reversed
+
+    const positions = isRTL ? indicatorPositionsRTL : indicatorPositionsLTR;
+
+    if (activeIndex > -1) {
+        const positionProp = isRTL ? 'right' : 'left';
+        const positionValue = positions[activeIndex];
+        const transformValue = isRTL ? 'translateX(50%)' : 'translateX(-50%)';
+
+        setIndicatorStyle({
+            [positionProp]: positionValue,
+            transform: transformValue,
+            opacity: 1,
+            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        });
+    } else {
+        // Hide indicator if no item is active
+        setIndicatorStyle({ opacity: 0 });
+    }
+  }, [activeIndex, locale]);
+
 
   if (pathname.startsWith('/admin') || pathname === '/') {
       return null;
@@ -56,20 +88,6 @@ export default function BottomNav() {
     );
   };
   
-  // Positions for the 3 nav items among 5 total items in the bar.
-  // In RTL, items are right-to-left. [Lang, Home, Fav, Notif, Theme]
-  // Centers from right: 10% (Lang), 30% (Home), 50% (Fav), 70% (Notif), 90% (Theme)
-  // activeIndex corresponds to navItems, which are at bar indices 1, 2, 3.
-  const indicatorPositionsRTL = ['30%', '50%', '70%'];
-  const indicatorPositionsLTR = ['30%', '50%', '70%'];
-
-  const indicatorStyle = {
-    [locale === 'ar' ? 'right' : 'left']: activeIndex > -1 ? (locale === 'ar' ? indicatorPositionsRTL[activeIndex] : indicatorPositionsLTR[activeIndex]) : '50%',
-    transform: 'translateX(50%)',
-    transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    opacity: activeIndex > -1 ? 1 : 0,
-  };
-
   const toggleTheme = () => {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
@@ -92,10 +110,7 @@ export default function BottomNav() {
         {/* The moving dot indicator */}
         <div 
           style={indicatorStyle}
-          className={cn(
-            "absolute -top-[6px] h-3 w-3 rounded-full bg-primary",
-            locale === 'ar' ? 'transform-gpu translate-x-1/2' : 'transform-gpu -translate-x-1/2'
-          )}
+          className="absolute -top-[6px] h-3 w-3 rounded-full bg-primary"
         />
         {/* Main Nav Container */}
         <div className="bg-card rounded-full shadow-lg flex justify-around items-center h-14 w-full p-1 relative">

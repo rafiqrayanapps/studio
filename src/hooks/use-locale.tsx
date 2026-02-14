@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, Dispatch, SetStateAction, useCallback, useMemo } from 'react';
 import ar from '@/lib/locales/ar.json';
 import en from '@/lib/locales/en.json';
 
@@ -34,7 +34,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
   }, [locale]);
 
-  const t = (key: string, params?: Record<string, string | number>): string => {
+  const t = useCallback((key: string, params?: Record<string, string | number>): string => {
     let translation = locales[locale][key] || key;
     if (params) {
       Object.keys(params).forEach(paramKey => {
@@ -42,13 +42,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       });
     }
     return translation;
-  };
+  }, [locale]);
   
-  // Always render children.
-  // Server renders with 'ar'. Client first-renders with 'ar'. Hydration matches.
-  // Then, client-side effects run to potentially change the locale.
+  const value = useMemo(() => ({ locale, setLocale, t }), [locale, t]);
+
   return (
-    <LocaleContext.Provider value={{ locale, setLocale, t }}>
+    <LocaleContext.Provider value={value}>
       {children}
     </LocaleContext.Provider>
   );
