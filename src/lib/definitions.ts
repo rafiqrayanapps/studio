@@ -61,7 +61,6 @@ export interface UserProfile {
 }
 
 export interface WhitelistEntry {
-  id: string;
   email: string;
   role: 'admin' | 'pro';
   createdAt: any;

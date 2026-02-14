@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
