@@ -276,6 +276,37 @@
         "description",
         "createdAt"
       ]
+    },
+    "SubscriptionRequest": {
+      "title": "Subscription Request",
+      "description": "Represents a user's request to subscribe.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "whatsapp": {
+          "type": "string",
+          "description": "The user's WhatsApp number."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the request was created."
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "whatsapp",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -376,8 +407,18 @@
           },
           "description": "Stores all global notifications sent to users."
         }
+      },
+      {
+        "path": "/subscriptionRequests/{requestId}",
+        "definition": {
+          "entityName": "SubscriptionRequest",
+          "schema": {
+            "$ref": "#/backend/entities/SubscriptionRequest"
+          },
+          "description": "Stores user subscription requests."
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings like the subscription dialog."
+    "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings like the subscription dialog. A new collection 'subscriptionRequests' is added to store user subscription requests publicly."
   }
 }
