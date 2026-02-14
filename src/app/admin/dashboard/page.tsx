@@ -25,13 +25,6 @@ import { Switch } from '@/components/ui/switch';
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
 
-// Helper to gracefully handle old localized data
-const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
-  if (!field) return '';
-  if (typeof field === 'string') return field;
-  return field.ar || '';
-};
-
 const useFormSchemas = () => {
     const categorySchema = z.object({
         name: z.string().min(1, "الاسم مطلوب"),
@@ -176,7 +169,7 @@ export default function AdminDashboardPage() {
     const defaultValues = { name: '', displayStyle: 'style1' as const, fileTypes: '', parentId: ''};
     if (editingCategory) {
       categoryForm.reset({ 
-        name: getArabicString(editingCategory.name),
+        name: editingCategory.name,
         displayStyle: editingCategory.displayStyle, 
         fileTypes: editingCategory.fileTypes || '',
         parentId: editingCategory.parentId || ''
@@ -192,8 +185,8 @@ export default function AdminDashboardPage() {
     const defaultValues: ContentItemFormValues = { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '' };
     if (editingItem) {
         contentItemForm.reset({ 
-            title: getArabicString(editingItem.title),
-            instructions: getArabicString(editingItem.instructions),
+            title: editingItem.title,
+            instructions: editingItem.instructions || '',
             imageUrl: editingItem.imageUrl || '', 
             downloadUrl: editingItem.downloadUrl || '', 
             prompt: editingItem.prompt || '', 
@@ -451,7 +444,7 @@ export default function AdminDashboardPage() {
                                 <SelectItem value="root">-- قسم رئيسي --</SelectItem>
                                 {mainCategories.filter(cat => cat.id !== editingCategory?.id).map((cat) => ( // Prevent self-parenting
                                     <SelectItem key={cat.id} value={cat.id}>
-                                        {getArabicString(cat.name)}
+                                        {cat.name}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -480,7 +473,7 @@ export default function AdminDashboardPage() {
     if (!category) return null;
     return (
         <div className="mb-6">
-            <h3 className="text-xl font-bold mb-4">{editingItem ? "تعديل محتوى" : "إضافة محتوى جديد"} في "{getArabicString(category.name)}"</h3>
+            <h3 className="text-xl font-bold mb-4">{editingItem ? "تعديل محتوى" : "إضافة محتوى جديد"} في "{category.name}"</h3>
             <Form {...contentItemForm}>
                 <form onSubmit={contentItemForm.handleSubmit(onContentItemSubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
                     <FormField control={contentItemForm.control} name="title" render={({ field }) => <FormItem><FormLabel>العنوان</FormLabel><FormControl><Input placeholder="العنوان" {...field} /></FormControl><FormMessage /></FormItem>} />
@@ -547,7 +540,7 @@ export default function AdminDashboardPage() {
                         {mainCategories.map((cat, index) => (
                             <AccordionItem value={cat.id} key={cat.id}>
                                 <AccordionTrigger>
-                                    <div className="flex-1 text-right">{getArabicString(cat.name)}</div>
+                                    <div className="flex-1 text-right">{cat.name}</div>
                                     <div className="flex items-center gap-2 mr-auto">
                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(cat, 'up') }} disabled={index === 0}>
                                             <span><ArrowUp/></span>
@@ -568,7 +561,7 @@ export default function AdminDashboardPage() {
                                         {(subCategories.get(cat.id) || []).length === 0 && <p className="text-muted-foreground text-center">لا توجد أقسام فرعية.</p>}
                                         {(subCategories.get(cat.id) || []).map((subCat, subIndex) => (
                                              <div key={subCat.id} className="flex items-center bg-card p-2 rounded-md border">
-                                                 <p className="flex-1">{getArabicString(subCat.name)}</p>
+                                                 <p className="flex-1">{subCat.name}</p>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCat, 'up')} disabled={subIndex === 0}><ArrowUp/></Button>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCat, 'down')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
                                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {setEditingCategory(subCat); }}><Edit/></Button>
@@ -592,10 +585,10 @@ export default function AdminDashboardPage() {
                       <SelectContent>
                           {mainCategories.map(cat => (
                               <SelectGroup key={cat.id}>
-                                  <SelectLabel>{getArabicString(cat.name)}</SelectLabel>
-                                  <SelectItem value={cat.id}>{getArabicString(cat.name)} (قسم رئيسي)</SelectItem>
+                                  <SelectLabel>{cat.name}</SelectLabel>
+                                  <SelectItem value={cat.id}>{cat.name} (قسم رئيسي)</SelectItem>
                                   {(subCategories.get(cat.id) || []).map(subCat => (
-                                      <SelectItem key={subCat.id} value={subCat.id} className="pr-8">{getArabicString(subCat.name)}</SelectItem>
+                                      <SelectItem key={subCat.id} value={subCat.id} className="pr-8">{subCat.name}</SelectItem>
                                   ))}
                               </SelectGroup>
                           ))}
@@ -609,13 +602,13 @@ export default function AdminDashboardPage() {
                 {selectedContentCategory && (
                     <Card className="mt-6">
                         <CardHeader>
-                            <CardTitle>المحتوى الحالي في "{getArabicString(categoryMap.get(selectedContentCategory)?.name) || ''}"</CardTitle>
+                            <CardTitle>المحتوى الحالي في "{categoryMap.get(selectedContentCategory)?.name || ''}"</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2">
                                 {isLoadingItems ? <Skeleton className="h-10 w-full" /> : sortedItems.map((item, index) => (
                                     <div key={item.id} className="flex items-center bg-secondary p-2 rounded-md">
-                                        <p className="flex-1">{getArabicString(item.title)}</p>
+                                        <p className="flex-1">{item.title}</p>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveItem(item, 'up')} disabled={index === 0}><ArrowUp/></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveItem(item, 'down')} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
@@ -740,8 +733,8 @@ export default function AdminDashboardPage() {
                                 {isLoadingNotifications ? <Skeleton className="h-10 w-full" /> : (notifications && notifications.length > 0) ? notifications.map((notif) => (
                                     <div key={notif.id} className="flex items-center bg-secondary p-2 rounded-md">
                                         <div className="flex-1">
-                                            <p className="font-bold">{getArabicString(notif.title)}</p>
-                                            <p className="text-sm text-muted-foreground">{getArabicString(notif.description)}</p>
+                                            <p className="font-bold">{notif.title}</p>
+                                            <p className="text-sm text-muted-foreground">{notif.description}</p>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'notification', entity: notif })}><Trash2/></Button>
                                     </div>
@@ -808,8 +801,8 @@ export default function AdminDashboardPage() {
                 <AlertDialogDescription>
                     سيتم حذف "
                     {deletingEntity?.type === 'whitelist' 
-                        ? (deletingEntity.entity as WhitelistEntry).email 
-                        : (getArabicString(deletingEntity?.entity.name) || getArabicString(deletingEntity?.entity.title) || '')
+                        ? (deletingEntity.entity as WithId<WhitelistEntry>).email 
+                        : ((deletingEntity?.entity as any)?.name || (deletingEntity?.entity as any)?.title || '')
                     }
                     ". هذا الإجراء لا يمكن التراجع عنه.
                 </AlertDialogDescription>
@@ -823,5 +816,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    

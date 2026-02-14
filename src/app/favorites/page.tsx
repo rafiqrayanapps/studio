@@ -14,13 +14,6 @@ import BottomNav from '@/components/layout/BottomNav';
 import { WithId } from '@/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-// Helper to gracefully handle old localized data
-const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
-  if (!field) return '';
-  if (typeof field === 'string') return field;
-  return field.ar || '';
-};
-
 // Reusable Remove Button
 const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
   <Button
@@ -48,15 +41,15 @@ const PromptItemCard = ({ item, onRemove, onImageClick }: { item: WithId<Content
       {item.imageUrl && (
         <div className="relative w-full cursor-pointer aspect-video bg-muted" onClick={() => onImageClick(item.imageUrl!)}>
           <RemoveButton onRemove={() => onRemove(item.id)} />
-          <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover" />
+          <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
         </div>
       )}
       <CardContent className="p-4 flex flex-col flex-1 gap-4 text-right">
-        <h3 className="font-bold text-xl text-center">{getArabicString(item.title)}</h3>
+        <h3 className="font-bold text-xl text-center">{item.title}</h3>
         {item.instructions && (
           <div className="space-y-2">
             <h4 className="font-semibold text-foreground">التعليمات</h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{getArabicString(item.instructions)}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{item.instructions}</p>
           </div>
         )}
         <div className="space-y-2">
@@ -77,13 +70,13 @@ const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove
     return (
         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
             <div className="pb-2">
-                <h3 className="font-bold text-lg text-center">{getArabicString(item.title)}</h3>
+                <h3 className="font-bold text-lg text-center">{item.title}</h3>
             </div>
             
             <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="relative block">
                 <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
                     <RemoveButton onRemove={() => onRemove(item.id)} />
-                    {item.imageUrl && <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover" />}
+                    {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
                 </div>
             </a>
             
@@ -103,11 +96,11 @@ const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove
 const DownloadItemCard = ({ item, onRemove, onImageClick }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void }) => {
     return (
         <div className="flex flex-col text-center group gap-y-3">
-            <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{getArabicString(item.title)}</h3>
+            <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
             {item.imageUrl && (
               <div className="relative w-full cursor-pointer aspect-square bg-muted rounded-lg shadow-md overflow-hidden" onClick={() => onImageClick(item.imageUrl!)}>
                 <RemoveButton onRemove={() => onRemove(item.id)} />
-                <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover" />
+                <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
               </div>
             )}
             <div className="w-full mt-auto">

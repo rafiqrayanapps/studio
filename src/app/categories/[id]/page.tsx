@@ -21,13 +21,6 @@ import { getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 
-// Helper to gracefully handle old localized data
-const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
-  if (!field) return '';
-  if (typeof field === 'string') return field;
-  return field.ar || '';
-};
-
 export default function CategoryPage() {
   const params = useParams();
   const router = useRouter();
@@ -96,12 +89,12 @@ export default function CategoryPage() {
 
   const filteredSubCategories = useMemo(() => {
     if (!subCategories) return [];
-    return subCategories.filter((cat) => getArabicString(cat.name).toLowerCase().includes(searchTerm.toLowerCase()));
+    return subCategories.filter((cat) => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [subCategories, searchTerm]);
 
   const filteredItems = useMemo(() => {
     if (!displayItems) return [];
-    return displayItems.filter((item) => getArabicString(item.title).toLowerCase().includes(searchTerm.toLowerCase()));
+    return displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [displayItems, searchTerm]);
 
 
@@ -141,9 +134,9 @@ export default function CategoryPage() {
                 className="flex flex-col text-center group relative gap-y-3 opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
               >
-                <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{getArabicString(item.title)}</h3>
+                <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
                 <div className="relative cursor-pointer aspect-square w-full" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {item.imageUrl && <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover rounded-lg shadow-md" />}
+                    {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover rounded-lg shadow-md" />}
                     <FavoriteButton item={item} />
                 </div>
                 <div className="w-full mt-auto">
@@ -167,11 +160,11 @@ export default function CategoryPage() {
                 className="flex flex-col text-center group gap-y-3 opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
               >
-                 <h3 className="font-bold text-base">{getArabicString(item.title)}</h3>
+                 <h3 className="font-bold text-base">{item.title}</h3>
                 <div className="relative w-full cursor-pointer" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                     {item.imageUrl && <Image 
                       src={item.imageUrl} 
-                      alt={getArabicString(item.title)}
+                      alt={item.title}
                       width={500} 
                       height={300}
                       className="w-full h-auto object-cover rounded-lg shadow-md"
@@ -202,12 +195,12 @@ export default function CategoryPage() {
             return (
                 <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group relative">
                     <CardContent className="p-4 flex flex-col flex-1 gap-4">
-                        <h3 className="font-bold text-xl text-center">{getArabicString(item.title)}</h3>
+                        <h3 className="font-bold text-xl text-center">{item.title}</h3>
 
                         <div className="relative cursor-pointer w-full rounded-lg overflow-hidden">
                             {item.imageUrl && <Image 
                               src={item.imageUrl} 
-                              alt={getArabicString(item.title)}
+                              alt={item.title}
                               width={500} 
                               height={300}
                               className="w-full h-auto object-cover"
@@ -219,7 +212,7 @@ export default function CategoryPage() {
                         {item.instructions && (
                             <div className="space-y-2">
                                 <h4 className="font-semibold text-foreground">التعليمات</h4>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{getArabicString(item.instructions)}</p>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{item.instructions}</p>
                             </div>
                         )}
 
@@ -266,13 +259,13 @@ export default function CategoryPage() {
                     >
                         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
                             <div className="pb-2">
-                                <h3 className="font-bold text-lg text-center">{getArabicString(item.title)}</h3>
+                                <h3 className="font-bold text-lg text-center">{item.title}</h3>
                             </div>
                             
                             <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="relative block">
                                 <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
                                     <FavoriteButton item={item} />
-                                    {item.imageUrl && <Image src={item.imageUrl} alt={getArabicString(item.title)} fill className="object-cover" />}
+                                    {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
                                 </div>
                             </a>
                             
@@ -301,12 +294,12 @@ export default function CategoryPage() {
                     <Card className="p-4 flex flex-col gap-4 bg-card text-card-foreground shadow-md rounded-2xl border">
                         <div className="flex gap-4 items-start">
                             {item.imageUrl && (
-                                <Image src={item.imageUrl} alt={getArabicString(item.title)} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
+                                <Image src={item.imageUrl} alt={item.title} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
                             )}
                             <div className="flex-1">
-                                <h3 className="font-bold text-xl">{getArabicString(item.title)}</h3>
+                                <h3 className="font-bold text-xl">{item.title}</h3>
                                 {item.appVersion && <p className="text-primary font-semibold text-sm">الإصدار {item.appVersion}</p>}
-                                <p className="text-muted-foreground text-sm mt-1">{getArabicString(item.instructions)}</p>
+                                <p className="text-muted-foreground text-sm mt-1">{item.instructions}</p>
                             </div>
                         </div>
                         {item.screenshots && item.screenshots.length > 0 && (
@@ -324,7 +317,7 @@ export default function CategoryPage() {
                                             <CarouselItem key={i} className="basis-4/5 pl-1">
                                                 <Image
                                                     src={ss}
-                                                    alt={`لقطة شاشة ${i + 1} لـ ${getArabicString(item.title)}`}
+                                                    alt={`لقطة شاشة ${i + 1} لـ ${item.title}`}
                                                     width={1080}
                                                     height={1920}
                                                     sizes="(max-width: 768px) 80vw, 40vw"
@@ -364,7 +357,7 @@ export default function CategoryPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
         <div className="sticky top-0 z-20">
-             <Header showMenu={false} title={categoryLoading ? '...' : (getArabicString(category?.name) || "قسم غير معروف")}>
+             <Header showMenu={false} title={categoryLoading ? '...' : (category?.name || "قسم غير معروف")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-10">
@@ -401,7 +394,7 @@ export default function CategoryPage() {
                     <Link href={`/categories/${cat.id}`} passHref>
                        <div className="relative bg-primary p-4 text-primary-foreground rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm h-full min-h-36">
                         {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
-                        <p className="font-bold text-lg text-center">{getArabicString(cat.name)}</p>
+                        <p className="font-bold text-lg text-center">{cat.name}</p>
                       </div>
                     </Link>
                   </div>

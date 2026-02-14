@@ -11,13 +11,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 
-// Helper to gracefully handle old localized data
-const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
-  if (!field) return '';
-  if (typeof field === 'string') return field;
-  return field.ar || '';
-};
-
 export default function NotificationsPage() {
   const firestore = useFirestore();
   const [, setLastSeenTimestamp] = useLocalStorage<number | null>('lastSeenNotificationTimestamp', null);
@@ -70,14 +63,14 @@ export default function NotificationsPage() {
                     <BellRing className="h-6 w-6" />
                   </div>
                   <div className="flex-1">
-                    <CardTitle>{getArabicString(notif.title)}</CardTitle>
+                    <CardTitle>{notif.title}</CardTitle>
                     <CardDescription className="text-xs mt-1">
                       {safeFormatFirebaseTimestamp(notif.createdAt)}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{getArabicString(notif.description)}</p>
+                  <p className="text-muted-foreground">{notif.description}</p>
                 </CardContent>
               </Card>
             ))

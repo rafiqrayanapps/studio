@@ -12,13 +12,6 @@ import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import useLocalStorage from '@/hooks/use-local-storage';
 
-// Helper to gracefully handle old localized data
-const getArabicString = (field: string | { ar: string, en: string } | undefined | null): string => {
-  if (!field) return '';
-  if (typeof field === 'string') return field;
-  return field.ar || '';
-};
-
 export default function HomePage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,7 +43,7 @@ export default function HomePage() {
     const all = displayCategories || [];
     const filtered = all.filter(cat => !cat.parentId);
     if (!searchTerm) return filtered;
-    return filtered.filter(cat => getArabicString(cat.name).toLowerCase().includes(searchTerm.toLowerCase()));
+    return filtered.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [displayCategories, searchTerm]);
 
   // Show skeleton only on the very first load when there's no cache and we are waiting for Firestore.
@@ -91,7 +84,7 @@ export default function HomePage() {
                   >
                     <div className="relative bg-primary text-primary-foreground p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm aspect-square text-center">
                       {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
-                      <p className="font-bold text-lg">{getArabicString(cat.name)}</p>
+                      <p className="font-bold text-lg">{cat.name}</p>
                     </div>
                   </Link>
                 </div>
