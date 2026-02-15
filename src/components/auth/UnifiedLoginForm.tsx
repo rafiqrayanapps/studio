@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, Key, Frown } from 'lucide-react';
@@ -21,6 +21,7 @@ import type { WhitelistEntry } from '@/lib/definitions';
 const formSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
   password: z.string().optional(),
+  confirmPassword: z.string().optional(),
   activationCode: z.string().optional(),
   rememberMe: z.boolean().default(false).optional(),
 });
@@ -41,6 +42,7 @@ export default function UnifiedLoginForm() {
     defaultValues: {
       email: '',
       password: '',
+      confirmPassword: '',
       activationCode: '',
       rememberMe: false,
     },
@@ -71,13 +73,8 @@ export default function UnifiedLoginForm() {
     }
   };
 
-  const handleProActivation = async (data: LoginFormValues) => {
-    if (!data.activationCode) {
-      form.setError('activationCode', { message: 'الرجاء إدخال كود التفعيل.' });
-      return;
-    }
-
-    try {
+  const handleProActivation = async (data: Required<Pick<LoginFormValues, 'email' | 'password' | 'activationCode'>>) => {
+     try {
       const whitelistRef = doc(firestore, 'whitelist', data.email);
       const whitelistSnap = await getDoc(whitelistRef);
 
@@ -95,13 +92,13 @@ export default function UnifiedLoginForm() {
         throw new Error("هذا الكود تم استخدامه مسبقًا.");
       }
       
-      // Code is valid and unused, proceed with activation
-      const userCredential = await signInAnonymously(auth);
+      // Code is valid and unused, create a permanent user
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
       const batch = writeBatch(firestore);
       
-      // Mark the code as used
+      // Mark the code as used by the new user
       batch.update(whitelistRef, { claimedByUid: user.uid });
       
       // Create a user profile with pro status
@@ -110,15 +107,20 @@ export default function UnifiedLoginForm() {
         email: data.email,
         subscriptionTier: 'pro',
         createdAt: serverTimestamp(),
-        displayName: 'Pro User',
+        displayName: data.email.split('@')[0], // Default display name
       });
 
       await batch.commit();
 
-      // The onAuthStateChanged listener will handle redirection
       router.push('/home');
 
     } catch (e: any) {
+      if (e instanceof FirebaseError) {
+        if (e.code === 'auth/email-already-in-use') {
+          setError('هذا البريد الإلكتروني مستخدم بالفعل.');
+          return;
+        }
+      }
       setError(e.message || "فشل التفعيل. الرجاء التأكد من بياناتك.");
     }
   };
@@ -130,7 +132,22 @@ export default function UnifiedLoginForm() {
     if (role === 'admin') {
       await handleAdminLogin(data);
     } else if (role === 'pro') {
-      await handleProActivation(data);
+       if (!data.password || data.password.length < 6) {
+           form.setError('password', { message: 'يجب أن تكون كلمة المرور 6 أحرف على الأقل' });
+           setIsSubmitting(false);
+           return;
+       }
+       if (data.password !== data.confirmPassword) {
+           form.setError('confirmPassword', { message: 'كلمتا المرور غير متطابقتين' });
+           setIsSubmitting(false);
+           return;
+       }
+       if (!data.activationCode) {
+           form.setError('activationCode', { message: 'الرجاء إدخال كود التفعيل.' });
+           setIsSubmitting(false);
+           return;
+       }
+       await handleProActivation(data as Required<Pick<LoginFormValues, 'email' | 'password' | 'activationCode'>>);
     }
     
     setIsSubmitting(false);
@@ -213,22 +230,56 @@ export default function UnifiedLoginForm() {
             )}
             
             {role === 'pro' && (
-              <FormField
-                control={form.control}
-                name="activationCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>كود التفعيل</FormLabel>
-                    <FormControl>
-                       <div className="relative">
-                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input placeholder="أدخل كود التفعيل" {...field} className="pl-10 text-left" dir="ltr" />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <>
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>كلمة المرور الجديدة</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input type="password" placeholder="••••••••••••" {...field} className="pl-10 text-left" dir="ltr" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>تأكيد كلمة المرور</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input type="password" placeholder="••••••••••••" {...field} className="pl-10 text-left" dir="ltr" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="activationCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>كود التفعيل</FormLabel>
+                      <FormControl>
+                         <div className="relative">
+                          <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input placeholder="أدخل كود التفعيل" {...field} className="pl-10 text-left" dir="ltr" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
             )}
 
             <FormField

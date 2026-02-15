@@ -67,9 +67,10 @@ service cloud.firestore {
     // --- User Data Rules ---
     match /users/{userId} {
         // Users can read and write their own profile.
-        // During activation, an anonymous user can create their own profile document.
         allow read: if isOwner(userId);
         allow write: if isOwner(userId);
+        // A newly created user (during activation) can create their own profile.
+        allow create: if request.auth.uid == userId;
     }
     
     match /users/{userId}/suggestions/{suggestionId} {
@@ -85,12 +86,11 @@ service cloud.firestore {
     }
 
     match /whitelist/{email} {
-      // Allow signed-in users to read to enable client-side activation.
-      // TODO: For improved security, this check should be moved to a Cloud Function
-      // to avoid exposing the whitelist collection to authenticated clients.
-      allow read: if isSignedIn();
-      // Only admins can manage the whitelist.
-      allow write: if isAdmin();
+      // Allow anyone to read to check activation codes before sign-up.
+      allow read: if true;
+      // Allow admin to write, or a user to claim an unclaimed code for themselves once.
+      allow write: if isAdmin() || 
+                    (request.resource.data.claimedByUid == request.auth.uid && resource.data.claimedByUid == null);
     }
   }
 }
