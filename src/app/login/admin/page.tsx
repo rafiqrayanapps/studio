@@ -2,6 +2,7 @@
 
 import AdminLoginForm from '@/components/auth/AdminLoginForm';
 import { Card } from '@/components/ui/card';
+import Link from 'next/link';
 
 export default function AdminLoginPage() {
   return (
@@ -10,6 +11,15 @@ export default function AdminLoginPage() {
             <Card>
                 <AdminLoginForm />
             </Card>
+            <p className="px-8 text-center text-sm text-muted-foreground mt-4">
+                ليس لديك حساب مسؤول؟{' '}
+                <Link
+                    href="/signup/admin"
+                    className="underline underline-offset-4 hover:text-primary"
+                >
+                    أنشئ حسابًا من هنا
+                </Link>
+            </p>
         </div>
     </div>
   );
