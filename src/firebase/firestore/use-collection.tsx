@@ -25,10 +25,6 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
-export interface UseCollectionOptions {
-  propagateError?: boolean;
-}
-
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
@@ -41,12 +37,10 @@ export interface UseCollectionOptions {
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
- * @param {UseCollectionOptions} [options] - Options for the hook.
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
-    options?: UseCollectionOptions,
+    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -60,8 +54,6 @@ export function useCollection<T = any>(
     // This is a common source of bugs with Firestore hooks.
     throw new Error('The query/reference passed to useCollection must be memoized with useMemoFirebase.');
   }
-
-  const propagateError = options?.propagateError;
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
@@ -88,31 +80,24 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (snapshotError: FirestoreError) => {
-        console.error("useCollection error:", snapshotError);
-        let finalError: Error = snapshotError;
-
-        // Only try to create a contextual error if it's a collection,
-        // as getting the path from a query is unreliable.
-        if (activeQuery.type === 'collection') {
-          const path = (activeQuery as CollectionReference).path;
-          finalError = new FirestorePermissionError({ operation: 'list', path });
-        }
+        // Can't get a reliable path from a complex query, but can for a simple collection ref.
+        const path = activeQuery.type === 'collection' ? (activeQuery as CollectionReference).path : 'unknown query path';
+        const permissionError = new FirestorePermissionError({
+            operation: 'list',
+            path: path,
+        });
         
-        setError(finalError);
+        setError(permissionError);
         setData(null);
         setIsLoading(false);
 
-        if (propagateError === true && finalError instanceof FirestorePermissionError) {
-            throw finalError;
-        } else if (propagateError === true) {
-            throw snapshotError;
-        }
+        // Emit the error for the global listener to handle.
+        errorEmitter.emit('permission-error', permissionError);
       }
     );
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoizedTargetRefOrQuery, propagateError]);
+  }, [memoizedTargetRefOrQuery]);
   
   return { data, isLoading, error };
 }

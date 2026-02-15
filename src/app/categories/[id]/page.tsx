@@ -40,17 +40,17 @@ export default function CategoryPage() {
   const [displayItems, setDisplayItems] = useState<WithId<ContentItem>[]>(cachedItems);
 
   const categoryRef = useMemoFirebase(() => (firestore && id ? doc(firestore, 'categories', id) : null), [firestore, id]);
-  const { data: category, isLoading: categoryLoading, error: categoryError } = useDoc<Category>(categoryRef, { propagateError: true });
+  const { data: category, isLoading: categoryLoading, error: categoryError } = useDoc<Category>(categoryRef);
 
   const allCategoriesQuery = useMemoFirebase(() => (
     firestore ? query(collection(firestore, 'categories')) : null
   ), [firestore]);
-  const { data: liveAllCategories, isLoading: subCategoriesLoading } = useCollection<Category>(allCategoriesQuery, { propagateError: true });
+  const { data: liveAllCategories, isLoading: subCategoriesLoading } = useCollection<Category>(allCategoriesQuery);
 
   const itemsQuery = useMemoFirebase(() => (
     firestore && id ? query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc')) : null
   ), [firestore, id]);
-  const { data: liveItems, isLoading: itemsLoading } = useCollection<ContentItem>(itemsQuery, { propagateError: true });
+  const { data: liveItems, isLoading: itemsLoading } = useCollection<ContentItem>(itemsQuery);
 
   useEffect(() => {
       if (liveAllCategories) {

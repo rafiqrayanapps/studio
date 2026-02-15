@@ -14,10 +14,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
 
-export interface UseDocOptions {
-  propagateError?: boolean;
-}
-
 /**
  * Interface for the return value of the useDoc hook.
  * @template T Type of the document data.
@@ -40,12 +36,10 @@ export interface UseDocResult<T> {
  * @template T Optional type for document data. Defaults to any.
  * @param {DocumentReference<DocumentData> | null | undefined} docRef -
  * The Firestore DocumentReference. Waits if null/undefined.
- * @param {UseDocOptions} [options] - Options for the hook.
  * @returns {UseDocResult<T>} Object with data, isLoading, error.
  */
 export function useDoc<T = any>(
-  memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
-  options?: UseDocOptions,
+  memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
@@ -56,8 +50,6 @@ export function useDoc<T = any>(
   if (memoizedDocRef && !(memoizedDocRef as any).__memo) {
     throw new Error('The document reference passed to useDoc must be memoized with useMemoFirebase.');
   }
-
-  const propagateError = options?.propagateError;
 
   useEffect(() => {
     if (!memoizedDocRef) {
@@ -82,7 +74,6 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (snapshotError: FirestoreError) => {
-        console.error("useDoc error:", snapshotError);
         const contextualError = new FirestorePermissionError({
           operation: 'get',
           path: memoizedDocRef.path,
@@ -92,15 +83,13 @@ export function useDoc<T = any>(
         setData(null);
         setIsLoading(false);
 
-        if (propagateError === true) {
-            throw contextualError;
-        }
+        // Emit the error for the global listener to handle.
+        errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoizedDocRef, propagateError]);
+  }, [memoizedDocRef]);
 
   return { data, isLoading, error };
 }
