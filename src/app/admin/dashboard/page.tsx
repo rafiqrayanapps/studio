@@ -92,11 +92,21 @@ const useFormSchemas = () => {
             (val) => (val === "" || val === undefined || val === null ? undefined : parseInt(String(val), 10)),
             z.number({invalid_type_error: "يجب إدخال رقم"}).positive("المدة يجب أن تكون رقمًا موجبًا").optional()
         ),
-    }).refine(data => {
-        return data.role !== 'pro' || (data.role === 'pro' && data.subscriptionDuration);
-    }, {
-        message: "مدة الاشتراك (بالأيام) مطلوبة لحسابات برو",
-        path: ["subscriptionDuration"],
+    }).superRefine((data, ctx) => {
+        if (data.role === 'pro' && !data.subscriptionDuration) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "مدة الاشتراك (بالأيام) مطلوبة لحسابات برو",
+                path: ["subscriptionDuration"],
+            });
+        }
+        if (data.role === 'admin' && (!data.activationCode || data.activationCode.length < 6)) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "يجب إدخال كلمة مرور (6 أحرف على الأقل)",
+                path: ["activationCode"],
+            });
+        }
     });
 
     const paymentLinksSchema = z.object({
@@ -787,7 +797,7 @@ export default function AdminDashboardPage() {
                             <Form {...whitelistForm}>
                                 <form onSubmit={whitelistForm.handleSubmit(onWhitelistSubmit)} className="space-y-6">
                                     <FormField control={whitelistForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>البريد الإلكتروني للمشترك</FormLabel><FormControl><Input placeholder="user@example.com" {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={whitelistForm.control} name="activationCode" render={({ field }) => ( <FormItem><FormLabel>كود التفعيل (اختياري)</FormLabel><FormControl><Input placeholder="ادخل كود التفعيل" {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                    
                                     <FormField control={whitelistForm.control} name="role" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>الصلاحية</FormLabel>
@@ -801,21 +811,41 @@ export default function AdminDashboardPage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-                                    {watchWhitelistRole === 'pro' && (
+
+                                    {watchWhitelistRole === 'admin' && (
                                         <FormField
                                             control={whitelistForm.control}
-                                            name="subscriptionDuration"
+                                            name="activationCode"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>مدة الاشتراك (بالأيام)</FormLabel>
+                                                    <FormLabel>كلمة المرور</FormLabel>
                                                     <FormControl>
-                                                        <Input type="number" placeholder="30" {...field} dir="ltr" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
+                                                        <Input placeholder="ادخل كلمة مرور مؤقتة للمسؤول" {...field} dir="ltr" value={field.value ?? ''} />
                                                     </FormControl>
-                                                    <FormDescription>سيتمكن المستخدم من الوصول لميزات برو لهذه المدة.</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
+                                    )}
+                                    
+                                    {watchWhitelistRole === 'pro' && (
+                                        <>
+                                            <FormField control={whitelistForm.control} name="activationCode" render={({ field }) => ( <FormItem><FormLabel>كود التفعيل (اختياري)</FormLabel><FormControl><Input placeholder="ادخل كود التفعيل" {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField
+                                                control={whitelistForm.control}
+                                                name="subscriptionDuration"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>مدة الاشتراك (بالأيام)</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" placeholder="30" {...field} dir="ltr" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
+                                                        </FormControl>
+                                                        <FormDescription>سيتمكن المستخدم من الوصول لميزات برو لهذه المدة.</FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </>
                                     )}
                                     <Button type="submit" disabled={whitelistForm.formState.isSubmitting} className="w-full">
                                     {whitelistForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "تفعيل"}
