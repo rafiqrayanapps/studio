@@ -93,7 +93,7 @@ export default function PricingPage() {
                   </CardContent>
                   <CardFooter>
                     <Button asChild className="w-full" variant={plan.isFeatured ? 'default' : 'secondary'}>
-                      <Link href={plan.link || '/subscribe'}>
+                      <Link href={plan.isFeatured ? (plan.link || '/activate/pro') : (plan.link || '/subscribe')}>
                         {plan.isFeatured ? 'الترقية الآن' : 'ابدأ مجاناً'}
                       </Link>
                     </Button>
