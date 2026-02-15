@@ -13,7 +13,6 @@ export default function BottomNav() {
   const hasNewNotifications = useHasNewNotifications();
   const { theme, setTheme, resolvedTheme } = useTheme();
 
-  // Order is logical for an RTL layout: Home is first (rightmost)
   const navItems = useMemo(() => [
     { id: 'home', href: '/home', icon: Home, label: 'الرئيسية' },
     { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
@@ -27,14 +26,12 @@ export default function BottomNav() {
     if (pathname.startsWith('/pricing') || pathname.startsWith('/subscribe') || pathname.startsWith('/about') || pathname.startsWith('/colors')) return -1; // No active item
 
     const exactMatchIndex = navItems.findIndex(item => item.href === pathname);
-    return exactMatchIndex; // Will be -1 for theme toggle
+    return exactMatchIndex;
   };
   
   const activeIndex = getActiveIndex();
-
-  if (pathname.startsWith('/admin') || pathname === '/') {
-      return null;
-  }
+  
+  const ITEMS_COUNT = navItems.length;
   
   const NavItem = ({ item, isActive }: { item: typeof navItems[0]; isActive: boolean; }) => {
     const { id, href, icon: Icon } = item;
@@ -44,11 +41,11 @@ export default function BottomNav() {
         <div className="relative z-10 flex flex-col items-center justify-center text-center group flex-1 h-full">
             {id === 'theme-toggle' ? (
                 effectiveTheme === 'dark' ? 
-                <Sun className={cn("h-6 w-6 transition-all duration-300", isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary')} /> :
-                <Moon className={cn("h-6 w-6 transition-all duration-300", isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary')} />
+                <Sun className={cn("h-6 w-6 transition-all duration-500", isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary')} /> :
+                <Moon className={cn("h-6 w-6 transition-all duration-500", isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary')} />
             ) : (
                 <Icon className={cn(
-                  "h-6 w-6 transition-all duration-300",
+                  "h-6 w-6 transition-all duration-500",
                   isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary'
                 )} />
             )}
@@ -80,28 +77,32 @@ export default function BottomNav() {
     );
   };
 
-  const ITEMS_COUNT = navItems.length;
+
+  if (pathname.startsWith('/admin') || pathname === '/') {
+      return null;
+  }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-[4.5rem] md:hidden px-4">
-      <div className="relative h-14 w-full max-w-xs mx-auto"> 
-        <div className="absolute bottom-0 w-full h-14 bg-card rounded-3xl shadow-lg"></div>
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-[4.2rem] md:hidden px-4">
+      <div className="relative h-12 w-full max-w-xs mx-auto"> 
+        <div className="absolute bottom-0 w-full h-12 bg-card rounded-3xl shadow-lg"></div>
         
         <div 
-          className="absolute top-0 w-[70px] h-[35px] bg-card"
+          className="absolute top-0 w-[80px] h-[40px] bg-card"
           style={{
-            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 35px)` : '-100px',
-            transition: 'right 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 40px)` : '-100px',
+            transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
             clipPath: 'ellipse(60% 100% at 50% 0%)'
           }}
         >
         </div>
         
         <div 
-          className="absolute top-[-5px] w-2 h-2 bg-primary rounded-full"
+          className="absolute top-[-8px] w-4 h-4 bg-primary rounded-full"
           style={{
-            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 4px)` : '-100px',
-            transition: 'right 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 8px)` : '-100px',
+            transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            transform: `scale(${activeIndex !== -1 ? 1 : 0.5})`,
           }}
         />
         
