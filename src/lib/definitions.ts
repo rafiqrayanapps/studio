@@ -60,6 +60,7 @@ export interface UserProfile {
   photoURL?: string;
   createdAt: any; // Firebase Timestamp
   subscriptionTier: 'free' | 'pro';
+  subscriptionEndDate?: any; // Firebase Timestamp
 }
 
 export interface WhitelistEntry {
@@ -68,6 +69,8 @@ export interface WhitelistEntry {
   activationCode?: string;
   createdAt: any;
   claimedByUid?: string;
+  subscriptionStartDate?: any;
+  subscriptionEndDate?: any;
 }
 
 export interface PricingPlan {
@@ -83,3 +86,5 @@ export interface PricingPlan {
   enabled: boolean;
   link?: string;
 }
+
+    

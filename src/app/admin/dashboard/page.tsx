@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
-import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
+import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown } from 'lucide-react';
@@ -23,6 +23,7 @@ import { getYouTubeVideoId, getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
 
@@ -86,6 +87,15 @@ const useFormSchemas = () => {
         email: z.string().email("البريد الإلكتروني غير صالح."),
         activationCode: z.string().optional(),
         role: z.enum(['admin', 'pro'], { required_error: "الدور مطلوب." }),
+        subscriptionDuration: z.preprocess(
+            (val) => (val === "" || val === undefined || val === null ? undefined : parseInt(String(val), 10)),
+            z.number({invalid_type_error: "يجب إدخال رقم"}).positive("المدة يجب أن تكون رقمًا موجبًا").optional()
+        ),
+    }).refine(data => {
+        return data.role !== 'pro' || (data.role === 'pro' && data.subscriptionDuration);
+    }, {
+        message: "مدة الاشتراك (بالأيام) مطلوبة لحسابات برو",
+        path: ["subscriptionDuration"],
     });
 
     return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema };
@@ -122,10 +132,10 @@ export default function AdminDashboardPage() {
 
   // Data fetching
   const categoriesCollectionQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories'), orderBy('order', 'asc')) : null, [firestore]);
-  const { data: allCategories, isLoading: isLoadingCategories } = useCollection<CategoryType>(categoriesCollectionQuery, { propagateError: false });
+  const { data: allCategories, isLoading: isLoadingCategories } = useCollection<CategoryType>(categoriesCollectionQuery);
   
   const itemsCollectionQuery = useMemoFirebase(() => (firestore && selectedContentCategory) ? query(collection(firestore, 'categories', selectedContentCategory, 'items'), orderBy('order', 'asc')) : null, [firestore, selectedContentCategory]);
-  const { data: items, isLoading: isLoadingItems } = useCollection<ContentItem>(itemsCollectionQuery, { propagateError: false });
+  const { data: items, isLoading: isLoadingItems } = useCollection<ContentItem>(itemsCollectionQuery);
 
   const subscriptionDialogRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'subscriptionDialog') : null, [firestore]);
   const { data: subscriptionDialogData } = useDoc<SubscriptionDialogConfig>(subscriptionDialogRef);
@@ -186,6 +196,7 @@ export default function AdminDashboardPage() {
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
   const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', activationCode: '', role: 'pro' } });
+  const watchWhitelistRole = whitelistForm.watch('role');
 
 
   // Effects to reset forms when editing state changes
@@ -398,10 +409,25 @@ export default function AdminDashboardPage() {
   const onWhitelistSubmit = (values: WhitelistFormValues) => {
     if (!firestore) return;
     const docRef = doc(firestore, 'whitelist', values.email);
-    setDocumentNonBlocking(docRef, {
-      ...values,
+    
+    const dataToSet: Partial<WhitelistEntry & { subscriptionDuration?: number }> = {
+      email: values.email,
+      role: values.role,
+      activationCode: values.activationCode,
       createdAt: serverTimestamp()
-    }, { merge: true });
+    };
+
+    if (values.role === 'pro' && values.subscriptionDuration) {
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(startDate.getDate() + values.subscriptionDuration);
+        
+        dataToSet.subscriptionStartDate = Timestamp.fromDate(startDate);
+        dataToSet.subscriptionEndDate = Timestamp.fromDate(endDate);
+    }
+
+    setDocumentNonBlocking(docRef, dataToSet, { merge: true });
+    
     toast({ title: "تم تفعيل المستخدم" });
     whitelistForm.reset();
   };
@@ -848,6 +874,22 @@ export default function AdminDashboardPage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
+                                    {watchWhitelistRole === 'pro' && (
+                                        <FormField
+                                            control={whitelistForm.control}
+                                            name="subscriptionDuration"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>مدة الاشتراك (بالأيام)</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" placeholder="30" {...field} dir="ltr" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
+                                                    </FormControl>
+                                                    <FormDescription>سيتمكن المستخدم من الوصول لميزات برو لهذه المدة.</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    )}
                                     <Button type="submit" disabled={whitelistForm.formState.isSubmitting} className="w-full">
                                     {whitelistForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "تفعيل"}
                                     </Button>
@@ -865,13 +907,18 @@ export default function AdminDashboardPage() {
                                     <div key={user.id} className="flex items-center bg-secondary p-2 rounded-md">
                                         <div className="flex-1">
                                             <p className="font-bold">{user.email}</p>
-                                            <div className="text-sm text-muted-foreground flex gap-4">
+                                            <div className="text-sm text-muted-foreground flex gap-4 flex-wrap">
                                                 <p>
                                                     الصلاحية: <span className="font-semibold text-primary">{user.role === 'admin' ? 'Admin' : 'Pro'}</span>
                                                 </p>
                                                 {user.activationCode && (
                                                     <p>
                                                         الكود: <span className="font-mono text-foreground">{user.activationCode}</span>
+                                                    </p>
+                                                )}
+                                                 {user.subscriptionEndDate && (
+                                                    <p>
+                                                        تاريخ الانتهاء: <span className="font-mono text-foreground rtl:ml-2">{safeFormatFirebaseTimestamp(user.subscriptionEndDate)}</span>
                                                     </p>
                                                 )}
                                             </div>
@@ -907,3 +954,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    

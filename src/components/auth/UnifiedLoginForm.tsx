@@ -108,6 +108,7 @@ export default function UnifiedLoginForm() {
         subscriptionTier: 'pro',
         createdAt: serverTimestamp(),
         displayName: data.email.split('@')[0], // Default display name
+        subscriptionEndDate: whitelistData.subscriptionEndDate || null,
       });
 
       await batch.commit();
@@ -320,3 +321,5 @@ export default function UnifiedLoginForm() {
     </>
   );
 }
+
+    
