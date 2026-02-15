@@ -45,5 +45,3 @@ export function useUserProfile() {
         isLoading: isAuthLoading || isProfileLoading || isWhitelistLoading 
     };
 }
-
-    

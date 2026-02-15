@@ -3,7 +3,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { Button } from '@/components/ui/button';
 import { SheetClose } from '@/components/ui/sheet';
 import Link from 'next/link';
-import { Crown, Loader2, LogOut, Shield, Star, User as UserIcon } from 'lucide-react';
+import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, UserPlus } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/firebase';
 
@@ -85,20 +85,30 @@ export default function UserProfileButton() {
         <>
             <li>
                 <SheetClose asChild>
-                    <Link href="/pricing" className="block group">
+                    <Link href="/activate/pro" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                            <span className="font-semibold text-lg text-yellow-500">الترقية للبرو</span>
-                            <Star className="h-5 w-5 text-yellow-500" />
+                            <span className="font-semibold text-lg text-yellow-500">تفعيل اشتراك برو</span>
+                            <Key className="h-5 w-5 text-yellow-500" />
                         </div>
                     </Link>
                 </SheetClose>
             </li>
             <li>
                 <SheetClose asChild>
-                    <Link href="/login" className="block group">
+                    <Link href="/login/pro" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                            <span className="font-semibold text-lg">الدخول</span>
+                            <span className="font-semibold text-lg">الدخول للمشتركين برو</span>
                             <UserIcon className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                    </Link>
+                </SheetClose>
+            </li>
+             <li>
+                <SheetClose asChild>
+                    <Link href="/login/admin" className="block group">
+                        <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
+                            <span className="font-semibold text-lg">الدخول للادمن</span>
+                            <Shield className="h-5 w-5 text-muted-foreground" />
                         </div>
                     </Link>
                 </SheetClose>

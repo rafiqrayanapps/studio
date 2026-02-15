@@ -1,12 +1,14 @@
-import UnifiedLoginForm from '@/components/auth/UnifiedLoginForm';
+'use client';
+
+import AdminLoginForm from '@/components/auth/AdminLoginForm';
 import { Card } from '@/components/ui/card';
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-secondary p-4">
         <div className="w-full max-w-md">
             <Card>
-                <UnifiedLoginForm />
+                <AdminLoginForm />
             </Card>
         </div>
     </div>

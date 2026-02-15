@@ -86,5 +86,3 @@ export interface PricingPlan {
   enabled: boolean;
   link?: string;
 }
-
-    

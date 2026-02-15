@@ -12,23 +12,20 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function getUserRole() {
-      // Helper to safely access user's subscription tier from their profile.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier;
-    }
-    
-    function isPro() {
-      // A user is 'pro' if their profile's subscriptionTier is 'pro',
-      // or if they are in the whitelist with the 'pro' role.
-      return isSignedIn() && (getUserRole() == 'pro' ||
-             (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
-              get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'pro'));
-    }
-
     function isAdmin() {
       // An admin is explicitly defined in the whitelist collection by their email.
       return isSignedIn() && exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
              get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'admin';
+    }
+
+    function hasActiveSubscription() {
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return profile.subscriptionTier == 'pro' &&
+             (profile.subscriptionEndDate == null || profile.subscriptionEndDate > request.time);
+    }
+
+    function isPro() {
+      return isSignedIn() && (isAdmin() || hasActiveSubscription());
     }
 
     // --- Content Rules ---
@@ -67,8 +64,7 @@ service cloud.firestore {
     // --- User Data Rules ---
     match /users/{userId} {
         // Users can read and write their own profile.
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
+        allow read, write: if isOwner(userId);
         // A newly created user (during activation) can create their own profile.
         allow create: if request.auth.uid == userId;
     }
