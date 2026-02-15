@@ -100,13 +100,6 @@ const useFormSchemas = () => {
                 path: ["subscriptionDuration"],
             });
         }
-        if (data.role === 'admin' && (!data.activationCode || data.activationCode.length < 6)) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "يجب إدخال كلمة مرور (6 أحرف على الأقل)",
-                path: ["activationCode"],
-            });
-        }
     });
 
     const paymentLinksSchema = z.object({
@@ -811,22 +804,6 @@ export default function AdminDashboardPage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-
-                                    {watchWhitelistRole === 'admin' && (
-                                        <FormField
-                                            control={whitelistForm.control}
-                                            name="activationCode"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>كلمة المرور</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="ادخل كلمة مرور مؤقتة للمسؤول" {...field} dir="ltr" value={field.value ?? ''} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    )}
                                     
                                     {watchWhitelistRole === 'pro' && (
                                         <>
