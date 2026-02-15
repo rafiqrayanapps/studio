@@ -41,18 +41,18 @@ export default function BottomNav() {
         <div className="relative z-10 flex flex-col items-center justify-center text-center group flex-1 h-full">
             {id === 'theme-toggle' ? (
                 effectiveTheme === 'dark' ? 
-                <Sun className={cn("h-6 w-6 transition-all duration-500", isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary')} /> :
-                <Moon className={cn("h-6 w-6 transition-all duration-500", isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary')} />
+                <Sun className={cn("h-6 w-6 transition-all duration-500", isActive ? 'text-primary -translate-y-4' : 'text-muted-foreground group-hover:text-primary')} /> :
+                <Moon className={cn("h-6 w-6 transition-all duration-500", isActive ? 'text-primary -translate-y-4' : 'text-muted-foreground group-hover:text-primary')} />
             ) : (
                 <Icon className={cn(
                   "h-6 w-6 transition-all duration-500",
-                  isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary'
+                  isActive ? 'text-primary -translate-y-4' : 'text-muted-foreground group-hover:text-primary'
                 )} />
             )}
             {id === 'notifications' && hasNewNotifications && (
               <span className={cn(
                 "absolute top-2 right-1/2 h-2 w-2 rounded-full bg-destructive border border-card transition-all duration-300",
-                isActive ? 'translate-x-3 -translate-y-3' : 'translate-x-4'
+                isActive ? 'translate-x-3 -translate-y-4' : 'translate-x-4'
                 )}></span>
             )}
         </div>
@@ -98,9 +98,9 @@ export default function BottomNav() {
         </div>
         
         <div 
-          className="absolute top-[-8px] w-4 h-4 bg-primary rounded-full"
+          className="absolute top-[-5px] w-2.5 h-2.5 bg-primary rounded-full"
           style={{
-            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 8px)` : '-100px',
+            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 5px)` : '-100px',
             transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
             transform: `scale(${activeIndex !== -1 ? 1 : 0.5})`,
           }}
