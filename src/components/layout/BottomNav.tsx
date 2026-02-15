@@ -50,7 +50,7 @@ export default function BottomNav() {
                 <Icon className={cn(
                   "h-6 w-6 transition-all duration-300",
                   isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary',
-                  (id === 'favorites' || id === 'home') && isActive && 'fill-primary'
+                  (id === 'home' || id === 'favorites' || id === 'notifications') && isActive && 'fill-primary'
                 )} />
             )}
             {id === 'notifications' && hasNewNotifications && (
@@ -99,7 +99,7 @@ export default function BottomNav() {
         </div>
         
         <div 
-          className="absolute top-[2px] w-1.5 h-1.5 bg-primary rounded-full"
+          className="absolute top-[-4px] w-1.5 h-1.5 bg-primary rounded-full"
           style={{
             right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 3px)` : '-100px',
             transition: 'right 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',

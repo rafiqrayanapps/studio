@@ -7,17 +7,24 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Check, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { PricingPlan } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMemo } from 'react';
 
 export default function PricingPage() {
   const firestore = useFirestore();
   const plansQuery = useMemoFirebase(
-    () => firestore ? query(collection(firestore, 'pricingPlans'), where('enabled', '==', true), orderBy('order', 'asc')) : null,
+    () => firestore ? query(collection(firestore, 'pricingPlans'), where('enabled', '==', true)) : null,
     [firestore]
   );
-  const { data: plans, isLoading } = useCollection<PricingPlan>(plansQuery);
+  const { data: unsortedPlans, isLoading } = useCollection<PricingPlan>(plansQuery);
+
+  const plans = useMemo(() => {
+    if (!unsortedPlans) return null;
+    return [...unsortedPlans].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [unsortedPlans]);
+
 
   const PlanSkeleton = () => (
     <Card className="flex flex-col">
