@@ -39,7 +39,8 @@ export default function AdminLoginForm() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const email = data.email.toLowerCase();
+      const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
       const user = userCredential.user;
 
       if (!firestore) {
@@ -47,7 +48,7 @@ export default function AdminLoginForm() {
         throw new Error("خدمة قاعدة البيانات غير متاحة.");
       }
 
-      const whitelistRef = doc(firestore, 'whitelist', user.email!.toLowerCase());
+      const whitelistRef = doc(firestore, 'whitelist', email);
       const whitelistSnap = await getDoc(whitelistRef);
 
       if (whitelistSnap.exists() && whitelistSnap.data().role === 'admin') {

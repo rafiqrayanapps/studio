@@ -42,7 +42,8 @@ export default function ProLoginForm() {
     setError(null);
     try {
       // 1. Sign in the user
-      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const email = data.email.toLowerCase();
+      const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
       const user = userCredential.user;
 
       if (!firestore) throw new Error("Firestore not available");
@@ -51,7 +52,7 @@ export default function ProLoginForm() {
       const currentFingerprint = await getDeviceFingerprint();
 
       // 3. Check against whitelist record
-      const whitelistRef = doc(firestore, 'whitelist', user.email!.toLowerCase());
+      const whitelistRef = doc(firestore, 'whitelist', email);
       const whitelistSnap = await getDoc(whitelistRef);
 
       if (whitelistSnap.exists()) {
