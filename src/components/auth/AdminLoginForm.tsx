@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, collection, where, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, ShieldAlert } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -39,26 +39,59 @@ export default function AdminLoginForm() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const email = data.email.toLowerCase();
-      const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
-      const user = userCredential.user;
+        const email = data.email.toLowerCase();
+        // Step 1: Authenticate user
+        await signInWithEmailAndPassword(auth, email, data.password);
+        
+        if (!firestore) {
+            await auth.signOut();
+            throw new Error("خدمة قاعدة البيانات غير متاحة.");
+        }
 
-      if (!firestore) {
-        await auth.signOut();
-        throw new Error("خدمة قاعدة البيانات غير متاحة.");
-      }
+        // Step 2: Check if any admin exists in the system
+        const adminQuery = query(collection(firestore, 'whitelist'), where('role', '==', 'admin'), limit(1));
+        const adminSnapshot = await getDocs(adminQuery);
 
-      const whitelistRef = doc(firestore, 'whitelist', email);
-      const whitelistSnap = await getDoc(whitelistRef);
+        if (adminSnapshot.empty) {
+            // --- First Admin Bootstrap ---
+            // No admins exist, so this user becomes the first admin.
+            const batch = writeBatch(firestore);
 
-      const isWhitelistedAdmin = whitelistSnap.exists() && whitelistSnap.data().role === 'admin';
+            // a) Create the admin entry in whitelist
+            const userWhitelistRef = doc(firestore, 'whitelist', email);
+            batch.set(userWhitelistRef, {
+                email: email,
+                role: 'admin',
+                createdAt: serverTimestamp(),
+                isActivated: true, // First admin is activated by default
+            });
+            
+            // b) Create the admin lock to prevent this from happening again
+            const adminLockRef = doc(firestore, 'appConfig', 'adminLock');
+            batch.set(adminLockRef, {
+                locked: true,
+                firstAdminEmail: email,
+                createdAt: serverTimestamp(),
+            });
 
-      if (isWhitelistedAdmin) {
-        router.push('/admin/dashboard');
-      } else {
-        await auth.signOut();
-        throw new Error("هذا الحساب ليس لديه صلاحيات المسؤول.");
-      }
+            await batch.commit();
+            router.push('/admin/dashboard');
+
+        } else {
+            // --- Standard Admin Login ---
+            // Admins already exist, so verify if this user is one of them.
+            const userWhitelistRef = doc(firestore, 'whitelist', email);
+            const userWhitelistSnap = await getDoc(userWhitelistRef);
+
+            const isWhitelistedAdmin = userWhitelistSnap.exists() && userWhitelistSnap.data().role === 'admin';
+
+            if (isWhitelistedAdmin) {
+                router.push('/admin/dashboard');
+            } else {
+                await auth.signOut();
+                throw new Error("هذا الحساب ليس لديه صلاحيات المسؤول.");
+            }
+        }
 
     } catch (e: any) {
        let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";

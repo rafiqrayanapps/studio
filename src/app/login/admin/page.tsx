@@ -12,13 +12,7 @@ export default function AdminLoginPage() {
                 <AdminLoginForm />
             </Card>
             <p className="px-8 text-center text-sm text-muted-foreground mt-4">
-                ليس لديك حساب مسؤول؟{' '}
-                <Link
-                    href="/signup/admin"
-                    className="underline underline-offset-4 hover:text-primary"
-                >
-                    أنشئ حسابًا من هنا
-                </Link>
+               إذا كنت مسؤولاً جديداً وليس لديك حساب بعد، يمكنك إنشاء حساب من خلال صفحة تفعيل اشتراك برو (باستخدام أي كود مؤقت) ثم تسجيل الدخول هنا لأول مرة للحصول على صلاحيات المسؤول.
             </p>
         </div>
     </div>
