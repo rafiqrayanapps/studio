@@ -59,16 +59,19 @@ export default function UserProfileButton() {
                          <Button variant="ghost" className="w-full justify-between h-auto p-3 hover:bg-secondary">
                             <div className='flex items-center gap-2'>
                                <Crown className="h-5 w-5 text-yellow-500" />
-                               <span className="font-semibold text-lg">حساب برو نشط</span>
+                               <span className="font-semibold text-lg">حساب برو</span>
                             </div>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="start">
+                    <DropdownMenuContent className="w-56" align="start" dir="rtl">
                         <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
                          <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <span>صلاحية دائمة</span>
-                        </DropdownMenuItem>
+                        <Link href="/account">
+                            <DropdownMenuItem>
+                                <UserIcon className="ml-2 h-4 w-4" />
+                                <span>حسابي</span>
+                            </DropdownMenuItem>
+                        </Link>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => auth.signOut()}>
                             <LogOut className="ml-2 h-4 w-4" />
