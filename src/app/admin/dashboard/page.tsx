@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
-import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown } from 'lucide-react';
@@ -25,6 +25,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
+import { initializeApp, deleteApp, FirebaseError } from 'firebase/app';
+import { getAuth as getAuthInstance, createUserWithEmailAndPassword } from 'firebase/auth';
+import { firebaseConfig } from '@/firebase/config';
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
 
@@ -86,8 +89,9 @@ const useFormSchemas = () => {
 
     const whitelistSchema = z.object({
         email: z.string().email("البريد الإلكتروني غير صالح."),
-        activationCode: z.string().optional(),
         role: z.enum(['admin', 'pro'], { required_error: "الدور مطلوب." }),
+        password: z.string().optional(),
+        activationCode: z.string().optional(),
         subscriptionDuration: z.preprocess(
             (val) => (val === "" || val === undefined || val === null ? undefined : parseInt(String(val), 10)),
             z.number({invalid_type_error: "يجب إدخال رقم"}).positive("المدة يجب أن تكون رقمًا موجبًا").optional()
@@ -98,6 +102,13 @@ const useFormSchemas = () => {
                 code: z.ZodIssueCode.custom,
                 message: "مدة الاشتراك (بالأيام) مطلوبة لحسابات برو",
                 path: ["subscriptionDuration"],
+            });
+        }
+        if (data.role === 'admin' && (!data.password || data.password.length < 6)) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "كلمة المرور مطلوبة ويجب أن تكون 6 أحرف على الأقل.",
+                path: ["password"],
             });
         }
     });
@@ -209,7 +220,7 @@ export default function AdminDashboardPage() {
   const shareLinkForm = useForm<ShareLinkFormValues>({ resolver: zodResolver(shareLinkSchema), defaultValues: { url: '', text: '', enabled: false } });
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
-  const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', activationCode: '', role: 'pro' } });
+  const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', role: 'pro', password: '', activationCode: '' } });
   const paymentLinksForm = useForm<PaymentLinksFormValues>({ resolver: zodResolver(paymentLinksSchema), defaultValues: { paypalUrl: '', whatsappUrl: '', telegramUrl: '' } });
   const watchWhitelistRole = whitelistForm.watch('role');
 
@@ -428,33 +439,90 @@ export default function AdminDashboardPage() {
     notificationForm.reset();
   };
 
-  const onWhitelistSubmit = (values: WhitelistFormValues) => {
+  const onWhitelistSubmit = async (values: WhitelistFormValues) => {
     if (!firestore) return;
-    const docRef = doc(firestore, 'whitelist', values.email.toLowerCase());
     
-    const dataToSet: Partial<WhitelistEntry & { subscriptionDuration?: number }> = {
-      email: values.email,
-      role: values.role,
-      activationCode: values.activationCode,
-      createdAt: serverTimestamp(),
-      isActivated: false,
-      activatedByUid: null,
-      deviceFingerprint: null,
-    };
+    const email = values.email.toLowerCase();
 
-    if (values.role === 'pro' && values.subscriptionDuration) {
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(startDate.getDate() + values.subscriptionDuration);
+    if (values.role === 'admin') {
+        if (!values.password) {
+            whitelistForm.setError('password', { message: 'كلمة المرور مطلوبة للمسؤول' });
+            return;
+        }
+
+        const tempAppName = `temp-admin-creation-${Date.now()}`;
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
+        const tempAuth = getAuthInstance(tempApp);
         
-        dataToSet.subscriptionStartDate = Timestamp.fromDate(startDate);
-        dataToSet.subscriptionEndDate = Timestamp.fromDate(endDate);
-    }
+        try {
+            const userCredential = await createUserWithEmailAndPassword(tempAuth, email, values.password);
+            const newUser = userCredential.user;
 
-    setDocumentNonBlocking(docRef, dataToSet, { merge: true });
-    
-    toast({ title: "تم تفعيل المستخدم" });
-    whitelistForm.reset();
+            const batch = writeBatch(firestore);
+            
+            const whitelistRef = doc(firestore, 'whitelist', email);
+            batch.set(whitelistRef, {
+                email: email,
+                role: 'admin',
+                createdAt: serverTimestamp(),
+                isActivated: true, // Activated on creation
+                activatedByUid: newUser.uid,
+            });
+
+            const userProfileRef = doc(firestore, 'users', newUser.uid);
+            batch.set(userProfileRef, {
+                email: email,
+                subscriptionTier: 'free',
+                createdAt: serverTimestamp(),
+                displayName: email.split('@')[0],
+            });
+
+            await batch.commit();
+            
+            toast({ title: "تم إنشاء حساب المسؤول بنجاح" });
+            whitelistForm.reset({ email: '', role: 'pro', password: '', activationCode: '' });
+
+        } catch (e: any) {
+            let errorMessage = "فشل إنشاء حساب المسؤول.";
+            if (e instanceof FirebaseError) {
+                if (e.code === 'auth/email-already-in-use') {
+                    errorMessage = 'هذا البريد الإلكتروني مستخدم بالفعل.';
+                } else if (e.code === 'auth/weak-password') {
+                    errorMessage = 'كلمة المرور ضعيفة جداً، يجب أن تكون 6 أحرف على الأقل.';
+                }
+            }
+            toast({ variant: 'destructive', title: "خطأ", description: errorMessage });
+        } finally {
+            await deleteApp(tempApp);
+        }
+
+    } else if (values.role === 'pro') {
+        const docRef = doc(firestore, 'whitelist', email);
+        
+        const dataToSet: Partial<WhitelistEntry> = {
+          email: email,
+          role: 'pro',
+          activationCode: values.activationCode,
+          createdAt: serverTimestamp(),
+          isActivated: false,
+          activatedByUid: null,
+          deviceFingerprint: null,
+        };
+
+        if (values.subscriptionDuration) {
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setDate(startDate.getDate() + values.subscriptionDuration);
+            
+            (dataToSet as any).subscriptionStartDate = Timestamp.fromDate(startDate);
+            (dataToSet as any).subscriptionEndDate = Timestamp.fromDate(endDate);
+        }
+
+        await setDoc(docRef, dataToSet, { merge: true });
+        
+        toast({ title: "تم إضافة المستخدم إلى قائمة التفعيل 'برو'." });
+        whitelistForm.reset({ email: '', role: 'pro', password: '', activationCode: '' });
+    }
   };
   
   const onPaymentLinksSubmit = (values: PaymentLinksFormValues) => {
@@ -784,12 +852,12 @@ export default function AdminDashboardPage() {
                      <Card>
                         <CardHeader>
                             <CardTitle>تفعيل المستخدمين</CardTitle>
-                            <CardDescription>أضف مستخدمين إلى القائمة البيضاء لمنحهم صلاحيات "Admin" أو "Pro".</CardDescription>
+                            <CardDescription>أضف مستخدمين بصلاحيات "Admin" أو "Pro".</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Form {...whitelistForm}>
                                 <form onSubmit={whitelistForm.handleSubmit(onWhitelistSubmit)} className="space-y-6">
-                                    <FormField control={whitelistForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>البريد الإلكتروني للمشترك</FormLabel><FormControl><Input placeholder="user@example.com" {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={whitelistForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>البريد الإلكتروني للمستخدم</FormLabel><FormControl><Input placeholder="user@example.com" {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
                                     
                                     <FormField control={whitelistForm.control} name="role" render={({ field }) => (
                                         <FormItem>
@@ -804,6 +872,22 @@ export default function AdminDashboardPage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
+
+                                    {watchWhitelistRole === 'admin' && (
+                                        <FormField
+                                            control={whitelistForm.control}
+                                            name="password"
+                                            render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>كلمة المرور</FormLabel>
+                                                <FormControl>
+                                                <Input type="password" placeholder="••••••••" {...field} dir="ltr" value={field.value ?? ''} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                            )}
+                                        />
+                                    )}
                                     
                                     {watchWhitelistRole === 'pro' && (
                                         <>
@@ -825,7 +909,7 @@ export default function AdminDashboardPage() {
                                         </>
                                     )}
                                     <Button type="submit" disabled={whitelistForm.formState.isSubmitting} className="w-full">
-                                    {whitelistForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "تفعيل"}
+                                    {whitelistForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "إضافة مستخدم"}
                                     </Button>
                                 </form>
                             </Form>
