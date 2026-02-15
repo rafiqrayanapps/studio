@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import type { Category as CategoryType } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
 import { Search, Crown } from 'lucide-react';
@@ -26,10 +26,24 @@ export default function HomePage() {
 
   // 3. In the background, fetch live data from Firestore.
   const categoriesQuery = useMemoFirebase(
-    () => firestore ? query(collection(firestore, 'categories'), orderBy('order', 'asc')) : null,
-    [firestore]
+    () => {
+      if (!firestore) return null;
+      // Wait until user profile is loaded to avoid fetching with incorrect permissions
+      if (isUserLoading) return null; 
+
+      const q = query(collection(firestore, 'categories'), orderBy('order', 'asc'));
+
+      // If user is not pro or admin, they can only see public categories
+      if (!isPro && !isAdmin) {
+        return query(q, where('visibility', '==', 'public'));
+      }
+      
+      // Pro and admin users can see all categories
+      return q;
+    },
+    [firestore, isUserLoading, isPro, isAdmin]
   );
-  const { data: liveCategories, isLoading: isLoadingLive } = useCollection<CategoryType>(categoriesQuery, { propagateError: false });
+  const { data: liveCategories, isLoading: isLoadingLive } = useCollection<CategoryType>(categoriesQuery);
 
   // 4. When live data arrives, update the display and save the new data to the cache.
   useEffect(() => {
@@ -44,16 +58,11 @@ export default function HomePage() {
   const mainCategories = useMemo(() => {
     const all = displayCategories || [];
     const main = all.filter(cat => !cat.parentId);
-
-    // Admins and Pro users see all main categories.
-    const visibleForUser = (isPro || isAdmin) 
-        ? main 
-        : main.filter(cat => cat.visibility === 'public');
     
     // Then filter by search term.
-    if (!searchTerm) return visibleForUser;
-    return visibleForUser.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayCategories, searchTerm, isPro, isAdmin]);
+    if (!searchTerm) return main;
+    return main.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayCategories, searchTerm]);
 
   // Show skeleton only on the very first load when there's no cache and we are waiting for Firestore.
   const isLoading = (isLoadingLive && cachedCategories.length === 0) || isUserLoading;

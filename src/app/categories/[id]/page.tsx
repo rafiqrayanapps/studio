@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, doc, orderBy } from 'firebase/firestore';
+import { collection, query, doc, orderBy, where } from 'firebase/firestore';
 import type { Category, ContentItem } from '@/lib/definitions';
 import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,14 +42,34 @@ export default function CategoryPage() {
   const categoryRef = useMemoFirebase(() => (firestore && id ? doc(firestore, 'categories', id) : null), [firestore, id]);
   const { data: category, isLoading: categoryLoading, error: categoryError } = useDoc<Category>(categoryRef);
 
-  const allCategoriesQuery = useMemoFirebase(() => (
-    firestore ? query(collection(firestore, 'categories')) : null
-  ), [firestore]);
+  const allCategoriesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (isUserLoading) return null; // Wait until user status is known
+
+    const q = query(collection(firestore, 'categories'));
+
+    // For non-pro/non-admin users, only fetch public categories.
+    if (!isPro && !isAdmin) {
+        return query(q, where('visibility', '==', 'public'));
+    }
+    
+    // Admins/Pros can see all categories.
+    return q;
+  }, [firestore, isUserLoading, isPro, isAdmin]);
   const { data: liveAllCategories, isLoading: subCategoriesLoading } = useCollection<Category>(allCategoriesQuery);
 
-  const itemsQuery = useMemoFirebase(() => (
-    firestore && id ? query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc')) : null
-  ), [firestore, id]);
+  const itemsQuery = useMemoFirebase(() => {
+      if (!firestore || !id) return null;
+      if (isUserLoading) return null;
+
+      const q = query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
+
+      if (!isPro && !isAdmin) {
+          return query(q, where('visibility', '==', 'public'));
+      }
+
+      return q;
+  }, [firestore, id, isUserLoading, isPro, isAdmin]);
   const { data: liveItems, isLoading: itemsLoading } = useCollection<ContentItem>(itemsQuery);
 
   useEffect(() => {
@@ -71,10 +91,8 @@ export default function CategoryPage() {
 
   const subCategories = useMemo(() => {
     if (!displayAllCategories) return [];
-    const allSub = displayAllCategories.filter((cat) => cat.parentId === id).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
-    if (isPro || isAdmin) return allSub;
-    return allSub.filter(cat => cat.visibility === 'public');
-  }, [displayAllCategories, id, isPro, isAdmin]);
+    return displayAllCategories.filter((cat) => cat.parentId === id).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [displayAllCategories, id]);
 
   const isFavorite = (itemId: string) => favorites.some(item => item.id === itemId);
 
