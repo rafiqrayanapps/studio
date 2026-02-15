@@ -47,7 +47,7 @@ export default function AdminLoginForm() {
         throw new Error("خدمة قاعدة البيانات غير متاحة.");
       }
 
-      const whitelistRef = doc(firestore, 'whitelist', user.email!);
+      const whitelistRef = doc(firestore, 'whitelist', user.email!.toLowerCase());
       const whitelistSnap = await getDoc(whitelistRef);
 
       if (whitelistSnap.exists() && whitelistSnap.data().role === 'admin') {

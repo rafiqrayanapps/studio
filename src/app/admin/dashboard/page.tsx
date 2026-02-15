@@ -427,7 +427,7 @@ export default function AdminDashboardPage() {
 
   const onWhitelistSubmit = (values: WhitelistFormValues) => {
     if (!firestore) return;
-    const docRef = doc(firestore, 'whitelist', values.email);
+    const docRef = doc(firestore, 'whitelist', values.email.toLowerCase());
     
     const dataToSet: Partial<WhitelistEntry & { subscriptionDuration?: number }> = {
       email: values.email,
@@ -965,5 +965,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    

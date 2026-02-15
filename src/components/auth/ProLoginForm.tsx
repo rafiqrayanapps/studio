@@ -51,7 +51,7 @@ export default function ProLoginForm() {
       const currentFingerprint = await getDeviceFingerprint();
 
       // 3. Check against whitelist record
-      const whitelistRef = doc(firestore, 'whitelist', user.email!);
+      const whitelistRef = doc(firestore, 'whitelist', user.email!.toLowerCase());
       const whitelistSnap = await getDoc(whitelistRef);
 
       if (whitelistSnap.exists()) {

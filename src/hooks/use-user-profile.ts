@@ -16,7 +16,7 @@ export function useUserProfile() {
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     const whitelistRef = useMemoFirebase(
-        () => (firestore && user?.email ? doc(firestore, 'whitelist', user.email) : null),
+        () => (firestore && user?.email ? doc(firestore, 'whitelist', user.email.toLowerCase()) : null),
         [firestore, user?.email]
     );
 
