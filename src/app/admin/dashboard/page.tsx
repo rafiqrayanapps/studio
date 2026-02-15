@@ -19,6 +19,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getYouTubeVideoId, getYouTubeThumbnailUrl } from '@/lib/video-utils';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -505,107 +506,114 @@ export default function AdminDashboardPage() {
 
 
   const CategoryForm = () => (
-    <div className="mb-6">
-        <h3 className="text-xl font-bold mb-4">{editingCategory ? "تعديل القسم" : "إضافة قسم جديد"}</h3>
-        <Form {...categoryForm}>
-          <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
-            <FormField control={categoryForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>اسم القسم</FormLabel><FormControl><Input placeholder="اسم القسم" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            
-            <FormField
-                control={categoryForm.control}
-                name="parentId"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>القسم الرئيسي (اختياري)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="جعله كقسم رئيسي" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="root">-- قسم رئيسي --</SelectItem>
-                                {mainCategories.filter(cat => cat.id !== editingCategory?.id).map((cat) => ( // Prevent self-parenting
-                                    <SelectItem key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <FormDescription>
-                            إذا اخترت قسمًا، سيصبح هذا قسمًا فرعيًا له.
-                        </FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
+    <Card>
+        <CardHeader>
+            <CardTitle>{editingCategory ? "تعديل القسم" : "إضافة قسم جديد"}</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <Form {...categoryForm}>
+              <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
+                <FormField control={categoryForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>اسم القسم</FormLabel><FormControl><Input placeholder="اسم القسم" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField
+                    control={categoryForm.control}
+                    name="parentId"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>القسم الرئيسي (اختياري)</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="جعله كقسم رئيسي" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="root">-- قسم رئيسي --</SelectItem>
+                                    {mainCategories.filter(cat => cat.id !== editingCategory?.id).map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>
+                                إذا اخترت قسمًا، سيصبح هذا قسمًا فرعيًا له.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-            <FormField control={categoryForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel>نمط العرض</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="style1">النمط الافقي</SelectItem><SelectItem value="style2">نمط 2</SelectItem><SelectItem value="style3">نمط 3 (برومبت)</SelectItem><SelectItem value="style4">نمط 4 (فيديو)</SelectItem><SelectItem value="style5">النمط 5 (بطاقة معرض)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-            <FormField control={categoryForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel>صيغ الملفات (اختياري)</FormLabel><FormControl><Input placeholder="PSD, AI" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={categoryForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel>الصلاحية</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="public" id="cat-public" /><Label htmlFor="cat-public">عام</Label></FormItem><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="pro" id="cat-pro" /><Label htmlFor="cat-pro">برو</Label></FormItem></RadioGroup><FormMessage /></FormItem>)} />
-            <div className="flex gap-2">
-                {editingCategory && <Button type="button" variant="secondary" onClick={() => { setEditingCategory(null); }} className="w-full">إلغاء</Button>}
-                <Button type="submit" disabled={categoryForm.formState.isSubmitting} className="w-full">{editingCategory ? "حفظ" : "إضافة"}</Button>
-            </div>
-          </form>
-        </Form>
-      </div>
+                <FormField control={categoryForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel>نمط العرض</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="style1">النمط الافقي</SelectItem><SelectItem value="style2">نمط 2</SelectItem><SelectItem value="style3">نمط 3 (برومبت)</SelectItem><SelectItem value="style4">نمط 4 (فيديو)</SelectItem><SelectItem value="style5">النمط 5 (بطاقة معرض)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={categoryForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel>صيغ الملفات (اختياري)</FormLabel><FormControl><Input placeholder="PSD, AI" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={categoryForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel>الصلاحية</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="public" id="cat-public" /><Label htmlFor="cat-public">عام</Label></FormItem><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="pro" id="cat-pro" /><Label htmlFor="cat-pro">برو</Label></FormItem></RadioGroup><FormMessage /></FormItem>)} />
+                <div className="flex gap-2">
+                    {editingCategory && <Button type="button" variant="secondary" onClick={() => { setEditingCategory(null); }} className="w-full">إلغاء</Button>}
+                    <Button type="submit" disabled={categoryForm.formState.isSubmitting} className="w-full">{editingCategory ? "حفظ" : "إضافة"}</Button>
+                </div>
+              </form>
+            </Form>
+        </CardContent>
+    </Card>
   );
 
   const ContentItemForm = () => {
     const category = categoryMap.get(selectedContentCategory);
     if (!category) return null;
     return (
-        <div className="mb-6">
-            <h3 className="text-xl font-bold mb-4">{editingItem ? "تعديل محتوى" : "إضافة محتوى جديد"} في "{category.name}"</h3>
-            <Form {...contentItemForm}>
-                <form onSubmit={contentItemForm.handleSubmit(onContentItemSubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
-                    <FormField control={contentItemForm.control} name="title" render={({ field }) => <FormItem><FormLabel>العنوان</FormLabel><FormControl><Input placeholder="العنوان" {...field} /></FormControl><FormMessage /></FormItem>} />
-                    
-                    {['style1', 'style2', 'style3'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>رابط الصورة</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
-                    {category.displayStyle === 'style5' && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>رابط الأيقونة</FormLabel><FormControl><Input placeholder="https://example.com/icon.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
+        <Card>
+            <CardHeader>
+                <CardTitle>{editingItem ? "تعديل محتوى" : "إضافة محتوى جديد"} في "{category.name}"</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Form {...contentItemForm}>
+                    <form onSubmit={contentItemForm.handleSubmit(onContentItemSubmit)} className="space-y-4">
+                        <FormField control={contentItemForm.control} name="title" render={({ field }) => <FormItem><FormLabel>العنوان</FormLabel><FormControl><Input placeholder="العنوان" {...field} /></FormControl><FormMessage /></FormItem>} />
+                        
+                        {['style1', 'style2', 'style3'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>رابط الصورة</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
+                        {category.displayStyle === 'style5' && <FormField control={contentItemForm.control} name="imageUrl" render={({ field }) => <FormItem><FormLabel>رابط الأيقونة</FormLabel><FormControl><Input placeholder="https://example.com/icon.png" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
 
-                    {['style1', 'style2', 'style5'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>رابط التحميل</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
-                    
-                    {category.displayStyle === 'style3' && (
+                        {['style1', 'style2', 'style5'].includes(category.displayStyle) && <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>رابط التحميل</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
+                        
+                        {category.displayStyle === 'style3' && (
+                            <>
+                                <FormField control={contentItemForm.control} name="instructions" render={({ field }) => <FormItem><FormLabel>التعليمات (اختياري)</FormLabel><FormControl><Textarea placeholder="تعليمات استخدام البرومبت..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={contentItemForm.control} name="prompt" render={({ field }) => <FormItem><FormLabel>البرومبت</FormLabel><FormControl><Textarea placeholder="نص البرومبت..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>رابط التحميل (اختياري)</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormDescription>إذا تم توفير رابط، سيظهر زر تحميل بجانب زر نسخ البرومبت.</FormDescription><FormMessage /></FormItem>} />
+                            </>
+                        )}
+                        
+                        {category.displayStyle === 'style5' && (
                         <>
-                            <FormField control={contentItemForm.control} name="instructions" render={({ field }) => <FormItem><FormLabel>التعليمات (اختياري)</FormLabel><FormControl><Textarea placeholder="تعليمات استخدام البرومبت..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                            <FormField control={contentItemForm.control} name="prompt" render={({ field }) => <FormItem><FormLabel>البرومبت</FormLabel><FormControl><Textarea placeholder="نص البرومبت..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                            <FormField control={contentItemForm.control} name="downloadUrl" render={({ field }) => <FormItem><FormLabel>رابط التحميل (اختياري)</FormLabel><FormControl><Input placeholder="https://example.com/file.zip" {...field} value={field.value ?? ''} /></FormControl><FormDescription>إذا تم توفير رابط، سيظهر زر تحميل بجانب زر نسخ البرومبت.</FormDescription><FormMessage /></FormItem>} />
+                            <FormField control={contentItemForm.control} name="appVersion" render={({ field }) => <FormItem><FormLabel>إصدار التطبيق (اختياري)</FormLabel><FormControl><Input placeholder="1.0.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
+                            <FormField control={contentItemForm.control} name="instructions" render={({ field }) => <FormItem><FormLabel>الوصف (اختياري)</FormLabel><FormControl><Textarea placeholder="وصف العنصر..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
                         </>
-                    )}
-                    
-                    {category.displayStyle === 'style5' && (
-                       <>
-                        <FormField control={contentItemForm.control} name="appVersion" render={({ field }) => <FormItem><FormLabel>إصدار التطبيق (اختياري)</FormLabel><FormControl><Input placeholder="1.0.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={contentItemForm.control} name="instructions" render={({ field }) => <FormItem><FormLabel>الوصف (اختياري)</FormLabel><FormControl><Textarea placeholder="وصف العنصر..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />
-                       </>
-                    )}
+                        )}
 
-                    {category.displayStyle === 'style4' && <FormField control={contentItemForm.control} name="videoUrl" render={({ field }) => <FormItem><FormLabel>رابط الفيديو (يوتيوب)</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
+                        {category.displayStyle === 'style4' && <FormField control={contentItemForm.control} name="videoUrl" render={({ field }) => <FormItem><FormLabel>رابط الفيديو (يوتيوب)</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>} />}
 
-                    {category.displayStyle === 'style5' && <FormField control={contentItemForm.control} name="screenshots" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>روابط صور المعرض (اختياري)</FormLabel>
-                            <FormControl>
-                                <Textarea placeholder="https://.../img1.png, https://.../img2.png" {...field} value={field.value ?? ''} dir="ltr" />
-                            </FormControl>
-                            <FormDescription>
-                                ضع روابط الصور مفصولة بفاصلة (,).
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )} />}
+                        {category.displayStyle === 'style5' && <FormField control={contentItemForm.control} name="screenshots" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>روابط صور المعرض (اختياري)</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="https://.../img1.png, https://.../img2.png" {...field} value={field.value ?? ''} dir="ltr" />
+                                </FormControl>
+                                <FormDescription>
+                                    ضع روابط الصور مفصولة بفاصلة (,).
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )} />}
 
-                    <FormField control={contentItemForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel>الصلاحية</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="public" id="item-public" /><Label htmlFor="item-public">عام</Label></FormItem><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="pro" id="item-pro" /><Label htmlFor="item-pro">برو</Label></FormItem></RadioGroup><FormMessage /></FormItem>)} />
+                        <FormField control={contentItemForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel>الصلاحية</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="public" id="item-public" /><Label htmlFor="item-public">عام</Label></FormItem><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="pro" id="item-pro" /><Label htmlFor="item-pro">برو</Label></FormItem></RadioGroup><FormMessage /></FormItem>)} />
 
-                    <div className="flex gap-2">
-                       {editingItem && <Button type="button" variant="secondary" onClick={() => setEditingItem(null)} className="w-full">إلغاء</Button>}
-                       <Button type="submit" disabled={contentItemForm.formState.isSubmitting} className="w-full">{contentItemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : (editingItem ? "حفظ" : "إضافة")}</Button>
-                    </div>
-                </form>
-            </Form>
-        </div>
+                        <div className="flex gap-2">
+                        {editingItem && <Button type="button" variant="secondary" onClick={() => setEditingItem(null)} className="w-full">إلغاء</Button>}
+                        <Button type="submit" disabled={contentItemForm.formState.isSubmitting} className="w-full">{contentItemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : (editingItem ? "حفظ" : "إضافة")}</Button>
+                        </div>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
     )
   };
 
@@ -616,106 +624,110 @@ export default function AdminDashboardPage() {
             <div className="flex-1" />
             <Button variant="ghost" size="sm" onClick={() => auth.signOut()}><LogOut className="ml-2 h-4 w-4" />تسجيل الخروج</Button>
         </Header>
-        <main className="flex-1 container mx-auto max-w-4xl py-8 px-4 space-y-12">
-            <div>
-                <CategoryForm />
-        
-                <h3 className="text-xl font-bold my-4">الأقسام الحالية</h3>
-                {isLoadingCategories ? <Skeleton className="h-40 w-full" /> : (
-                    <Accordion type="single" collapsible className="w-full bg-card rounded-lg p-4 border">
-                        {mainCategories.map((cat, index) => (
-                            <AccordionItem value={cat.id} key={cat.id}>
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2 flex-1 text-right">
-                                        {cat.name}
-                                        {cat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}
-                                    </div>
-                                    <div className="flex items-center gap-2 mr-auto">
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'up', 'categories') }} disabled={index === 0}>
-                                            <span><ArrowUp/></span>
-                                        </Button>
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'down', 'categories') }} disabled={index === mainCategories.length - 1}>
-                                            <span><ArrowDown/></span>
-                                        </Button>
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); }}>
-                                            <span><Edit/></span>
-                                        </Button>
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDeletingEntity({ type: 'category', entity: cat }); }}>
-                                            <span><Trash2/></span>
-                                        </Button>
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="p-4 bg-secondary rounded-md">
-                                    <div className="space-y-2">
-                                        {(subCategories.get(cat.id) || []).length === 0 && <p className="text-muted-foreground text-center">لا توجد أقسام فرعية.</p>}
-                                        {(subCategories.get(cat.id) || []).map((subCat, subIndex) => (
-                                             <div key={subCat.id} className="flex items-center bg-card p-2 rounded-md border">
-                                                 <p className="flex-1 flex items-center gap-2">{subCat.name} {subCat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
-                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'up', 'categories')} disabled={subIndex === 0}><ArrowUp/></Button>
-                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'down', 'categories')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
-                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {setEditingCategory(subCat); }}><Edit/></Button>
-                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'category', entity: subCat })}><Trash2/></Button>
-                                             </div>
+        <main className="flex-1 container mx-auto max-w-5xl py-8 px-4">
+            <Tabs defaultValue="categories" dir="rtl">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 mb-6 h-auto">
+                    <TabsTrigger value="categories" className="py-2">الأقسام والمحتوى</TabsTrigger>
+                    <TabsTrigger value="plans" className="py-2">خطط الأسعار</TabsTrigger>
+                    <TabsTrigger value="users" className="py-2">المستخدمين</TabsTrigger>
+                    <TabsTrigger value="settings" className="py-2">الإعدادات العامة</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="categories" className="space-y-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                        <div className="space-y-6">
+                            <CategoryForm />
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>الأقسام الحالية</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                {isLoadingCategories ? <Skeleton className="h-40 w-full" /> : (
+                                    <Accordion type="single" collapsible className="w-full">
+                                        {mainCategories.map((cat, index) => (
+                                            <AccordionItem value={cat.id} key={cat.id}>
+                                                <AccordionTrigger>
+                                                    <div className="flex items-center gap-2 flex-1 text-right">
+                                                        {cat.name}
+                                                        {cat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mr-auto">
+                                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'up', 'categories') }} disabled={index === 0}><span><ArrowUp/></span></Button>
+                                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'down', 'categories') }} disabled={index === mainCategories.length - 1}><span><ArrowDown/></span></Button>
+                                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); }}><span><Edit/></span></Button>
+                                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDeletingEntity({ type: 'category', entity: cat }); }}><span><Trash2/></span></Button>
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="p-4 bg-secondary rounded-md">
+                                                    <div className="space-y-2">
+                                                        {(subCategories.get(cat.id) || []).length === 0 && <p className="text-muted-foreground text-center">لا توجد أقسام فرعية.</p>}
+                                                        {(subCategories.get(cat.id) || []).map((subCat, subIndex) => (
+                                                            <div key={subCat.id} className="flex items-center bg-card p-2 rounded-md border">
+                                                                <p className="flex-1 flex items-center gap-2">{subCat.name} {subCat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'up', 'categories')} disabled={subIndex === 0}><ArrowUp/></Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'down', 'categories')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {setEditingCategory(subCat); }}><Edit/></Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'category', entity: subCat })}><Trash2/></Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
                                         ))}
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
-                    </Accordion>
-                )}
-            </div>
-            
-            <div>
-                <Card className="mb-6">
-                  <CardContent className="p-4 space-y-2">
-                    <Label>اختر قسمًا لعرض محتواه وتعديله</Label>
-                     <Select onValueChange={setSelectedContentCategory} value={selectedContentCategory}>
-                      <SelectTrigger><SelectValue placeholder="اختر قسم..." /></SelectTrigger>
-                      <SelectContent>
-                          {mainCategories.map(cat => (
-                              <SelectGroup key={cat.id}>
-                                  <SelectLabel>{cat.name}</SelectLabel>
-                                  <SelectItem value={cat.id}>{cat.name} (قسم رئيسي)</SelectItem>
-                                  {(subCategories.get(cat.id) || []).map(subCat => (
-                                      <SelectItem key={subCat.id} value={subCat.id} className="pr-8">{subCat.name}</SelectItem>
-                                  ))}
-                              </SelectGroup>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </CardContent>
-                </Card>
-                
-                {selectedContentCategory && <ContentItemForm />}
-
-                {selectedContentCategory && (
-                    <Card className="mt-6">
-                        <CardHeader>
-                            <CardTitle>المحتوى الحالي في "{categoryMap.get(selectedContentCategory)?.name || ''}"</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                {isLoadingItems ? <Skeleton className="h-10 w-full" /> : sortedItems.map((item, index) => (
-                                    <div key={item.id} className="flex items-center bg-secondary p-2 rounded-md">
-                                        <p className="flex-1 flex items-center gap-2">{item.title} {item.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'up', `categories/${selectedContentCategory}/items`)} disabled={index === 0}><ArrowUp/></Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'down', `categories/${selectedContentCategory}/items`)} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'item', entity: item })}><Trash2/></Button>
-                                    </div>
-                                ))}
-                                {!isLoadingItems && sortedItems.length === 0 && (
-                                    <p className="text-muted-foreground text-center p-4">لا يوجد محتوى في هذا القسم بعد.</p>
+                                    </Accordion>
                                 )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="space-y-6">
+                            <Card>
+                                <CardContent className="p-4 space-y-2">
+                                    <Label>اختر قسمًا لإدارة محتواه</Label>
+                                    <Select onValueChange={setSelectedContentCategory} value={selectedContentCategory}>
+                                    <SelectTrigger><SelectValue placeholder="اختر قسم..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {mainCategories.map(cat => (
+                                            <SelectGroup key={cat.id}>
+                                                <SelectLabel>{cat.name}</SelectLabel>
+                                                <SelectItem value={cat.id}>{cat.name} (قسم رئيسي)</SelectItem>
+                                                {(subCategories.get(cat.id) || []).map(subCat => (
+                                                    <SelectItem key={subCat.id} value={subCat.id} className="pr-8">{subCat.name}</SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        ))}
+                                    </SelectContent>
+                                    </Select>
+                                </CardContent>
+                            </Card>
+                            {selectedContentCategory && <ContentItemForm />}
+                            {selectedContentCategory && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>المحتوى الحالي في "{categoryMap.get(selectedContentCategory)?.name || ''}"</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            {isLoadingItems ? <Skeleton className="h-10 w-full" /> : sortedItems.map((item, index) => (
+                                                <div key={item.id} className="flex items-center bg-secondary p-2 rounded-md">
+                                                    <p className="flex-1 flex items-center gap-2">{item.title} {item.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'up', `categories/${selectedContentCategory}/items`)} disabled={index === 0}><ArrowUp/></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'down', `categories/${selectedContentCategory}/items`)} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'item', entity: item })}><Trash2/></Button>
+                                                </div>
+                                            ))}
+                                            {!isLoadingItems && sortedItems.length === 0 && (
+                                                <p className="text-muted-foreground text-center p-4">لا يوجد محتوى في هذا القسم بعد.</p>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
+                </TabsContent>
 
-            <div>
-                <h2 className="text-2xl font-bold mb-4">إعدادات التطبيق</h2>
-                <div className="space-y-8">
+                <TabsContent value="plans">
                      <Card>
                         <CardHeader>
                             <CardTitle>إدارة خطط الأسعار</CardTitle>
@@ -724,7 +736,7 @@ export default function AdminDashboardPage() {
                             <div className="mb-6">
                                 <h3 className="text-lg font-bold mb-4">{editingPlan ? 'تعديل الخطة' : 'إضافة خطة جديدة'}</h3>
                                 <Form {...pricingPlanForm}>
-                                <form onSubmit={pricingPlanForm.handleSubmit(onPricingPlanSubmit)} className="space-y-4 p-4 border rounded-lg bg-card">
+                                <form onSubmit={pricingPlanForm.handleSubmit(onPricingPlanSubmit)} className="space-y-4 p-4 border rounded-lg bg-background">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <FormField control={pricingPlanForm.control} name="name" render={({ field }) => <FormItem><FormLabel>اسم الخطة</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
                                         <FormField control={pricingPlanForm.control} name="price" render={({ field }) => <FormItem><FormLabel>السعر</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
@@ -763,138 +775,9 @@ export default function AdminDashboardPage() {
                                 )}
                         </CardContent>
                     </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>إدارة روابط الدفع والتواصل</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Form {...paymentLinksForm}>
-                                <form onSubmit={paymentLinksForm.handleSubmit(onPaymentLinksSubmit)} className="space-y-6">
-                                    <FormField control={paymentLinksForm.control} name="paypalUrl" render={({ field }) => ( <FormItem><FormLabel>رابط بايبال</FormLabel><FormControl><Input placeholder="https://paypal.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={paymentLinksForm.control} name="whatsappUrl" render={({ field }) => ( <FormItem><FormLabel>رابط واتساب</FormLabel><FormControl><Input placeholder="https://wa.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={paymentLinksForm.control} name="telegramUrl" render={({ field }) => ( <FormItem><FormLabel>رابط تلجرام</FormLabel><FormControl><Input placeholder="https://t.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                    <Button type="submit" disabled={paymentLinksForm.formState.isSubmitting} className="w-full">
-                                      {paymentLinksForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الروابط"}
-                                    </Button>
-                                </form>
-                            </Form>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>تغيير لون الموقع</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Form {...themeForm}>
-                                <form onSubmit={themeForm.handleSubmit(onThemeSubmit)} className="space-y-6">
-                                    <FormField
-                                        control={themeForm.control}
-                                        name="primaryColor"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>اللون الأساسي (الوضع الفاتح)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="350 72% 51%" {...field} dir="ltr" />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    أدخل قيمة اللون بصيغة HSL بدون أقواس. مثال: 350 72% 51%
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={themeForm.control}
-                                        name="primaryColorDark"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>اللون الأساسي (الوضع الليلي)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="350 72% 51%" {...field} dir="ltr" value={field.value ?? ''}/>
-                                                </FormControl>
-                                                 <FormDescription>
-                                                    أدخل قيمة اللون بصيغة HSL بدون أقواس. مثال: 350 72% 51%
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Button type="submit" disabled={themeForm.formState.isSubmitting} className="w-full">
-                                      {themeForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ اللون"}
-                                    </Button>
-                                </form>
-                            </Form>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>إعدادات النافذة المنبثقة للاشتراك</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Form {...subscriptionDialogForm}>
-                                <form onSubmit={subscriptionDialogForm.handleSubmit(onSubscriptionDialogSubmit)} className="space-y-6">
-                                    <FormField control={subscriptionDialogForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">تفعيل النافذة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
-                                    <FormField control={subscriptionDialogForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>عنوان النافذة</FormLabel><FormControl><Input placeholder="رفيق المصمم" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={subscriptionDialogForm.control} name="description" render={({ field }) => ( <FormItem><FormLabel>نص النافذة</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={subscriptionDialogForm.control} name="link" render={({ field }) => ( <FormItem><FormLabel>رابط الاشتراك</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
-                                    <Button type="submit" disabled={subscriptionDialogForm.formState.isSubmitting} className="w-full">
-                                      {subscriptionDialogForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الإعدادات"}
-                                    </Button>
-                                </form>
-                            </Form>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>إعدادات رابط مشاركة التطبيق</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Form {...shareLinkForm}>
-                                <form onSubmit={shareLinkForm.handleSubmit(onShareLinkSubmit)} className="space-y-6">
-                                     <FormField control={shareLinkForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">تفعيل زر المشاركة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
-                                     <FormField control={shareLinkForm.control} name="url" render={({ field }) => ( <FormItem><FormLabel>رابط المشاركة</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
-                                     <FormField control={shareLinkForm.control} name="text" render={({ field }) => ( <FormItem><FormLabel>نص المشاركة (اختياري)</FormLabel><FormControl><Textarea placeholder="..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                    <Button type="submit" disabled={shareLinkForm.formState.isSubmitting} className="w-full">
-                                      {shareLinkForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الإعدادات"}
-                                    </Button>
-                                </form>
-                            </Form>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>إرسال إشعار جديد</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Form {...notificationForm}>
-                                <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
-                                    <FormField control={notificationForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>عنوان الإشعار</FormLabel><FormControl><Input placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={notificationForm.control} name="description" render={({ field }) => ( <FormItem><FormLabel>نص الإشعار</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <Button type="submit" disabled={notificationForm.formState.isSubmitting} className="w-full">
-                                      {notificationForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "إرسال الإشعار"}
-                                    </Button>
-                                </form>
-                            </Form>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>الإشعارات السابقة</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2 max-h-72 overflow-y-auto">
-                                {isLoadingNotifications ? <Skeleton className="h-10 w-full" /> : (notifications && notifications.length > 0) ? notifications.map((notif) => (
-                                    <div key={notif.id} className="flex items-center bg-secondary p-2 rounded-md">
-                                        <div className="flex-1">
-                                            <p className="font-bold">{notif.title}</p>
-                                            <p className="text-sm text-muted-foreground">{notif.description}</p>
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'notification', entity: notif })}><Trash2/></Button>
-                                    </div>
-                                )) : <p className="text-muted-foreground text-center p-4">لا توجد إشعارات سابقة.</p>}
-                            </div>
-                        </CardContent>
-                    </Card>
+                </TabsContent>
+
+                 <TabsContent value="users" className="space-y-8">
                      <Card>
                         <CardHeader>
                             <CardTitle>تفعيل المستخدمين</CardTitle>
@@ -946,35 +829,17 @@ export default function AdminDashboardPage() {
                             <CardTitle>المستخدمون المفعلون</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-2 max-h-72 overflow-y-auto">
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
                                 {isLoadingWhitelist ? <Skeleton className="h-10 w-full" /> : (whitelistedUsers && whitelistedUsers.length > 0) ? whitelistedUsers.map((user) => (
                                     <div key={user.id} className="flex items-center bg-secondary p-2 rounded-md">
                                         <div className="flex-1">
                                             <p className="font-bold">{user.email}</p>
                                             <div className="text-sm text-muted-foreground flex gap-4 flex-wrap">
-                                                <p>
-                                                    الصلاحية: <span className="font-semibold text-primary">{user.role === 'admin' ? 'Admin' : 'Pro'}</span>
-                                                </p>
-                                                {user.activationCode && (
-                                                    <p>
-                                                        الكود: <span className="font-mono text-foreground">{user.activationCode}</span>
-                                                    </p>
-                                                )}
-                                                 {user.subscriptionEndDate && (
-                                                    <p>
-                                                        تاريخ الانتهاء: <span className="font-mono text-foreground rtl:ml-2">{safeFormatFirebaseTimestamp(user.subscriptionEndDate)}</span>
-                                                    </p>
-                                                )}
-                                                {user.deviceFingerprint && (
-                                                    <p>
-                                                        بصمة الجهاز: <span className="font-mono text-xs text-foreground">{user.deviceFingerprint}</span>
-                                                    </p>
-                                                )}
-                                                <p>
-                                                  الحالة: {user.isActivated 
-                                                    ? <span className="font-semibold text-green-500">مفعل</span> 
-                                                    : <span className="font-semibold text-yellow-500">غير مفعل</span>}
-                                                </p>
+                                                <p>الصلاحية: <span className="font-semibold text-primary">{user.role === 'admin' ? 'Admin' : 'Pro'}</span></p>
+                                                {user.activationCode && <p>الكود: <span className="font-mono text-foreground">{user.activationCode}</span></p>}
+                                                {user.subscriptionEndDate && <p>تاريخ الانتهاء: <span className="font-mono text-foreground rtl:ml-2">{safeFormatFirebaseTimestamp(user.subscriptionEndDate)}</span></p>}
+                                                {user.deviceFingerprint && <p>بصمة الجهاز: <span className="font-mono text-xs text-foreground">{user.deviceFingerprint}</span></p>}
+                                                <p>الحالة: {user.isActivated ? <span className="font-semibold text-green-500">مفعل</span> : <span className="font-semibold text-yellow-500">غير مفعل</span>}</p>
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'whitelist', entity: user })}><Trash2/></Button>
@@ -983,8 +848,100 @@ export default function AdminDashboardPage() {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
-            </div>
+                </TabsContent>
+
+                <TabsContent value="settings">
+                    <Accordion type="multiple" className="w-full space-y-4">
+                        <AccordionItem value="payment-links" className="border-none">
+                             <Card>
+                                <AccordionTrigger className="p-4 font-bold text-lg hover:no-underline">إدارة روابط الدفع والتواصل</AccordionTrigger>
+                                <AccordionContent className="px-6 pb-6">
+                                    <Form {...paymentLinksForm}>
+                                        <form onSubmit={paymentLinksForm.handleSubmit(onPaymentLinksSubmit)} className="space-y-6">
+                                            <FormField control={paymentLinksForm.control} name="paypalUrl" render={({ field }) => ( <FormItem><FormLabel>رابط بايبال</FormLabel><FormControl><Input placeholder="https://paypal.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={paymentLinksForm.control} name="whatsappUrl" render={({ field }) => ( <FormItem><FormLabel>رابط واتساب</FormLabel><FormControl><Input placeholder="https://wa.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={paymentLinksForm.control} name="telegramUrl" render={({ field }) => ( <FormItem><FormLabel>رابط تلجرام</FormLabel><FormControl><Input placeholder="https://t.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            <Button type="submit" disabled={paymentLinksForm.formState.isSubmitting} className="w-full">{paymentLinksForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الروابط"}</Button>
+                                        </form>
+                                    </Form>
+                                </AccordionContent>
+                             </Card>
+                        </AccordionItem>
+
+                        <AccordionItem value="theme" className="border-none">
+                            <Card>
+                                <AccordionTrigger className="p-4 font-bold text-lg hover:no-underline">تغيير لون الموقع</AccordionTrigger>
+                                <AccordionContent className="px-6 pb-6">
+                                     <Form {...themeForm}><form onSubmit={themeForm.handleSubmit(onThemeSubmit)} className="space-y-6">
+                                        <FormField control={themeForm.control} name="primaryColor" render={({ field }) => (<FormItem><FormLabel>اللون الأساسي (الوضع الفاتح)</FormLabel><FormControl><Input placeholder="350 72% 51%" {...field} dir="ltr" /></FormControl><FormDescription>أدخل قيمة اللون بصيغة HSL بدون أقواس. مثال: 350 72% 51%</FormDescription><FormMessage /></FormItem>)} />
+                                        <FormField control={themeForm.control} name="primaryColorDark" render={({ field }) => (<FormItem><FormLabel>اللون الأساسي (الوضع الليلي)</FormLabel><FormControl><Input placeholder="350 72% 51%" {...field} dir="ltr" value={field.value ?? ''}/></FormControl><FormDescription>أدخل قيمة اللون بصيغة HSL بدون أقواس. مثال: 350 72% 51%</FormDescription><FormMessage /></FormItem>)} />
+                                        <Button type="submit" disabled={themeForm.formState.isSubmitting} className="w-full">{themeForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ اللون"}</Button>
+                                    </form></Form>
+                                </AccordionContent>
+                            </Card>
+                        </AccordionItem>
+
+                        <AccordionItem value="subscription-dialog" className="border-none">
+                            <Card>
+                                <AccordionTrigger className="p-4 font-bold text-lg hover:no-underline">إعدادات النافذة المنبثقة للاشتراك</AccordionTrigger>
+                                <AccordionContent className="px-6 pb-6">
+                                    <Form {...subscriptionDialogForm}><form onSubmit={subscriptionDialogForm.handleSubmit(onSubscriptionDialogSubmit)} className="space-y-6">
+                                        <FormField control={subscriptionDialogForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">تفعيل النافذة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
+                                        <FormField control={subscriptionDialogForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>عنوان النافذة</FormLabel><FormControl><Input placeholder="رفيق المصمم" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={subscriptionDialogForm.control} name="description" render={({ field }) => ( <FormItem><FormLabel>نص النافذة</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={subscriptionDialogForm.control} name="link" render={({ field }) => ( <FormItem><FormLabel>رابط الاشتراك</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
+                                        <Button type="submit" disabled={subscriptionDialogForm.formState.isSubmitting} className="w-full">{subscriptionDialogForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الإعدادات"}</Button>
+                                    </form></Form>
+                                </AccordionContent>
+                            </Card>
+                        </AccordionItem>
+                        
+                        <AccordionItem value="share-link" className="border-none">
+                            <Card>
+                                <AccordionTrigger className="p-4 font-bold text-lg hover:no-underline">إعدادات رابط مشاركة التطبيق</AccordionTrigger>
+                                <AccordionContent className="px-6 pb-6">
+                                    <Form {...shareLinkForm}><form onSubmit={shareLinkForm.handleSubmit(onShareLinkSubmit)} className="space-y-6">
+                                        <FormField control={shareLinkForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">تفعيل زر المشاركة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
+                                        <FormField control={shareLinkForm.control} name="url" render={({ field }) => ( <FormItem><FormLabel>رابط المشاركة</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={shareLinkForm.control} name="text" render={({ field }) => ( <FormItem><FormLabel>نص المشاركة (اختياري)</FormLabel><FormControl><Textarea placeholder="..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                        <Button type="submit" disabled={shareLinkForm.formState.isSubmitting} className="w-full">{shareLinkForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الإعدادات"}</Button>
+                                    </form></Form>
+                                </AccordionContent>
+                            </Card>
+                        </AccordionItem>
+
+                        <AccordionItem value="notifications" className="border-none">
+                            <Card>
+                                <AccordionTrigger className="p-4 font-bold text-lg hover:no-underline">الإشعارات</AccordionTrigger>
+                                <AccordionContent className="px-6 pb-6 space-y-6">
+                                    <div>
+                                        <h3 className="text-lg font-bold mb-4">إرسال إشعار جديد</h3>
+                                        <Form {...notificationForm}><form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
+                                            <FormField control={notificationForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>عنوان الإشعار</FormLabel><FormControl><Input placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={notificationForm.control} name="description" render={({ field }) => ( <FormItem><FormLabel>نص الإشعار</FormLabel><FormControl><Textarea placeholder="..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <Button type="submit" disabled={notificationForm.formState.isSubmitting} className="w-full">{notificationForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "إرسال الإشعار"}</Button>
+                                        </form></Form>
+                                    </div>
+                                     <div>
+                                        <h3 className="text-lg font-bold mb-4">الإشعارات السابقة</h3>
+                                        <div className="space-y-2 max-h-72 overflow-y-auto">
+                                            {isLoadingNotifications ? <Skeleton className="h-10 w-full" /> : (notifications && notifications.length > 0) ? notifications.map((notif) => (
+                                                <div key={notif.id} className="flex items-center bg-secondary p-2 rounded-md">
+                                                    <div className="flex-1">
+                                                        <p className="font-bold">{notif.title}</p>
+                                                        <p className="text-sm text-muted-foreground">{notif.description}</p>
+                                                    </div>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'notification', entity: notif })}><Trash2/></Button>
+                                                </div>
+                                            )) : <p className="text-muted-foreground text-center p-4">لا توجد إشعارات سابقة.</p>}
+                                        </div>
+                                    </div>
+                                </AccordionContent>
+                            </Card>
+                        </AccordionItem>
+                    </Accordion>
+                </TabsContent>
+            </Tabs>
         </main>
         <AlertDialog open={!!deletingEntity} onOpenChange={(open) => !open && setDeletingEntity(null)}>
           <AlertDialogContent>
@@ -1008,3 +965,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
