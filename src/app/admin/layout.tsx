@@ -1,48 +1,36 @@
 'use client';
-import { useUser } from '@/firebase';
-import { useRouter, usePathname } from 'next/navigation';
+import { useUserProfile } from '@/hooks/use-user-profile';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const { user, isUserLoading } = useUser();
+    const { user, isAdmin, isLoading } = useUserProfile();
     const router = useRouter();
-    const pathname = usePathname();
 
     useEffect(() => {
-        if (isUserLoading) return;
-
-        const isLoginPage = pathname.startsWith('/login/admin');
-
-        if (!user && !isLoginPage) {
-            router.replace('/login/admin');
+        if (isLoading) {
+            return; // Wait for user profile and role to be loaded
         }
-        if (user && isLoginPage) {
-            router.replace('/admin/dashboard');
-        }
-    }, [user, isUserLoading, router, pathname]);
 
-    if (isUserLoading || (!user && !pathname.startsWith('/login/admin')) || (user && pathname.startsWith('/login/admin'))) {
+        // If not loading, and there's no user or the user is not an admin,
+        // redirect them to the home page.
+        // We only allow access if they are an admin.
+        if (!user || !isAdmin) {
+            router.replace('/home');
+        }
+
+    }, [user, isAdmin, isLoading, router]);
+
+    // While loading, or if we are about to redirect because the user is not an admin, show a loader.
+    if (isLoading || !user || !isAdmin) {
         return (
             <div className="flex h-screen items-center justify-center bg-background">
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         );
     }
-    
-    // Allow rendering children if we are on a login page and not authenticated
-    if (!user && (pathname.startsWith('/login/') || pathname.startsWith('/activate/'))) {
-        return <>{children}</>;
-    }
-    
-    // For any other case under /admin path, if user is not loaded or not logged in, show loader.
-    if(pathname.startsWith('/admin') && (!user || isUserLoading)){
-         return (
-            <div className="flex h-screen items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        );
-    }
 
+    // If all checks pass (user is loaded and is an admin), render the children (e.g., the admin dashboard).
     return <>{children}</>;
 }
