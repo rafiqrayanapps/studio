@@ -48,15 +48,12 @@ export default function AdminLoginForm() {
         throw new Error("خدمة قاعدة البيانات غير متاحة.");
       }
 
-      // Hardcoded check for the first admin to solve chicken/egg problem.
-      const isSuperAdmin = email === 'artbag.rayanapp@gmail.com';
-
       const whitelistRef = doc(firestore, 'whitelist', email);
       const whitelistSnap = await getDoc(whitelistRef);
 
       const isWhitelistedAdmin = whitelistSnap.exists() && whitelistSnap.data().role === 'admin';
 
-      if (isSuperAdmin || isWhitelistedAdmin) {
+      if (isWhitelistedAdmin) {
         router.push('/admin/dashboard');
       } else {
         await auth.signOut();

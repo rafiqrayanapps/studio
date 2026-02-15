@@ -12,14 +12,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    function isSuperAdmin() {
-      return request.auth.token.email == 'artbag.rayanapp@gmail.com';
-    }
-
     function isAdmin() {
-      // An admin is explicitly defined in the whitelist collection by their email, or is the hardcoded super admin.
-      return isSignedIn() && (isSuperAdmin() || (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
-             get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'admin'));
+      // An admin is explicitly defined in the whitelist collection by their email.
+      return isSignedIn() && (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
+             get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'admin');
     }
 
     function hasActiveSubscription() {

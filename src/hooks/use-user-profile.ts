@@ -22,10 +22,7 @@ export function useUserProfile() {
 
     const { data: whitelistEntry, isLoading: isWhitelistLoading } = useDoc<WhitelistEntry>(whitelistRef);
     
-    // Hardcoded check for the first admin to solve the chicken/egg problem.
-    const isSuperAdmin = user?.email?.toLowerCase() === 'artbag.rayanapp@gmail.com';
-
-    const isAdmin = isSuperAdmin || whitelistEntry?.role === 'admin';
+    const isAdmin = whitelistEntry?.role === 'admin';
 
     let isPro = false;
     if (isAdmin) {
