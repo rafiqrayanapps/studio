@@ -14,10 +14,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
 
         // If not loading, and there's no user or the user is not an admin,
-        // redirect them to the home page.
-        // We only allow access if they are an admin.
+        // redirect them to the admin login page.
         if (!user || !isAdmin) {
-            router.replace('/home');
+            router.replace('/login/admin');
         }
 
     }, [user, isAdmin, isLoading, router]);
