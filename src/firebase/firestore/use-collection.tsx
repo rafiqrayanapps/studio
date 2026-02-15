@@ -80,19 +80,23 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (snapshotError: FirestoreError) => {
-        // Can't get a reliable path from a complex query, but can for a simple collection ref.
-        const path = activeQuery.type === 'collection' ? (activeQuery as CollectionReference).path : 'unknown query path';
-        const permissionError = new FirestorePermissionError({
-            operation: 'list',
-            path: path,
-        });
+        console.error("useCollection error:", snapshotError);
         
-        setError(permissionError);
+        if (snapshotError.code === 'permission-denied') {
+          const path = activeQuery.type === 'collection' ? (activeQuery as CollectionReference).path : 'unknown query path';
+          const permissionError = new FirestorePermissionError({
+              operation: 'list',
+              path: path,
+          });
+          setError(permissionError);
+          // Emit the error for the global listener to handle.
+          errorEmitter.emit('permission-error', permissionError);
+        } else {
+          setError(snapshotError);
+        }
+        
         setData(null);
         setIsLoading(false);
-
-        // Emit the error for the global listener to handle.
-        errorEmitter.emit('permission-error', permissionError);
       }
     );
 
