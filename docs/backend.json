@@ -384,9 +384,17 @@
           "format": "date-time",
           "description": "Timestamp of when the subscription ends."
         },
-        "claimedByUid": {
-            "type": "string",
-            "description": "The UID of the user who has claimed this whitelist entry."
+        "isActivated": {
+          "type": "boolean",
+          "description": "Whether the activation code has been used."
+        },
+        "activatedByUid": {
+          "type": "string",
+          "description": "The UID of the user who has activated this entry."
+        },
+        "deviceFingerprint": {
+          "type": "string",
+          "description": "A unique identifier for the device used for activation."
         }
       },
       "required": [
@@ -394,6 +402,29 @@
         "role",
         "createdAt"
       ]
+    },
+    "PaymentLinksConfig": {
+      "title": "Payment Links Config",
+      "description": "Configuration for payment and contact links.",
+      "type": "object",
+      "properties": {
+        "paypalUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL for PayPal payments."
+        },
+        "telegramUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL for Telegram contact."
+        },
+        "whatsappUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL for WhatsApp contact."
+        }
+      },
+      "required": []
     }
   },
   "auth": {
@@ -471,7 +502,17 @@
           "schema": {
             "$ref": "#/backend/entities/SubscriptionDialogConfig"
           },
-          "description": "Stores the global configuration for the subscription dialog. There should only be one document with the ID 'subscriptionDialog' in this collection."
+          "description": "Stores the global configuration for the subscription dialog. There should only be one document with the ID 'config' in this collection."
+        }
+      },
+       {
+        "path": "/appConfig/paymentLinks",
+        "definition": {
+          "entityName": "PaymentLinksConfig",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentLinksConfig"
+          },
+          "description": "Stores the global configuration for payment and contact links. There should only be one document with the ID 'config' in this collection."
         }
       },
       {
@@ -481,7 +522,7 @@
           "schema": {
             "$ref": "#/backend/entities/ShareLinkConfig"
           },
-          "description": "Stores the global configuration for the app share link. There should only be one document with the ID 'shareLink' in this collection."
+          "description": "Stores the global configuration for the app share link. There should only be one document with the ID 'config' in this collection."
         }
       },
       {
@@ -491,7 +532,7 @@
           "schema": {
             "$ref": "#/backend/entities/ThemeConfig"
           },
-          "description": "Stores the global configuration for the app theme. There should only be one document with the ID 'theme' in this collection."
+          "description": "Stores the global configuration for the app theme. There should only be one document with the ID 'config' in this collection."
         }
       },
       {
@@ -525,6 +566,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings. A `subscriptionRequests` collection stores user requests. A `whitelist` collection is added to allow admins to grant roles to users by email."
+    "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings like theme, share links, and payment links. A `subscriptionRequests` collection stores user requests. A `whitelist` collection is added to allow admins to grant roles to users by email, now including device fingerprinting for security."
   }
 }

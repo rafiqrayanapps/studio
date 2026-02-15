@@ -6,13 +6,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, Frown } from 'lucide-react';
+import { Loader2, Mail, Lock, Frown, ShieldAlert } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
+import { getDeviceFingerprint } from '@/lib/fingerprint';
+import { doc, getDoc } from 'firebase/firestore';
+import { WhitelistEntry } from '@/lib/definitions';
 
 const formSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
@@ -26,6 +29,7 @@ export default function ProLoginForm() {
   const [error, setError] = useState<string | null>(null);
   
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
 
   const form = useForm<LoginFormValues>({
@@ -37,14 +41,40 @@ export default function ProLoginForm() {
     setIsSubmitting(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      // 1. Sign in the user
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      if (!firestore) throw new Error("Firestore not available");
+
+      // 2. Get device fingerprint
+      const currentFingerprint = await getDeviceFingerprint();
+
+      // 3. Check against whitelist record
+      const whitelistRef = doc(firestore, 'whitelist', user.email!);
+      const whitelistSnap = await getDoc(whitelistRef);
+
+      if (whitelistSnap.exists()) {
+        const whitelistData = whitelistSnap.data() as WhitelistEntry;
+        // If there's a fingerprint on record, it MUST match
+        if (whitelistData.deviceFingerprint && whitelistData.deviceFingerprint !== currentFingerprint) {
+            // If it doesn't match, sign the user out immediately and throw an error
+            await auth.signOut();
+            throw new Error("عذراً، هذا الحساب مرتبط بجهاز آخر.");
+        }
+      }
+      
+      // 4. If all checks pass, proceed
       router.push('/home');
+
     } catch (e: any) {
        let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
       if (e instanceof FirebaseError) {
         if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
           description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
         }
+      } else {
+        description = e.message;
       }
       setError(description);
     } finally {
@@ -96,7 +126,7 @@ export default function ProLoginForm() {
             
             {error && (
                 <div className="flex items-center justify-center gap-2 text-destructive pt-2 text-sm">
-                    <Frown className="h-5 w-5" />
+                    <ShieldAlert className="h-5 w-5" />
                     <p className="font-semibold">{error}</p>
                 </div>
             )}

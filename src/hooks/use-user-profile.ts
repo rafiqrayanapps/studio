@@ -29,11 +29,11 @@ export function useUserProfile() {
         // Admins have all pro privileges
         isPro = true;
     } else if (userProfile?.subscriptionTier === 'pro') {
-        // For pro users, check if their subscription is still valid
-        if (userProfile.subscriptionEndDate && typeof userProfile.subscriptionEndDate.toDate === 'function') {
-            if (userProfile.subscriptionEndDate.toDate() > new Date()) {
-                isPro = true;
-            }
+        const endDate = userProfile.subscriptionEndDate?.toDate();
+        // If there's no end date, it's a permanent subscription.
+        // If there is an end date, check if it's in the future.
+        if (!endDate || endDate > new Date()) {
+             isPro = true;
         }
     }
     

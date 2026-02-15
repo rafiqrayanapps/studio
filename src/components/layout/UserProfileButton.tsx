@@ -3,7 +3,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { Button } from '@/components/ui/button';
 import { SheetClose } from '@/components/ui/sheet';
 import Link from 'next/link';
-import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, UserPlus } from 'lucide-react';
+import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/firebase';
 

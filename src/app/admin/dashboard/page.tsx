@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -98,7 +98,13 @@ const useFormSchemas = () => {
         path: ["subscriptionDuration"],
     });
 
-    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema };
+    const paymentLinksSchema = z.object({
+        paypalUrl: z.string().url("رابط بايبال غير صالح").or(z.literal("")).optional(),
+        whatsappUrl: z.string().url("رابط واتساب غير صالح").or(z.literal("")).optional(),
+        telegramUrl: z.string().url("رابط تلجرام غير صالح").or(z.literal("")).optional(),
+    });
+
+    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema };
 }
 
 type CategoryFormValues = z.infer<Return<(typeof useFormSchemas)>['categorySchema']>;
@@ -109,6 +115,7 @@ type ThemeFormValues = z.infer<Return<(typeof useFormSchemas)>['themeSchema']>;
 type NotificationFormValues = z.infer<Return<(typeof useFormSchemas)>['notificationSchema']>;
 type WhitelistFormValues = z.infer<Return<(typeof useFormSchemas)>['whitelistSchema']>;
 type PricingPlanFormValues = z.infer<Return<(typeof useFormSchemas)>['pricingPlanSchema']>;
+type PaymentLinksFormValues = z.infer<Return<(typeof useFormSchemas)>['paymentLinksSchema']>;
 
 
 export default function AdminDashboardPage() {
@@ -155,6 +162,9 @@ export default function AdminDashboardPage() {
   const pricingPlansQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pricingPlans'), orderBy('order', 'asc')) : null, [firestore]);
   const { data: pricingPlans, isLoading: isLoadingPlans } = useCollection<PricingPlan>(pricingPlansQuery);
 
+  const paymentLinksRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'paymentLinks') : null, [firestore]);
+  const { data: paymentLinksData } = useDoc<PaymentLinksConfig>(paymentLinksRef);
+
 
   useEffect(() => {
     if (items) {
@@ -187,7 +197,7 @@ export default function AdminDashboardPage() {
   
 
   // Forms
-  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema } = useFormSchemas();
+  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema } = useFormSchemas();
   const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '', visibility: 'public' } });
   const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' } });
   const pricingPlanForm = useForm<PricingPlanFormValues>({ resolver: zodResolver(pricingPlanSchema), defaultValues: { name: '', price: '', currency: 'ر.س', frequency: '/شهرياً', description: '', features: '', isFeatured: false, enabled: true, link: '' } });
@@ -196,6 +206,7 @@ export default function AdminDashboardPage() {
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
   const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', activationCode: '', role: 'pro' } });
+  const paymentLinksForm = useForm<PaymentLinksFormValues>({ resolver: zodResolver(paymentLinksSchema), defaultValues: { paypalUrl: '', whatsappUrl: '', telegramUrl: '' } });
   const watchWhitelistRole = whitelistForm.watch('role');
 
 
@@ -268,6 +279,13 @@ export default function AdminDashboardPage() {
         themeForm.reset({ primaryColor: "350 72% 51%", primaryColorDark: "350 72% 51%" });
     }
   }, [themeData, themeForm]);
+
+  useEffect(() => {
+    if (paymentLinksData) {
+        paymentLinksForm.reset(paymentLinksData);
+    }
+  }, [paymentLinksData, paymentLinksForm]);
+
 
   // Handlers
   const onCategorySubmit = (values: CategoryFormValues) => {
@@ -414,7 +432,10 @@ export default function AdminDashboardPage() {
       email: values.email,
       role: values.role,
       activationCode: values.activationCode,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      isActivated: false,
+      activatedByUid: null,
+      deviceFingerprint: null,
     };
 
     if (values.role === 'pro' && values.subscriptionDuration) {
@@ -430,6 +451,12 @@ export default function AdminDashboardPage() {
     
     toast({ title: "تم تفعيل المستخدم" });
     whitelistForm.reset();
+  };
+  
+  const onPaymentLinksSubmit = (values: PaymentLinksFormValues) => {
+    if (!firestore || !paymentLinksRef) return;
+    setDocumentNonBlocking(paymentLinksRef, values, { merge: true });
+    toast({ title: "تم حفظ روابط الدفع والتواصل" });
   };
 
 
@@ -736,6 +763,23 @@ export default function AdminDashboardPage() {
                                 )}
                         </CardContent>
                     </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>إدارة روابط الدفع والتواصل</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Form {...paymentLinksForm}>
+                                <form onSubmit={paymentLinksForm.handleSubmit(onPaymentLinksSubmit)} className="space-y-6">
+                                    <FormField control={paymentLinksForm.control} name="paypalUrl" render={({ field }) => ( <FormItem><FormLabel>رابط بايبال</FormLabel><FormControl><Input placeholder="https://paypal.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={paymentLinksForm.control} name="whatsappUrl" render={({ field }) => ( <FormItem><FormLabel>رابط واتساب</FormLabel><FormControl><Input placeholder="https://wa.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={paymentLinksForm.control} name="telegramUrl" render={({ field }) => ( <FormItem><FormLabel>رابط تلجرام</FormLabel><FormControl><Input placeholder="https://t.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                    <Button type="submit" disabled={paymentLinksForm.formState.isSubmitting} className="w-full">
+                                      {paymentLinksForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الروابط"}
+                                    </Button>
+                                </form>
+                            </Form>
+                        </CardContent>
+                    </Card>
                      <Card>
                         <CardHeader>
                             <CardTitle>تغيير لون الموقع</CardTitle>
@@ -921,6 +965,16 @@ export default function AdminDashboardPage() {
                                                         تاريخ الانتهاء: <span className="font-mono text-foreground rtl:ml-2">{safeFormatFirebaseTimestamp(user.subscriptionEndDate)}</span>
                                                     </p>
                                                 )}
+                                                {user.deviceFingerprint && (
+                                                    <p>
+                                                        بصمة الجهاز: <span className="font-mono text-xs text-foreground">{user.deviceFingerprint}</span>
+                                                    </p>
+                                                )}
+                                                <p>
+                                                  الحالة: {user.isActivated 
+                                                    ? <span className="font-semibold text-green-500">مفعل</span> 
+                                                    : <span className="font-semibold text-yellow-500">غير مفعل</span>}
+                                                </p>
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'whitelist', entity: user })}><Trash2/></Button>

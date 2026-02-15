@@ -64,13 +64,16 @@ export interface UserProfile {
 }
 
 export interface WhitelistEntry {
+  id?: string;
   email: string;
   role: 'admin' | 'pro';
   activationCode?: string;
   createdAt: any;
-  claimedByUid?: string;
   subscriptionStartDate?: any;
   subscriptionEndDate?: any;
+  isActivated?: boolean;
+  activatedByUid?: string | null;
+  deviceFingerprint?: string | null;
 }
 
 export interface PricingPlan {
@@ -85,4 +88,10 @@ export interface PricingPlan {
   order: number;
   enabled: boolean;
   link?: string;
+}
+
+export interface PaymentLinksConfig {
+    paypalUrl?: string;
+    whatsappUrl?: string;
+    telegramUrl?: string;
 }

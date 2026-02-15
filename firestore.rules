@@ -84,9 +84,10 @@ service cloud.firestore {
     match /whitelist/{email} {
       // Allow anyone to read to check activation codes before sign-up.
       allow read: if true;
-      // Allow admin to write, or a user to claim an unclaimed code for themselves once.
+      // Allow admin to manage entries.
+      // Allow a user to 'claim' an unclaimed entry for themselves once during activation.
       allow write: if isAdmin() || 
-                    (request.resource.data.claimedByUid == request.auth.uid && resource.data.claimedByUid == null);
+                    (request.auth.uid != null && request.resource.data.activatedByUid == request.auth.uid && resource.data.activatedByUid == null);
     }
   }
 }
