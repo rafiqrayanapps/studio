@@ -150,13 +150,13 @@ export default function CategoryPage() {
                 style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
               >
                 <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
-                <div className="relative cursor-pointer aspect-square w-full" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {item.visibility === 'pro' && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
+                <div className="relative cursor-pointer aspect-square w-full" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}>
+                    {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
                     {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover rounded-lg shadow-md" />}
                     <FavoriteButton item={item} />
                 </div>
                 <div className="w-full mt-auto">
-                     <Button className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                     <Button className="w-full" disabled={isLocked} onClick={() => isLocked && setShowUpgradeDialog(true)}>
                         {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
                         {isLocked ? 'الترقية للتحميل' : 'تحميل'}
                     </Button>
@@ -177,8 +177,8 @@ export default function CategoryPage() {
                 style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
               >
                  <h3 className="font-bold text-base">{item.title}</h3>
-                <div className="relative w-full cursor-pointer" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {item.visibility === 'pro' && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
+                <div className="relative w-full cursor-pointer" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}>
+                    {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
                     {item.imageUrl && <Image 
                       src={item.imageUrl} 
                       alt={item.title}
@@ -189,7 +189,7 @@ export default function CategoryPage() {
                     <FavoriteButton item={item} />
                 </div>
                 <div className="w-full">
-                    <Button className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                    <Button className="w-full" disabled={isLocked} onClick={() => isLocked && setShowUpgradeDialog(true)}>
                         {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
                         {isLocked ? 'الترقية للتحميل' : 'تحميل'}
                     </Button>
@@ -215,14 +215,14 @@ export default function CategoryPage() {
                         <h3 className="font-bold text-xl text-center">{item.title}</h3>
 
                         <div className="relative cursor-pointer w-full rounded-lg overflow-hidden">
-                            {item.visibility === 'pro' && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
+                            {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
                             {item.imageUrl && <Image 
                               src={item.imageUrl} 
                               alt={item.title}
                               width={500} 
                               height={300}
                               className="w-full h-auto object-cover"
-                              onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
+                              onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}
                             />}
                             <FavoriteButton item={item} />
                         </div>
@@ -240,7 +240,7 @@ export default function CategoryPage() {
                                 <div className="h-28 bg-muted rounded-md flex flex-col items-center justify-center text-center p-4 gap-2">
                                     <Lock className="h-6 w-6 text-muted-foreground" />
                                     <p className="text-muted-foreground font-semibold">محتوى حصري للمشتركين</p>
-                                    <Button size="sm" variant="secondary" onClick={() => router.push('/pricing')}>الترقية الآن</Button>
+                                    <Button size="sm" variant="secondary" onClick={() => setShowUpgradeDialog(true)}>الترقية الآن</Button>
                                 </div>
                             ) : (
                                 <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted border-transparent" dir="ltr" />
@@ -253,7 +253,7 @@ export default function CategoryPage() {
                                 {isLocked ? 'الترقية للنسخ' : 'نسخ البرومبت'}
                             </Button>
                             {item.downloadUrl && (
-                                <Button asChild variant="secondary" className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                                <Button asChild variant="secondary" className="w-full" disabled={isLocked} onClick={() => isLocked && setShowUpgradeDialog(true)}>
                                     <span>
                                         {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
                                         {isLocked ? 'الترقية للتحميل' : 'تحميل'}
@@ -277,19 +277,21 @@ export default function CategoryPage() {
        case 'style4':
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {typedItems.map((item, index) => (
+                {typedItems.map((item, index) => {
+                    const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
+                     return (
                      <div
                         key={item.id}
                         className="opacity-0 animate-fade-in-up h-full"
                         style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
                     >
                         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
-                             {item.visibility === 'pro' && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-300 z-10" />}
+                             {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-300 z-10" />}
                             <div className="pb-2">
                                 <h3 className="font-bold text-lg text-center">{item.title}</h3>
                             </div>
                             
-                            <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="relative block">
+                            <a href={!isLocked ? item.videoUrl || '#' : undefined} target="_blank" rel="noopener noreferrer" className={cn("relative block", isLocked && "cursor-default")} onClick={(e) => { if(isLocked) { e.preventDefault(); setShowUpgradeDialog(true); } }}>
                                 <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
                                     <FavoriteButton item={item} />
                                     {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
@@ -297,16 +299,14 @@ export default function CategoryPage() {
                             </a>
                             
                             <div className="pt-4 mt-auto">
-                                <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="w-full">
-                                    <Button variant="secondary" className="w-full">
-                                        <PlayCircle className="ml-2 h-4 w-4" />
-                                        مشاهدة الفيديو
-                                    </Button>
-                                </a>
+                               <Button variant="secondary" className="w-full" disabled={isLocked} onClick={() => { if(isLocked) { setShowUpgradeDialog(true); } else if (item.videoUrl) { window.open(item.videoUrl, '_blank'); } }}>
+                                    {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <PlayCircle className="ml-2 h-4 w-4" />}
+                                    {isLocked ? 'الترقية للمشاهدة' : 'مشاهدة الفيديو'}
+                                </Button>
                             </div>
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
         );
         case 'style5':
@@ -315,6 +315,7 @@ export default function CategoryPage() {
                 const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
                 
                 const handleImageClick = (imageUrl: string) => {
+                    if (isLocked) return;
                     setSelectedImage(imageUrl);
                 };
 
@@ -325,7 +326,7 @@ export default function CategoryPage() {
                                 <Image src={item.imageUrl} alt={item.title} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
                             )}
                             <div className="flex-1">
-                                <h3 className="font-bold text-xl flex items-center gap-2">{item.title} {item.visibility === 'pro' && <Crown className="h-5 w-5 text-yellow-500" />}</h3>
+                                <h3 className="font-bold text-xl flex items-center gap-2">{item.title} {isLocked && <Crown className="h-5 w-5 text-yellow-500" />}</h3>
                                 {item.appVersion && <p className="text-primary font-semibold text-sm">الإصدار {item.appVersion}</p>}
                                 <p className="text-muted-foreground text-sm mt-1">{item.instructions}</p>
                             </div>
@@ -350,7 +351,7 @@ export default function CategoryPage() {
                                                     height={1920}
                                                     sizes="(max-width: 768px) 80vw, 40vw"
                                                     priority={i === 0}
-                                                    className="w-full h-auto rounded-lg bg-muted cursor-pointer"
+                                                    className={cn("w-full h-auto rounded-lg bg-muted", !isLocked && "cursor-pointer")}
                                                     onClick={() => handleImageClick(ss)}
                                                 />
                                             </CarouselItem>
@@ -360,7 +361,7 @@ export default function CategoryPage() {
                             </div>
                         )}
                         <div className="w-full mt-2">
-                            <Button className="w-full" disabled={isLocked} onClick={() => isLocked && router.push('/pricing')}>
+                            <Button className="w-full" disabled={isLocked} onClick={() => isLocked && setShowUpgradeDialog(true)}>
                                 {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
                                 {isLocked ? 'الترقية للتحميل' : 'تحميل'}
                             </Button>
@@ -413,7 +414,9 @@ export default function CategoryPage() {
           <div className="space-y-8 mt-4">
             {filteredSubCategories && filteredSubCategories.length > 0 && (
                <div className="grid grid-cols-2 gap-4">
-                {filteredSubCategories.map((cat, index) => (
+                {filteredSubCategories.map((cat, index) => {
+                  const isLocked = cat.visibility === 'pro' && !isPro && !isAdmin;
+                  return (
                   <div
                     key={cat.id}
                     className="relative group opacity-0 animate-fade-in-up"
@@ -421,12 +424,12 @@ export default function CategoryPage() {
                     onClick={() => handleSubCategoryClick(cat)}
                   >
                        <div className="relative bg-primary p-4 text-primary-foreground rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm h-full min-h-36">
-                        {cat.visibility === 'pro' && <Crown className="absolute top-2 left-2 h-5 w-5 text-yellow-300 z-10" />}
+                        {isLocked && <Crown className="absolute top-2 left-2 h-5 w-5 text-yellow-300 z-10" />}
                         {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
                         <p className="font-bold text-lg text-center">{cat.name}</p>
                       </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
             {renderContent()}

@@ -39,11 +39,11 @@ export default function BottomNav() {
         <div className="relative z-10 flex flex-col items-center justify-center text-center group flex-1 h-full">
             {id === 'theme-toggle' ? (
                 effectiveTheme === 'dark' ? 
-                <Sun className={cn("h-7 w-7 transition-colors", isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary')} /> :
-                <Moon className={cn("h-7 w-7 transition-colors", isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary')} />
+                <Sun className={cn("h-6 w-6 transition-colors", isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary')} /> :
+                <Moon className={cn("h-6 w-6 transition-colors", isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary')} />
             ) : (
                 <Icon className={cn(
-                  "h-7 w-7 transition-colors",
+                  "h-6 w-6 transition-colors",
                   isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
                 )} />
             )}
@@ -77,14 +77,14 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-16 md:hidden px-4">
-      <div className="relative h-14 w-full max-w-xs mx-auto"> 
-        <div className="absolute bottom-0 w-full h-14 bg-card rounded-3xl shadow-lg"></div>
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-14 md:hidden px-4">
+      <div className="relative h-12 w-full max-w-xs mx-auto"> 
+        <div className="absolute bottom-0 w-full h-12 bg-card rounded-3xl shadow-lg pointer-events-none"></div>
         
         <div 
-          className="absolute top-0 w-[90px] h-[45px] bg-card"
+          className="absolute top-0 w-[80px] h-[40px] bg-card pointer-events-none"
           style={{
-            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 45px)` : '-100px',
+            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 40px)` : '-100px',
             transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
             clipPath: 'ellipse(60% 100% at 50% 0%)'
           }}
@@ -92,9 +92,9 @@ export default function BottomNav() {
         </div>
         
         <div 
-          className="absolute top-0 w-3 h-3 bg-primary rounded-full"
+          className="absolute top-0 w-2.5 h-2.5 bg-primary rounded-full pointer-events-none"
           style={{
-            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 6px)` : '-100px',
+            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 5px)` : '-100px',
             transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
             transform: `translateY(-50%) scale(${activeIndex !== -1 ? 1 : 0.5})`,
             transformOrigin: 'bottom',

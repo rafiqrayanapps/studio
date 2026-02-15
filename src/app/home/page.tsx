@@ -94,7 +94,9 @@ export default function HomePage() {
           <>
             <p className="text-muted-foreground text-sm mb-4">{mainCategories.length} قسم</p>
             <div className="grid grid-cols-2 gap-4">
-              {mainCategories.map((cat, index) => (
+              {mainCategories.map((cat, index) => {
+                const isLocked = cat.visibility === 'pro' && !isPro && !isAdmin;
+                return (
                 <div
                   key={cat.id}
                   className="opacity-0 animate-fade-in-up"
@@ -102,12 +104,12 @@ export default function HomePage() {
                   onClick={() => handleCategoryClick(cat)}
                 >
                   <div className="relative bg-primary text-primary-foreground p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm aspect-square text-center">
-                    {cat.visibility === 'pro' && <Crown className="absolute top-2 left-2 h-5 w-5 text-yellow-300" />}
+                    {isLocked && <Crown className="absolute top-2 left-2 h-5 w-5 text-yellow-300" />}
                     {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
                     <p className="font-bold text-lg">{cat.name}</p>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </>
         )}
