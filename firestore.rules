@@ -33,17 +33,15 @@ service cloud.firestore {
 
     // --- Content Rules ---
     match /categories/{categoryId} {
-      // Public categories are readable by everyone. Pro categories only by pro/admin users.
-      allow read: if resource.data.visibility == 'public' || isPro() || isAdmin();
+      // Allow everyone to read all categories. UI will handle locking.
+      allow read: if true;
       // Only admins can create, update, or delete categories.
       allow write: if isAdmin();
     }
 
     match /categories/{categoryId}/items/{itemId} {
-      // An item's access depends on both its own visibility and its parent category's visibility.
-      // Pro/Admin users can see everything.
-      // Public users can only see items marked public within categories marked public.
-      allow read: if (resource.data.visibility == 'public' && get(parent).data.visibility == 'public') || isPro() || isAdmin();
+      // Allow everyone to read all items. UI will handle locking.
+      allow read: if true;
       // Only admins can write content items.
       allow write: if isAdmin();
     }

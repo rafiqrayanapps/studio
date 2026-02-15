@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, doc, orderBy, where } from 'firebase/firestore';
+import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category, ContentItem } from '@/lib/definitions';
 import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,32 +44,17 @@ export default function CategoryPage() {
 
   const allCategoriesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    if (isUserLoading) return null; // Wait until user status is known
-
-    const q = query(collection(firestore, 'categories'));
-
-    // For non-pro/non-admin users, only fetch public categories.
-    if (!isPro && !isAdmin) {
-        return query(q, where('visibility', '==', 'public'));
-    }
-    
-    // Admins/Pros can see all categories.
-    return q;
-  }, [firestore, isUserLoading, isPro, isAdmin]);
+    // Fetch all categories for all users. The UI will handle locking.
+    return query(collection(firestore, 'categories'));
+  }, [firestore]);
   const { data: liveAllCategories, isLoading: subCategoriesLoading } = useCollection<Category>(allCategoriesQuery);
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
-      if (isUserLoading) return null;
-
-      const q = collection(firestore, 'categories', id, 'items');
-
-      if (!isPro && !isAdmin) {
-          return query(q, where('visibility', '==', 'public'));
-      }
-
-      return query(q, orderBy('order', 'asc'));
-  }, [firestore, id, isUserLoading, isPro, isAdmin]);
+      // Fetch all items for all users, ordered by 'order'.
+      // Security rules now allow this. The UI will handle locking.
+      return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
+  }, [firestore, id]);
   const { data: liveItems, isLoading: itemsLoading } = useCollection<ContentItem>(itemsQuery);
 
   useEffect(() => {
@@ -115,16 +100,9 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!displayItems) return [];
-    
-    const itemsToSort = [...displayItems];
-
-    // For free users, the query doesn't include ordering, so we sort on the client.
-    if (!isPro && !isAdmin) {
-      itemsToSort.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    }
-
-    return itemsToSort.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayItems, searchTerm, isPro, isAdmin]);
+    // The query is now always ordered, so we don't need to sort on the client.
+    return displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayItems, searchTerm]);
 
 
   // The page is only in a "loading" state if we are fetching data AND have no cached data to show.

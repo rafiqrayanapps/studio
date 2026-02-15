@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
 import { Search, Crown } from 'lucide-react';
@@ -16,7 +16,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 export default function HomePage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
-  const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
+  const { isLoading: isUserLoading } = useUserProfile();
 
   // 1. Read from localStorage cache first.
   const [cachedCategories, setCachedCategories] = useLocalStorage<WithId<CategoryType>[]>('allCategoriesCache', []);
@@ -28,20 +28,11 @@ export default function HomePage() {
   const categoriesQuery = useMemoFirebase(
     () => {
       if (!firestore) return null;
-      // Wait until user profile is loaded to avoid fetching with incorrect permissions
-      if (isUserLoading) return null; 
-
-      const q = collection(firestore, 'categories');
-
-      // If user is not pro or admin, they can only see public categories
-      if (!isPro && !isAdmin) {
-        return query(q, where('visibility', '==', 'public'));
-      }
-      
-      // Pro and admin users can see all categories, ordered by the db
-      return query(q, orderBy('order', 'asc'));
+      // Fetch all categories for all users, ordered by 'order'.
+      // Security rules now allow this. The UI will handle locking.
+      return query(collection(firestore, 'categories'), orderBy('order', 'asc'));
     },
-    [firestore, isUserLoading, isPro, isAdmin]
+    [firestore]
   );
   const { data: liveCategories, isLoading: isLoadingLive } = useCollection<CategoryType>(categoriesQuery);
 
@@ -56,20 +47,14 @@ export default function HomePage() {
 
   // Filter for main categories from the current display data (cached or live)
   const mainCategories = useMemo(() => {
-    // Create a shallow copy to avoid mutating state
+    // The query is now always ordered, so we don't need to sort on the client.
     const all = [...(displayCategories || [])]; 
-
-    // For free users, the query doesn't include ordering, so we sort on the client.
-    if (!isPro && !isAdmin) {
-      all.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    }
-
     const main = all.filter(cat => !cat.parentId);
     
     // Then filter by search term.
     if (!searchTerm) return main;
     return main.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayCategories, searchTerm, isPro, isAdmin]);
+  }, [displayCategories, searchTerm]);
 
   // Show skeleton only on the very first load when there's no cache and we are waiting for Firestore.
   const isLoading = (isLoadingLive && cachedCategories.length === 0) || isUserLoading;
