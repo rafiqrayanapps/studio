@@ -24,7 +24,7 @@ export default function BottomNav() {
   const getActiveIndex = () => {
     // Handle special cases for parent routes
     if (pathname.startsWith('/categories')) return 0; // home
-    if (pathname.startsWith('/pricing') || pathname.startsWith('/subscribe') || pathname.startsWith('/about')) return -1; // No active item
+    if (pathname.startsWith('/pricing') || pathname.startsWith('/subscribe') || pathname.startsWith('/about') || pathname.startsWith('/colors')) return -1; // No active item
 
     const exactMatchIndex = navItems.findIndex(item => item.href === pathname);
     return exactMatchIndex; // Will be -1 for theme toggle
@@ -49,8 +49,7 @@ export default function BottomNav() {
             ) : (
                 <Icon className={cn(
                   "h-6 w-6 transition-all duration-300",
-                  isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary',
-                  (id === 'home' || id === 'favorites' || id === 'notifications') && isActive && 'fill-primary'
+                  isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary'
                 )} />
             )}
             {id === 'notifications' && hasNewNotifications && (
@@ -84,9 +83,9 @@ export default function BottomNav() {
   const ITEMS_COUNT = navItems.length;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden px-4">
-      <div className="relative h-16 w-full max-w-xs mx-auto"> 
-        <div className="absolute bottom-0 w-full h-16 bg-card rounded-3xl shadow-lg"></div>
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-[4.5rem] md:hidden px-4">
+      <div className="relative h-14 w-full max-w-xs mx-auto"> 
+        <div className="absolute bottom-0 w-full h-14 bg-card rounded-3xl shadow-lg"></div>
         
         <div 
           className="absolute top-0 w-[70px] h-[35px] bg-card"
@@ -99,9 +98,9 @@ export default function BottomNav() {
         </div>
         
         <div 
-          className="absolute top-[-4px] w-1.5 h-1.5 bg-primary rounded-full"
+          className="absolute top-[-5px] w-2 h-2 bg-primary rounded-full"
           style={{
-            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 3px)` : '-100px',
+            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 4px)` : '-100px',
             transition: 'right 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
           }}
         />
