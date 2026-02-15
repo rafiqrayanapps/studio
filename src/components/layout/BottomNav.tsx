@@ -2,43 +2,32 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Heart, Bell, Search, User } from 'lucide-react';
+import { Home, Heart, Bell, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
 import { useMemo } from 'react';
+import { useTheme } from 'next-themes';
 
 export default function BottomNav() {
   const pathname = usePathname();
   const hasNewNotifications = useHasNewNotifications();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
-  // Updated to 5 items
+  // Order is logical for an RTL layout: Home is first (rightmost)
   const navItems = useMemo(() => [
-    { href: '/home', icon: Home, label: 'الرئيسية' },
-    { href: '/colors', icon: Search, label: 'بحث' },
-    { href: '/favorites', icon: Heart, label: 'المفضلة' },
-    { href: '/notifications', icon: Bell, label: 'الإشعارات' },
-    { href: '/login', icon: User, label: 'حسابي'},
+    { id: 'home', href: '/home', icon: Home, label: 'الرئيسية' },
+    { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
+    { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
+    { id: 'theme-toggle', icon: Moon, label: 'الوضع الليلي' },
   ], []);
 
   const getActiveIndex = () => {
-    // Handle special cases
+    // Handle special cases for parent routes
     if (pathname.startsWith('/categories')) return 0; // home
-    if (pathname.startsWith('/pricing') || pathname.startsWith('/subscribe')) return 4; // account
+    if (pathname.startsWith('/pricing') || pathname.startsWith('/subscribe') || pathname.startsWith('/about')) return -1; // No active item
 
     const exactMatchIndex = navItems.findIndex(item => item.href === pathname);
-    if (exactMatchIndex !== -1) return exactMatchIndex;
-
-    // Handle parent paths
-    const parentMatches = navItems
-        .map((item, index) => ({...item, index}))
-        .filter(item => item.href.length > 1 && pathname.startsWith(item.href));
-        
-    if (parentMatches.length > 0) {
-        // Sort by longest path first for specificity
-        return parentMatches.sort((a,b) => b.href.length - a.href.length)[0].index;
-    }
-
-    return -1; // No active item
+    return exactMatchIndex; // Will be -1 for theme toggle
   };
   
   const activeIndex = getActiveIndex();
@@ -47,21 +36,47 @@ export default function BottomNav() {
       return null;
   }
   
-  const NavLink = ({ item, isActive }: { item: typeof navItems[0]; isActive: boolean; }) => {
-    const { href, icon: Icon } = item;
+  const NavItem = ({ item, isActive }: { item: typeof navItems[0]; isActive: boolean; }) => {
+    const { id, href, icon: Icon } = item;
+    const effectiveTheme = theme === 'system' ? resolvedTheme : theme;
+
+    const content = (
+        <div className="relative z-10 flex flex-col items-center justify-center text-center group flex-1 h-full">
+            {id === 'theme-toggle' ? (
+                effectiveTheme === 'dark' ? 
+                <Sun className={cn("h-6 w-6 transition-all duration-300", isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary')} /> :
+                <Moon className={cn("h-6 w-6 transition-all duration-300", isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary')} />
+            ) : (
+                <Icon className={cn(
+                  "h-6 w-6 transition-all duration-300",
+                  isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary',
+                  (id === 'favorites' || id === 'home') && isActive && 'fill-primary'
+                )} />
+            )}
+            {id === 'notifications' && hasNewNotifications && (
+              <span className={cn(
+                "absolute top-2 right-1/2 h-2 w-2 rounded-full bg-destructive border border-card transition-all duration-300",
+                isActive ? 'translate-x-3 -translate-y-3' : 'translate-x-4'
+                )}></span>
+            )}
+        </div>
+    );
+    
+    if (id === 'theme-toggle') {
+        return (
+            <button 
+                onClick={(e) => { e.preventDefault(); setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}} 
+                className="flex-1 h-full"
+                aria-label="Toggle theme"
+            >
+                {content}
+            </button>
+        );
+    }
+
     return (
-      <Link href={href} className="relative z-10 flex flex-col items-center justify-center text-center group flex-1 h-full">
-        <Icon className={cn(
-          "h-7 w-7 transition-all duration-300",
-          isActive ? 'text-primary -translate-y-3' : 'text-muted-foreground group-hover:text-primary',
-          (href === '/favorites' || href === '/home') && isActive && 'fill-primary'
-        )} />
-        {href === '/notifications' && hasNewNotifications && (
-          <span className={cn(
-            "absolute top-2 right-1/2 h-2 w-2 rounded-full bg-destructive border border-card transition-all duration-300",
-            isActive ? 'translate-x-3 -translate-y-3' : 'translate-x-4'
-            )}></span>
-        )}
+      <Link href={href!} className="flex-1 h-full">
+        {content}
       </Link>
     );
   };
@@ -69,28 +84,30 @@ export default function BottomNav() {
   const ITEMS_COUNT = navItems.length;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden px-4" dir="ltr">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden px-4">
       <div className="relative h-16 w-full max-w-xs mx-auto"> 
         <div className="absolute bottom-0 w-full h-16 bg-card rounded-3xl shadow-lg"></div>
         
         <div 
-          className="absolute top-0 w-[70px] h-[35px] bg-card transition-all duration-300 ease-out"
+          className="absolute top-0 w-[70px] h-[35px] bg-card"
           style={{
-            left: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 35px)` : '-100px',
-            clipPath: 'ellipse(50% 100% at 50% 0%)'
+            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 35px)` : '-100px',
+            transition: 'right 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            clipPath: 'ellipse(60% 100% at 50% 0%)'
           }}
         >
         </div>
         
         <div 
-          className="absolute top-[3px] w-1.5 h-1.5 bg-primary rounded-full transition-all duration-300 ease-out"
+          className="absolute top-[2px] w-1.5 h-1.5 bg-primary rounded-full"
           style={{
-            left: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 3px)` : '-100px',
+            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 3px)` : '-100px',
+            transition: 'right 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
           }}
         />
-
+        
         <div className="relative h-full flex justify-around items-center">
-          {navItems.map((item, index) => <NavLink key={item.href} item={item} isActive={activeIndex === index} />)}
+          {navItems.map((item, index) => <NavItem key={item.id} item={item} isActive={activeIndex === index} />)}
         </div>
       </div>
     </nav>

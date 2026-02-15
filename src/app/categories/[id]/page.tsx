@@ -1,7 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
@@ -20,6 +19,7 @@ import { cn } from '@/lib/utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -32,6 +32,7 @@ export default function CategoryPage() {
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const { toast } = useToast();
   const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   // --- START CACHING STRATEGY ---
   const [cachedAllCategories, setCachedAllCategories] = useLocalStorage<WithId<Category>[]>('allCategoriesCache', []);
@@ -44,15 +45,12 @@ export default function CategoryPage() {
 
   const allCategoriesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    // Fetch all categories for all users. The UI will handle locking.
-    return query(collection(firestore, 'categories'));
+    return query(collection(firestore, 'categories'), orderBy('order', 'asc'));
   }, [firestore]);
   const { data: liveAllCategories, isLoading: subCategoriesLoading } = useCollection<Category>(allCategoriesQuery);
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
-      // Fetch all items for all users, ordered by 'order'.
-      // Security rules now allow this. The UI will handle locking.
       return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
   }, [firestore, id]);
   const { data: liveItems, isLoading: itemsLoading } = useCollection<ContentItem>(itemsQuery);
@@ -104,6 +102,14 @@ export default function CategoryPage() {
     return displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [displayItems, searchTerm]);
 
+  const handleSubCategoryClick = (category: WithId<Category>) => {
+    const isLocked = category.visibility === 'pro' && !isPro && !isAdmin;
+    if (isLocked) {
+      setShowUpgradeDialog(true);
+    } else {
+      router.push(`/categories/${category.id}`);
+    }
+  };
 
   // The page is only in a "loading" state if we are fetching data AND have no cached data to show.
   const isLoading = (categoryLoading && !category) || (subCategoriesLoading && cachedAllCategories.length === 0) || (itemsLoading && cachedItems.length === 0) || isUserLoading;
@@ -412,14 +418,13 @@ export default function CategoryPage() {
                     key={cat.id}
                     className="relative group opacity-0 animate-fade-in-up"
                     style={{ animationDelay: `${index * 100}ms` }}
+                    onClick={() => handleSubCategoryClick(cat)}
                   >
-                    <Link href={`/categories/${cat.id}`} passHref>
                        <div className="relative bg-primary p-4 text-primary-foreground rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm h-full min-h-36">
                         {cat.visibility === 'pro' && <Crown className="absolute top-2 left-2 h-5 w-5 text-yellow-300 z-10" />}
                         {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
                         <p className="font-bold text-lg text-center">{cat.name}</p>
                       </div>
-                    </Link>
                   </div>
                 ))}
               </div>
@@ -440,6 +445,7 @@ export default function CategoryPage() {
           {selectedImage && <Image src={selectedImage} alt="Preview" width={1200} height={800} className="w-full h-auto max-h-[90vh] object-contain rounded-lg" />}
         </DialogContent>
       </Dialog>
+      <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
     </div>
   );
 }
