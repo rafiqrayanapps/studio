@@ -1,28 +1,31 @@
 'use client';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, isAdmin, isLoading } = useUserProfile();
     const router = useRouter();
+    const [isAllowed, setIsAllowed] = useState(false);
 
     useEffect(() => {
         if (isLoading) {
-            return; // Wait for user profile and role to be loaded
+            return; // Still waiting for user data to load
         }
 
-        // If not loading, and there's no user or the user is not an admin,
-        // redirect them to the admin login page.
-        if (!user || !isAdmin) {
+        if (user && isAdmin) {
+            // If loading is complete, and the user is an admin, allow access.
+            setIsAllowed(true);
+        } else {
+            // If loading is complete and user is not an admin, redirect.
             router.replace('/login/admin');
         }
-
     }, [user, isAdmin, isLoading, router]);
 
-    // While loading, or if we are about to redirect because the user is not an admin, show a loader.
-    if (isLoading || !user || !isAdmin) {
+    // While waiting for the effect to determine access, show a loader.
+    // This prevents rendering children prematurely.
+    if (!isAllowed) {
         return (
             <div className="flex h-screen items-center justify-center bg-background">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -30,6 +33,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         );
     }
 
-    // If all checks pass (user is loaded and is an admin), render the children (e.g., the admin dashboard).
+    // If access is allowed, render the admin dashboard.
     return <>{children}</>;
 }
