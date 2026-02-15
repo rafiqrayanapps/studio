@@ -48,15 +48,21 @@ export default function AdminLoginForm() {
         throw new Error("خدمة قاعدة البيانات غير متاحة.");
       }
 
+      // Hardcoded check for the first admin to solve chicken/egg problem.
+      const isSuperAdmin = email === 'artbag.rayanapp@gmail.com';
+
       const whitelistRef = doc(firestore, 'whitelist', email);
       const whitelistSnap = await getDoc(whitelistRef);
 
-      if (whitelistSnap.exists() && whitelistSnap.data().role === 'admin') {
+      const isWhitelistedAdmin = whitelistSnap.exists() && whitelistSnap.data().role === 'admin';
+
+      if (isSuperAdmin || isWhitelistedAdmin) {
         router.push('/admin/dashboard');
       } else {
         await auth.signOut();
         throw new Error("هذا الحساب ليس لديه صلاحيات المسؤول.");
       }
+
     } catch (e: any) {
        let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
       if (e instanceof FirebaseError) {
