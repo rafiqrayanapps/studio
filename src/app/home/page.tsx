@@ -31,15 +31,15 @@ export default function HomePage() {
       // Wait until user profile is loaded to avoid fetching with incorrect permissions
       if (isUserLoading) return null; 
 
-      const q = query(collection(firestore, 'categories'), orderBy('order', 'asc'));
+      const q = collection(firestore, 'categories');
 
       // If user is not pro or admin, they can only see public categories
       if (!isPro && !isAdmin) {
         return query(q, where('visibility', '==', 'public'));
       }
       
-      // Pro and admin users can see all categories
-      return q;
+      // Pro and admin users can see all categories, ordered by the db
+      return query(q, orderBy('order', 'asc'));
     },
     [firestore, isUserLoading, isPro, isAdmin]
   );
@@ -56,13 +56,20 @@ export default function HomePage() {
 
   // Filter for main categories from the current display data (cached or live)
   const mainCategories = useMemo(() => {
-    const all = displayCategories || [];
+    // Create a shallow copy to avoid mutating state
+    const all = [...(displayCategories || [])]; 
+
+    // For free users, the query doesn't include ordering, so we sort on the client.
+    if (!isPro && !isAdmin) {
+      all.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }
+
     const main = all.filter(cat => !cat.parentId);
     
     // Then filter by search term.
     if (!searchTerm) return main;
     return main.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayCategories, searchTerm]);
+  }, [displayCategories, searchTerm, isPro, isAdmin]);
 
   // Show skeleton only on the very first load when there's no cache and we are waiting for Firestore.
   const isLoading = (isLoadingLive && cachedCategories.length === 0) || isUserLoading;

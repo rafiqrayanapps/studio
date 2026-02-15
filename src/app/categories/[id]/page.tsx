@@ -62,13 +62,13 @@ export default function CategoryPage() {
       if (!firestore || !id) return null;
       if (isUserLoading) return null;
 
-      const q = query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
+      const q = collection(firestore, 'categories', id, 'items');
 
       if (!isPro && !isAdmin) {
           return query(q, where('visibility', '==', 'public'));
       }
 
-      return q;
+      return query(q, orderBy('order', 'asc'));
   }, [firestore, id, isUserLoading, isPro, isAdmin]);
   const { data: liveItems, isLoading: itemsLoading } = useCollection<ContentItem>(itemsQuery);
 
@@ -115,8 +115,16 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!displayItems) return [];
-    return displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayItems, searchTerm]);
+    
+    const itemsToSort = [...displayItems];
+
+    // For free users, the query doesn't include ordering, so we sort on the client.
+    if (!isPro && !isAdmin) {
+      itemsToSort.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }
+
+    return itemsToSort.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayItems, searchTerm, isPro, isAdmin]);
 
 
   // The page is only in a "loading" state if we are fetching data AND have no cached data to show.
