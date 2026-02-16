@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -9,7 +9,6 @@ import { Search, Crown } from 'lucide-react';
 import BottomNav from '@/components/layout/BottomNav';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
-import useLocalStorage from '@/hooks/use-local-storage';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
@@ -21,43 +20,27 @@ export default function HomePage() {
   const router = useRouter();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
-  // 1. Read from localStorage cache first.
-  const [cachedCategories, setCachedCategories] = useLocalStorage<WithId<CategoryType>[]>('allCategoriesCache', []);
-
-  // 2. This state holds the data being displayed. It's initialized with cached data for an instant UI.
-  const [displayCategories, setDisplayCategories] = useState<WithId<CategoryType>[]>(cachedCategories);
-
-  // 3. In the background, fetch live data from Firestore.
+  // Fetch all categories from Firestore.
+  // Firestore's persistence cache will handle speed.
   const categoriesQuery = useMemoFirebase(
     () => {
       if (!firestore) return null;
-      // Fetch all categories for all users, ordered by 'order'.
-      // Security rules now allow this. The UI will handle locking.
       return query(collection(firestore, 'categories'), orderBy('order', 'asc'));
     },
     [firestore]
   );
-  const { data: liveCategories, isLoading: isLoadingLive } = useCollection<CategoryType>(categoriesQuery);
+  const { data: categories, isLoading: isLoadingCategories } = useCollection<CategoryType>(categoriesQuery);
 
-  // 4. When live data arrives, update the display and save the new data to the cache.
-  useEffect(() => {
-    if (liveCategories) {
-      setDisplayCategories(liveCategories);
-      setCachedCategories(liveCategories);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveCategories, setCachedCategories]); // setCachedCategories is stable
-
-  // Filter for main categories from the current display data (cached or live)
+  // Filter for main categories from the live data.
   const mainCategories = useMemo(() => {
-    // The query is now always ordered, so we don't need to sort on the client.
-    const all = [...(displayCategories || [])]; 
-    const main = all.filter(cat => !cat.parentId);
+    if (!categories) return [];
+    
+    const main = categories.filter(cat => !cat.parentId);
     
     // Then filter by search term.
     if (!searchTerm) return main;
     return main.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayCategories, searchTerm]);
+  }, [categories, searchTerm]);
 
   const handleCategoryClick = (category: WithId<CategoryType>) => {
     const isLocked = category.visibility === 'pro' && !isPro && !isAdmin;
@@ -68,8 +51,7 @@ export default function HomePage() {
     }
   };
 
-  // Show skeleton only on the very first load when there's no cache and we are waiting for Firestore.
-  const isLoading = (isLoadingLive && cachedCategories.length === 0) || isUserLoading;
+  const isLoading = isLoadingCategories || isUserLoading;
 
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">

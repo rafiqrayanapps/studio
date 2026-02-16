@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
@@ -34,48 +34,27 @@ export default function CategoryPage() {
   const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
-  // --- START CACHING STRATEGY ---
-  const [cachedAllCategories, setCachedAllCategories] = useLocalStorage<WithId<Category>[]>('allCategoriesCache', []);
-  const [displayAllCategories, setDisplayAllCategories] = useState<WithId<Category>[]>(cachedAllCategories);
-  const [cachedItems, setCachedItems] = useLocalStorage<WithId<ContentItem>[]>(`itemsCache-${id}`, []);
-  const [displayItems, setDisplayItems] = useState<WithId<ContentItem>[]>(cachedItems);
-
+  // Fetch current category, all categories (for sub-categories), and items directly.
+  // Firestore persistence provides caching.
   const categoryRef = useMemoFirebase(() => (firestore && id ? doc(firestore, 'categories', id) : null), [firestore, id]);
-  const { data: category, isLoading: categoryLoading, error: categoryError } = useDoc<Category>(categoryRef);
+  const { data: category, isLoading: isCategoryLoading, error: categoryError } = useDoc<Category>(categoryRef);
 
   const allCategoriesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'categories'), orderBy('order', 'asc'));
   }, [firestore]);
-  const { data: liveAllCategories, isLoading: subCategoriesLoading } = useCollection<Category>(allCategoriesQuery);
+  const { data: allCategories, isLoading: areAllCategoriesLoading } = useCollection<Category>(allCategoriesQuery);
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
       return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
   }, [firestore, id]);
-  const { data: liveItems, isLoading: itemsLoading } = useCollection<ContentItem>(itemsQuery);
-
-  useEffect(() => {
-      if (liveAllCategories) {
-          setDisplayAllCategories(liveAllCategories);
-          setCachedAllCategories(liveAllCategories);
-      }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveAllCategories, setCachedAllCategories]);
-
-  useEffect(() => {
-      if (liveItems) {
-          setDisplayItems(liveItems);
-          setCachedItems(liveItems);
-      }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveItems, setCachedItems]);
-  // --- END CACHING STRATEGY ---
+  const { data: items, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
 
   const subCategories = useMemo(() => {
-    if (!displayAllCategories) return [];
-    return displayAllCategories.filter((cat) => cat.parentId === id).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
-  }, [displayAllCategories, id]);
+    if (!allCategories) return [];
+    return allCategories.filter((cat) => cat.parentId === id).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [allCategories, id]);
 
   const isFavorite = (itemId: string) => favorites.some(item => item.id === itemId);
 
@@ -97,15 +76,15 @@ export default function CategoryPage() {
   }, [subCategories, searchTerm]);
 
   const filteredItems = useMemo(() => {
-    if (!displayItems) return [];
+    if (!items) return [];
     
     // Admins see everything. Others see only approved items (or legacy items without a status).
     const viewableItems = isAdmin
-      ? displayItems
-      : displayItems.filter(item => item.status === 'approved' || !item.status);
+      ? items
+      : items.filter(item => item.status === 'approved' || !item.status);
     
     return viewableItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayItems, searchTerm, isAdmin]);
+  }, [items, searchTerm, isAdmin]);
 
   const handleSubCategoryClick = (category: WithId<Category>) => {
     const isLocked = category.visibility === 'pro' && !isPro && !isAdmin;
@@ -116,8 +95,8 @@ export default function CategoryPage() {
     }
   };
 
-  // The page is only in a "loading" state if we are fetching data AND have no cached data to show.
-  const isLoading = (categoryLoading && !category) || (subCategoriesLoading && cachedAllCategories.length === 0) || (itemsLoading && cachedItems.length === 0) || isUserLoading;
+  // The page is loading if any of the required data is still being fetched.
+  const isLoading = isCategoryLoading || areAllCategoriesLoading || areItemsLoading || isUserLoading;
 
   const FavoriteButton = ({ item }: { item: WithId<ContentItem> }) => (
      <Button 
@@ -391,7 +370,7 @@ export default function CategoryPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
         <div className="sticky top-0 z-20">
-             <Header showMenu={false} title={categoryLoading ? '...' : (category?.name || "قسم غير معروف")}>
+             <Header showMenu={false} title={isCategoryLoading ? '...' : (category?.name || "قسم غير معروف")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-10">
