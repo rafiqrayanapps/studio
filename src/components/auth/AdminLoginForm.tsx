@@ -50,36 +50,8 @@ export default function AdminLoginForm() {
             throw new Error("خدمة قاعدة البيانات غير متاحة.");
         }
 
-        // --- First Admin Bootstrap ---
-        // Check if any admin exists in the system. If not, this user becomes the first.
-        const adminQuery = query(collection(firestore, 'whitelist'), where('role', '==', 'admin'), limit(1));
-        const adminSnapshot = await getDocs(adminQuery);
-
-        if (adminSnapshot.empty) {
-            const batch = writeBatch(firestore);
-            const userWhitelistRef = doc(firestore, 'whitelist', email);
-            batch.set(userWhitelistRef, {
-                email: email,
-                role: 'admin',
-                createdAt: serverTimestamp(),
-                isActivated: true,
-                activatedByUid: user.uid,
-            });
-            
-            const adminLockRef = doc(firestore, 'appConfig', 'adminLock');
-            batch.set(adminLockRef, {
-                locked: true,
-                firstAdminEmail: email,
-                createdAt: serverTimestamp(),
-            });
-
-            await batch.commit();
-            router.push('/admin/dashboard');
-            return;
-        }
-
         // --- Standard Login ---
-        // If admins exist, check the user's role from the whitelist.
+        // Check the user's role from the whitelist.
         const whitelistRef = doc(firestore, 'whitelist', email);
         const whitelistSnap = await getDoc(whitelistRef);
 

@@ -22,11 +22,6 @@ service cloud.firestore {
              get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'editor');
     }
 
-    function isFirstAdminWrite(database) {
-      // Checks if the admin lock document exists. If it doesn't, this is the first admin write.
-      return !exists(/databases/$(database)/documents/appConfig/adminLock);
-    }
-
     function hasActiveSubscription() {
       let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return profile.subscriptionTier == 'pro' &&
@@ -64,9 +59,7 @@ service cloud.firestore {
     
     match /appConfig/{docId} {
       allow read: if true;
-      // Allow creating the admin lock by the first admin, then only admins can write.
-      allow create: if docId == 'adminLock' && isFirstAdminWrite(database);
-      allow update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
     
     match /notifications/{notificationId} {
@@ -97,9 +90,8 @@ service cloud.firestore {
     match /whitelist/{email} {
       allow read: if true;
 
-      // CREATE: The first admin can create their own entry, OR an existing admin can create any entry.
-      allow create: if isAdmin() || 
-                    (request.auth.uid != null && request.auth.token.email == email && request.resource.data.role == 'admin' && isFirstAdminWrite(database));
+      // CREATE: Only an existing admin can create any entry.
+      allow create: if isAdmin();
 
       // UPDATE: An admin can update any entry, OR a pro user can claim their activation.
       allow update: if isAdmin() || 
