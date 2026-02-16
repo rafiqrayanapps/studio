@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, AnimationEvent } from 'react';
+import { useState, useEffect, useCallback, AnimationEvent, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -34,6 +34,7 @@ interface AdminLoginFormProps {
 
 export default function AdminLoginForm({ title, description }: AdminLoginFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [savedEmail, setSavedEmail] = useLocalStorage('rememberedEmail', '');
@@ -49,8 +50,9 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
 
   const onSubmit = useCallback(async (data: LoginFormValues) => {
     // Prevent multiple submissions
-    if (isSubmitting) return;
+    if (isSubmittingRef.current) return;
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -105,9 +107,10 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
       }
       setError(description);
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [auth, firestore, router, setSavedEmail, isSubmitting]);
+  }, [auth, firestore, router, setSavedEmail]);
 
 
   useEffect(() => {
