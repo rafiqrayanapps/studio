@@ -121,6 +121,7 @@ const useFormSchemas = () => {
         paypalUrl: z.string().url("رابط بايبال غير صالح").or(z.literal("")).optional(),
         whatsappUrl: z.string().url("رابط واتساب غير صالح").or(z.literal("")).optional(),
         telegramUrl: z.string().url("رابط تلجرام غير صالح").or(z.literal("")).optional(),
+        paymentInstructions: z.string().optional(),
     });
 
     return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema };
@@ -207,7 +208,7 @@ export default function AdminDashboardPage() {
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
   const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', role: 'pro', password: '', activationCode: '' } });
-  const paymentLinksForm = useForm<PaymentLinksFormValues>({ resolver: zodResolver(paymentLinksSchema), defaultValues: { paypalUrl: '', whatsappUrl: '', telegramUrl: '' } });
+  const paymentLinksForm = useForm<PaymentLinksFormValues>({ resolver: zodResolver(paymentLinksSchema), defaultValues: { paypalUrl: '', whatsappUrl: '', telegramUrl: '', paymentInstructions: '' } });
   const watchWhitelistRole = whitelistForm.watch('role');
 
 
@@ -284,6 +285,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (paymentLinksData) {
         paymentLinksForm.reset(paymentLinksData);
+    } else {
+        paymentLinksForm.reset({ paypalUrl: '', whatsappUrl: '', telegramUrl: '', paymentInstructions: '' });
     }
   }, [paymentLinksData, paymentLinksForm]);
 
@@ -1000,6 +1003,7 @@ export default function AdminDashboardPage() {
                                             <FormField control={paymentLinksForm.control} name="paypalUrl" render={({ field }) => ( <FormItem><FormLabel>رابط بايبال</FormLabel><FormControl><Input placeholder="https://paypal.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                             <FormField control={paymentLinksForm.control} name="whatsappUrl" render={({ field }) => ( <FormItem><FormLabel>رابط واتساب</FormLabel><FormControl><Input placeholder="https://wa.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                             <FormField control={paymentLinksForm.control} name="telegramUrl" render={({ field }) => ( <FormItem><FormLabel>رابط تلجرام</FormLabel><FormControl><Input placeholder="https://t.me/..." {...field} dir="ltr" value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={paymentLinksForm.control} name="paymentInstructions" render={({ field }) => ( <FormItem><FormLabel>معلومات الدفع</FormLabel><FormControl><Textarea placeholder="اشرح للمستخدم كيفية الدفع وأين يرسل إثبات الدفع..." {...field} value={field.value ?? ''} /></FormControl><FormDescription>هذه التعليمات ستظهر للمستخدم في نافذة طلب الاشتراك.</FormDescription><FormMessage /></FormItem> )} />
                                             <Button type="submit" disabled={paymentLinksForm.formState.isSubmitting} className="w-full">{paymentLinksForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الروابط"}</Button>
                                         </form>
                                     </Form>
@@ -1104,3 +1108,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    

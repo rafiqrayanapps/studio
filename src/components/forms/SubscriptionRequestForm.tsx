@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFirestore, addDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, serverTimestamp, doc } from 'firebase/firestore';
-import { Loader2, User, Phone, Mail, MessageSquare, Package } from 'lucide-react';
+import { Loader2, User, Phone, Mail, MessageSquare, Package, CreditCard, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -70,8 +70,10 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <CardHeader className="text-center p-0">
             <CardTitle>طلب اشتراك</CardTitle>
-            <CardDescription>أكمل بياناتك وسنتواصل معك.</CardDescription>
+            <CardDescription>أكمل بياناتك وأرسل إثبات الدفع.</CardDescription>
         </CardHeader>
+
+        {/* Fields */}
         <CardContent className="p-0 space-y-4">
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg text-sm">
                 <Package className="h-5 w-5 text-primary" />
@@ -128,29 +130,59 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
               )}
             />
         </CardContent>
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? <Loader2 className="animate-spin" /> : 'إرسال الطلب'}
-        </Button>
 
-        {paymentLinksData?.whatsappUrl && (
-          <>
-            <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">أو</span>
-                </div>
+        {/* Payment Instructions & Links */}
+        {(paymentLinksData?.paymentInstructions || paymentLinksData?.paypalUrl) && (
+            <div className="space-y-3 pt-4 border-t">
+                {paymentLinksData.paymentInstructions && (
+                    <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md border space-y-1">
+                        <p className="font-bold text-foreground">تعليمات الدفع:</p>
+                        <p className="whitespace-pre-wrap">{paymentLinksData.paymentInstructions}</p>
+                    </div>
+                )}
+                {paymentLinksData.paypalUrl && (
+                    <Button variant="outline" asChild className="w-full">
+                        <a href={paymentLinksData.paypalUrl} target="_blank" rel="noopener noreferrer">
+                            <CreditCard className="ml-2 h-5 w-5 text-blue-600" />
+                            الدفع عبر PayPal
+                        </a>
+                    </Button>
+                )}
             </div>
-            <Button variant="outline" asChild className="w-full bg-green-50 hover:bg-green-100 text-green-700 border-green-200 hover:text-green-800">
-                <a href={paymentLinksData.whatsappUrl} target="_blank" rel="noopener noreferrer">
-                    <MessageSquare className="ml-2 h-5 w-5" />
-                    تواصل عبر واتساب
-                </a>
-            </Button>
-          </>
         )}
+
+        {/* Submit Form */}
+        <div className="space-y-4 pt-4 border-t">
+          <p className="text-center text-sm text-muted-foreground">
+            **مهم:** بعد الدفع، سجّل بياناتك أعلاه ثم تواصل معنا لإرسال إثبات الدفع.
+          </p>
+          <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل بيانات الطلب'}
+          </Button>
+
+          {/* Contact Links */}
+          <div className="grid grid-cols-2 gap-2">
+              {paymentLinksData?.whatsappUrl && (
+                  <Button variant="outline" asChild className="w-full bg-green-50 hover:bg-green-100 text-green-700 border-green-200 hover:text-green-800">
+                      <a href={paymentLinksData.whatsappUrl} target="_blank" rel="noopener noreferrer">
+                          <MessageSquare className="ml-2 h-5 w-5" />
+                          إرسال الإثبات (واتساب)
+                      </a>
+                  </Button>
+              )}
+              {paymentLinksData?.telegramUrl && (
+                   <Button variant="outline" asChild className="w-full bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200 hover:text-sky-800">
+                       <a href={paymentLinksData.telegramUrl} target="_blank" rel="noopener noreferrer">
+                           <Send className="ml-2 h-5 w-5" />
+                           إرسال الإثبات (تلجرام)
+                       </a>
+                   </Button>
+              )}
+          </div>
+        </div>
       </form>
     </Form>
   );
 }
+
+    

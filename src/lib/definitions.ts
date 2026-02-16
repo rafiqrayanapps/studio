@@ -95,6 +95,7 @@ export interface PaymentLinksConfig {
     paypalUrl?: string;
     whatsappUrl?: string;
     telegramUrl?: string;
+    paymentInstructions?: string;
 }
 
 export interface SubscriptionRequest {
@@ -105,3 +106,5 @@ export interface SubscriptionRequest {
   email: string;
   createdAt: any; // Firebase Timestamp
 }
+
+    
