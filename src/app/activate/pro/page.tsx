@@ -3,12 +3,12 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import ProActivationForm from '@/components/auth/ProActivationForm';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { PaymentLinksConfig } from '@/lib/definitions';
-import { MessageCircle, CreditCard, Bot } from 'lucide-react'; // Assuming 'Bot' for Telegram, as there's no official one
+import { MessageCircle, CreditCard, Bot } from 'lucide-react';
 
 export default function ProActivationPage() {
     const firestore = useFirestore();
@@ -18,7 +18,7 @@ export default function ProActivationPage() {
     const iconMap: { [key: string]: React.ElementType } = {
         paypalUrl: CreditCard,
         whatsappUrl: MessageCircle,
-        telegramUrl: Bot // Using Bot icon for Telegram
+        telegramUrl: Bot
     };
 
     const links = useMemo(() => [
@@ -30,10 +30,13 @@ export default function ProActivationPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-secondary p-4">
-        <div className="w-full max-w-md">
-             <Card className="mb-6">
-                <CardContent className="p-4 space-y-3">
-                    <h3 className="text-center font-bold text-lg">للحصول على كود تفعيل</h3>
+        <div className="w-full max-w-md space-y-6">
+             <Card>
+                <CardHeader>
+                    <CardTitle className="text-center">1. الحصول على كود تفعيل</CardTitle>
+                    <CardDescription className="text-center">تواصل معنا عبر إحدى الطرق التالية للحصول على كود اشتراك برو.</CardDescription>
+                </CardHeader>
+                <CardContent>
                      <div className="grid grid-cols-1 gap-3">
                         {links.map(({ key, text }) => {
                             const url = paymentLinks?.[key as keyof PaymentLinksConfig];
@@ -55,7 +58,8 @@ export default function ProActivationPage() {
             <Card>
                 <ProActivationForm />
             </Card>
-            <p className="px-8 text-center text-sm text-muted-foreground mt-4">
+            
+            <p className="px-8 text-center text-sm text-muted-foreground">
              هل لديك حساب بالفعل؟{' '}
             <Link
                 href="/login/pro"

@@ -22,7 +22,7 @@ export default function BottomNav() {
 
   const getActiveIndex = () => {
     if (pathname.startsWith('/categories')) return 0;
-    if (pathname.startsWith('/pricing') || pathname.startsWith('/subscribe') || pathname.startsWith('/about') || pathname.startsWith('/colors')) return -1;
+    if (pathname.startsWith('/pricing') || pathname.startsWith('/subscribe') || pathname.startsWith('/about') || pathname.startsWith('/colors') || pathname.startsWith('/account') || pathname.startsWith('/activate/pro')) return -1;
     const exactMatchIndex = navItems.findIndex(item => item.href === pathname);
     return exactMatchIndex;
   };
@@ -72,17 +72,17 @@ export default function BottomNav() {
     );
   };
 
-  if (pathname.startsWith('/admin') || pathname === '/') {
+  if (pathname.startsWith('/admin') || pathname === '/' || pathname.startsWith('/login')) {
       return null;
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-14 md:hidden px-4">
-      <div className="relative h-12 w-full max-w-xs mx-auto"> 
-        <div className="absolute bottom-0 w-full h-12 bg-card rounded-3xl shadow-lg pointer-events-none"></div>
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden px-4 pointer-events-none">
+      <div className="relative h-full w-full max-w-xs mx-auto pointer-events-auto"> 
+        <div className="absolute bottom-4 w-full h-16 bg-card rounded-3xl shadow-lg pointer-events-none"></div>
         
         <div 
-          className="absolute top-0 w-[80px] h-[40px] bg-card pointer-events-none"
+          className="absolute top-4 w-[80px] h-[40px] bg-card pointer-events-none"
           style={{
             right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 40px)` : '-100px',
             transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -92,7 +92,7 @@ export default function BottomNav() {
         </div>
         
         <div 
-          className="absolute top-0 w-2.5 h-2.5 bg-primary rounded-full pointer-events-none"
+          className="absolute top-4 w-2.5 h-2.5 bg-primary rounded-full pointer-events-none"
           style={{
             right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 5px)` : '-100px',
             transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -101,7 +101,7 @@ export default function BottomNav() {
           }}
         />
         
-        <div className="relative h-full flex justify-around items-center">
+        <div className="relative h-full flex justify-around items-center pt-4">
           {navItems.map((item, index) => <NavItem key={item.id} item={item} isActive={activeIndex === index} />)}
         </div>
       </div>
