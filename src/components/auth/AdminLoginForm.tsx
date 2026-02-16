@@ -27,7 +27,12 @@ const formSchema = z.object({
 
 type LoginFormValues = z.infer<typeof formSchema>;
 
-export default function AdminLoginForm() {
+interface AdminLoginFormProps {
+  title?: string;
+  description?: string;
+}
+
+export default function AdminLoginForm({ title, description }: AdminLoginFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -111,8 +116,8 @@ export default function AdminLoginForm() {
   return (
     <>
       <CardHeader className="text-center">
-        <CardTitle>تسجيل الدخول</CardTitle>
-        <CardDescription>أهلاً بعودتك! سجل الدخول للمتابعة</CardDescription>
+        <CardTitle>{title || 'تسجيل الدخول'}</CardTitle>
+        <CardDescription>{description || 'أهلاً بعودتك! سجل الدخول للمتابعة'}</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
