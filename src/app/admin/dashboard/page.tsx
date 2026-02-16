@@ -108,7 +108,7 @@ const useFormSchemas = () => {
                 path: ["subscriptionDuration"],
             });
         }
-        if (data.role === 'admin' && (!data.password || data.password.length < 6)) {
+        if ((data.role === 'admin' || data.role === 'editor') && (!data.password || data.password.length < 6)) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "كلمة المرور مطلوبة ويجب أن تكون 6 أحرف على الأقل.",
@@ -438,13 +438,13 @@ export default function AdminDashboardPage() {
     
     const email = values.email.toLowerCase();
 
-    if (values.role === 'admin') {
+    if (values.role === 'admin' || values.role === 'editor') {
         if (!values.password) {
-            whitelistForm.setError('password', { message: 'كلمة المرور مطلوبة للمسؤول' });
+            whitelistForm.setError('password', { message: 'كلمة المرور مطلوبة للمسؤول أو المحرر.' });
             return;
         }
 
-        const tempAppName = `temp-admin-creation-${Date.now()}`;
+        const tempAppName = `temp-user-creation-${Date.now()}`;
         const tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuthInstance(tempApp);
         
@@ -457,9 +457,9 @@ export default function AdminDashboardPage() {
             const whitelistRef = doc(firestore, 'whitelist', email);
             batch.set(whitelistRef, {
                 email: email,
-                role: 'admin',
+                role: values.role,
                 createdAt: serverTimestamp(),
-                isActivated: true, // Activated on creation
+                isActivated: true,
                 activatedByUid: newUser.uid,
             });
 
@@ -472,12 +472,14 @@ export default function AdminDashboardPage() {
             });
 
             await batch.commit();
-            
-            toast({ title: "تم إنشاء حساب المسؤول بنجاح" });
+
+            const roleName = values.role === 'admin' ? 'المسؤول' : 'المحرر';
+            toast({ title: `تم إنشاء حساب ${roleName} بنجاح` });
             whitelistForm.reset({ email: '', role: 'pro', password: '', activationCode: '' });
 
         } catch (e: any) {
-            let errorMessage = "فشل إنشاء حساب المسؤول.";
+            const roleName = values.role === 'admin' ? 'المسؤول' : 'المحرر';
+            let errorMessage = `فشل إنشاء حساب ${roleName}.`;
             if (e instanceof FirebaseError) {
                 if (e.code === 'auth/email-already-in-use') {
                     errorMessage = 'هذا البريد الإلكتروني مستخدم بالفعل.';
@@ -490,7 +492,7 @@ export default function AdminDashboardPage() {
             await deleteApp(tempApp);
         }
 
-    } else if (values.role === 'pro' || values.role === 'editor') {
+    } else if (values.role === 'pro') {
         const docRef = doc(firestore, 'whitelist', email);
         
         const dataToSet: Partial<WhitelistEntry> = {
@@ -514,10 +516,7 @@ export default function AdminDashboardPage() {
 
         await setDoc(docRef, dataToSet, { merge: true });
         
-        const successMessage = values.role === 'pro' 
-            ? "تم إضافة المستخدم إلى قائمة التفعيل 'برو'." 
-            : "تم إضافة المستخدم بصلاحيات 'محرر'.";
-        toast({ title: successMessage });
+        toast({ title: "تم إضافة المستخدم إلى قائمة التفعيل 'برو'." });
         whitelistForm.reset({ email: '', role: 'pro', password: '', activationCode: '' });
     }
   };
@@ -924,7 +923,7 @@ export default function AdminDashboardPage() {
                                         </FormItem>
                                     )} />
 
-                                    {watchWhitelistRole === 'admin' && (
+                                    {(watchWhitelistRole === 'admin' || watchWhitelistRole === 'editor') && (
                                         <FormField
                                             control={whitelistForm.control}
                                             name="password"
@@ -1108,5 +1107,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    
