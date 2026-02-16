@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 const AppLogo = () => {
     return (
         <div className="bg-card p-8 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center w-full leading-tight">
-            <span className="text-5xl font-bold text-foreground">رفيق المصمم</span>
+            <div className="font-bold text-5xl flex flex-col items-center gap-2">
+                <span className="text-foreground">رفيق</span>
+                <span className="bg-muted text-primary rounded-2xl px-6 py-2">المصمم</span>
+            </div>
         </div>
     );
 };
