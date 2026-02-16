@@ -2,48 +2,54 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Heart, Bell, Palette, User } from 'lucide-react';
+import { Home, Heart, Bell, User, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { useTheme } from 'next-themes';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const hasNewNotifications = useHasNewNotifications();
   const { isPro, isAdmin } = useUserProfile();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const [indicatorStyle, setIndicatorStyle] = useState({ left: '50%', opacity: 0 });
   const navRef = useRef<HTMLDivElement>(null);
-  const itemsRef = useRef<(HTMLAnchorElement | null)[]>([]);
-  
-  const getActivePath = () => {
-    const topLevelPaths = ['/home', '/favorites', '/colors', '/notifications'];
-    if (topLevelPaths.includes(pathname)) {
-        return pathname;
-    }
-    
-    const profileRelatedPaths = ['/account', '/login', '/activate/pro'];
-    if (profileRelatedPaths.some(p => pathname.startsWith(p))) {
-        if (isAdmin) return '/admin/dashboard';
-        if (isPro) return '/account';
-        return '/login';
-    }
-    return ''; // Return empty for non-nav pages like /categories/[id]
-  }
-  
-  const activePath = getActivePath();
+  const itemsRef = useRef<(HTMLAnchorElement | HTMLButtonElement | null)[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navItems = useMemo(() => [
     { id: 'home', href: '/home', icon: Home, label: 'الرئيسية' },
     { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
-    { id: 'colors', href: '/colors', icon: Palette, label: 'الألوان' },
+    { id: 'theme-toggle', icon: theme === 'dark' ? Sun : Moon, label: 'الوضع' },
     { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
     { id: 'profile', href: '/account', icon: User, label: 'حسابي' },
-  ], []);
+  ], [theme]);
+
+  const getActivePath = () => {
+    const topLevelPaths = ['/home', '/favorites', '/notifications'];
+    if (topLevelPaths.includes(pathname)) {
+        return pathname;
+    }
+    
+    if (pathname.startsWith('/admin')) return '/admin/dashboard';
+    if (pathname.startsWith('/account')) return '/account';
+    if (pathname.startsWith('/login')) return '/login';
+    
+    return '';
+  }
+  
+  const activePath = getActivePath();
 
   const activeIndex = useMemo(() => {
     return navItems.findIndex(item => {
+        if (!item.href) return false;
+        
         let finalHref = item.href;
         if (item.id === 'profile') {
             if (isAdmin) finalHref = '/admin/dashboard';
@@ -74,11 +80,16 @@ export default function BottomNav() {
     }, 50);
 
     return () => clearTimeout(timeoutId);
-  }, [activeIndex, pathname]);
+  }, [activeIndex, pathname, mounted]);
 
+  // Hide on splash page and until mounted to prevent hydration issues
+  if (pathname === '/' || !mounted) {
+    return null;
+  }
 
   const NavItem = ({ item, index }: { item: (typeof navItems)[0], index: number }) => {
     const { id, href, icon: Icon, label } = item;
+    const hasNewNotifications = useHasNewNotifications();
     
     let finalHref = href;
     if (id === 'profile') {
@@ -100,14 +111,23 @@ export default function BottomNav() {
         )}
       </div>
     );
+
+    const commonProps = {
+        'aria-label': label,
+        ref: (el: any) => (itemsRef.current[index] = el),
+        className: "group flex-1 h-full flex items-center justify-center transition-all duration-300"
+    };
+    
+    if (id === 'theme-toggle') {
+        return (
+            <button {...commonProps} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                {content}
+            </button>
+        )
+    }
     
     return (
-        <Link 
-            href={finalHref || '#'}
-            aria-label={label}
-            ref={(el) => (itemsRef.current[index] = el)}
-            className="group flex-1 h-full flex items-center justify-center transition-all duration-300"
-        >
+        <Link href={finalHref || '#'} {...commonProps}>
           {content}
         </Link>
     );
@@ -121,7 +141,6 @@ export default function BottomNav() {
         style={{boxShadow: '0 4px 20px rgba(0,0,0,0.1)'}}
         >
         
-        {/* Sliding Dot Indicator */}
         <div
             className="absolute top-2 h-1.5 w-1.5 bg-primary rounded-full transition-all duration-500 ease-in-out"
             style={{
