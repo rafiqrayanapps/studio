@@ -128,6 +128,7 @@ const useFormSchemas = () => {
         name: z.string().min(1, "الاسم مطلوب"),
         icon: z.string().min(1, "الأيقونة مطلوبة (اسم أيقونة من Lucide)"),
         link: z.string().url("رابط غير صالح"),
+        country: z.string().min(2, "الدولة مطلوبة"),
         enabled: z.boolean().default(true),
     });
 
@@ -223,7 +224,7 @@ export default function AdminDashboardPage() {
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
   const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', role: 'pro', password: '', activationCode: '' } });
   const paymentLinksForm = useForm<PaymentLinksFormValues>({ resolver: zodResolver(paymentLinksSchema), defaultValues: { paypalUrl: '', whatsappUrl: '', telegramUrl: '', paymentInstructions: '' } });
-  const paymentMethodForm = useForm<PaymentMethodFormValues>({ resolver: zodResolver(paymentMethodSchema), defaultValues: { name: '', icon: 'CreditCard', link: '', enabled: true } });
+  const paymentMethodForm = useForm<PaymentMethodFormValues>({ resolver: zodResolver(paymentMethodSchema), defaultValues: { name: '', icon: 'CreditCard', link: '', country: 'ALL', enabled: true } });
   const watchWhitelistRole = whitelistForm.watch('role');
 
 
@@ -278,7 +279,7 @@ export default function AdminDashboardPage() {
     if (editingPaymentMethod) {
       paymentMethodForm.reset(editingPaymentMethod);
     } else {
-      paymentMethodForm.reset({ name: '', icon: 'CreditCard', link: '', enabled: true });
+      paymentMethodForm.reset({ name: '', icon: 'CreditCard', link: '', country: 'ALL', enabled: true });
     }
   }, [editingPaymentMethod, paymentMethodForm]);
 
@@ -439,7 +440,7 @@ export default function AdminDashboardPage() {
       addDocumentNonBlocking(collection(firestore, 'paymentMethods'), { ...values, order: newOrder });
       toast({ title: 'تم إضافة طريقة دفع جديدة' });
     }
-    paymentMethodForm.reset();
+    paymentMethodForm.reset({ name: '', icon: 'CreditCard', link: '', country: 'ALL', enabled: true });
   };
   
   const onSubscriptionDialogSubmit = (values: SubscriptionDialogFormValues) => {
@@ -916,6 +917,31 @@ export default function AdminDashboardPage() {
                                     <FormField control={paymentMethodForm.control} name="name" render={({ field }) => <FormItem><FormLabel>اسم الطريقة</FormLabel><FormControl><Input placeholder="PayPal" {...field} /></FormControl><FormMessage /></FormItem>} />
                                     <FormField control={paymentMethodForm.control} name="icon" render={({ field }) => <FormItem><FormLabel>أيقونة (Lucide)</FormLabel><FormControl><Input placeholder="CreditCard" {...field} /></FormControl><FormDescription>ابحث عن اسم الأيقونة في موقع <a href="https://lucide.dev/icons/" target="_blank" className="text-primary underline">lucide.dev/icons</a></FormDescription><FormMessage /></FormItem>} />
                                     <FormField control={paymentMethodForm.control} name="link" render={({ field }) => <FormItem><FormLabel>رابط الدفع</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField
+                                        control={paymentMethodForm.control}
+                                        name="country"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>الدولة</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value} defaultValue="ALL">
+                                                <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="ALL">كل الدول (Global)</SelectItem>
+                                                    <SelectItem value="SA">المملكة العربية السعودية</SelectItem>
+                                                    <SelectItem value="YE">اليمن</SelectItem>
+                                                    <SelectItem value="EG">مصر</SelectItem>
+                                                    <SelectItem value="AE">الإمارات العربية المتحدة</SelectItem>
+                                                    <SelectItem value="KW">الكويت</SelectItem>
+                                                    <SelectItem value="QA">قطر</SelectItem>
+                                                    <SelectItem value="BH">البحرين</SelectItem>
+                                                    <SelectItem value="OM">عمان</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormDescription>اختر الدولة التي ستظهر بها طريقة الدفع هذه.</FormDescription>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <FormField control={paymentMethodForm.control} name="enabled" render={({ field }) => <FormItem className="flex items-center gap-2 pt-2"><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>مفعلة؟</FormLabel></FormItem>} />
                                     <div className="flex gap-2">
                                         {editingPaymentMethod && <Button type="button" variant="secondary" onClick={() => { setEditingPaymentMethod(null); }} className="w-full">إلغاء</Button>}
@@ -929,7 +955,10 @@ export default function AdminDashboardPage() {
                                 <div className="space-y-2">
                                     {(paymentMethods || []).map((method, index) => (
                                     <div key={method.id} className="flex items-center bg-secondary p-2 rounded-md">
-                                        <p className="flex-1 font-semibold">{method.name}</p>
+                                        <p className="flex-1 font-semibold flex items-center gap-2">
+                                            {method.name}
+                                            <Badge variant="secondary" className="font-mono">{method.country}</Badge>
+                                        </p>
                                         <div className="flex items-center gap-1">
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(paymentMethods!, index, 'up', 'paymentMethods')} disabled={index === 0}><ArrowUp/></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(paymentMethods!, index, 'down', 'paymentMethods')} disabled={index === paymentMethods!.length - 1}><ArrowDown/></Button>
@@ -1190,5 +1219,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    

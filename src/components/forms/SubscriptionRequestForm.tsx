@@ -13,9 +13,9 @@ import { CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { PaymentLinksConfig, PaymentMethod } from '@/lib/definitions';
 import { useRouter } from 'next/navigation';
-import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import PhoneInput, { isValidPhoneNumber, type Country } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import DynamicIcon from '@/components/ui/dynamic-icon';
 
@@ -38,6 +38,7 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
+  const [selectedCountry, setSelectedCountry] = useState<Country | undefined>('SA');
 
   const paymentLinksRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'paymentLinks') : null, [firestore]);
   const { data: paymentLinksData } = useDoc<PaymentLinksConfig>(paymentLinksRef);
@@ -49,6 +50,14 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
       if (!allPaymentMethods) return [];
       return allPaymentMethods.filter(method => method.enabled);
   }, [allPaymentMethods]);
+
+  const filteredPaymentMethods = useMemo(() => {
+    if (!enabledPaymentMethods) return [];
+    if (!selectedCountry) return enabledPaymentMethods.filter(method => method.country === 'ALL');
+    
+    // Show methods for the selected country AND global methods
+    return enabledPaymentMethods.filter(method => method.country === selectedCountry || method.country === 'ALL');
+  }, [enabledPaymentMethods, selectedCountry]);
 
   const form = useForm<SubscriptionRequestFormValues>({
     resolver: zodResolver(subscriptionRequestSchema),
@@ -98,7 +107,7 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
                     {isLoadingPaymentMethods ? (
                         <Skeleton className="h-10 w-full" />
                     ) : (
-                        enabledPaymentMethods.map(method => (
+                        filteredPaymentMethods.map(method => (
                             <Button key={method.id} variant="outline" asChild className="w-full">
                                 <a href={method.link} target="_blank" rel="noopener noreferrer">
                                     <DynamicIcon name={method.icon} className="ml-2 h-5 w-5" />
@@ -164,6 +173,7 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
                         {...field}
                         international
                         defaultCountry="SA"
+                        onCountryChange={setSelectedCountry}
                         placeholder="أدخل رقم الهاتف"
                         dir="ltr"
                         className="SubscriptionRequestForm-phoneInput"
@@ -184,5 +194,3 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
     </Form>
   );
 }
-
-    

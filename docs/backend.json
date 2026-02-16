@@ -444,7 +444,7 @@
     },
     "PaymentMethod": {
       "title": "Payment Method",
-      "description": "Represents a payment method button with a name, icon, and link.",
+      "description": "Represents a payment method button with a name, icon, link, and country targeting.",
       "type": "object",
       "properties": {
         "name": {
@@ -460,6 +460,10 @@
           "format": "uri",
           "description": "The URL for the payment button."
         },
+        "country": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 country code (e.g., 'SA', 'YE') or 'ALL' for global."
+        },
         "order": {
           "type": "number",
           "description": "A number for ordering the payment methods."
@@ -473,6 +477,7 @@
         "name",
         "icon",
         "link",
+        "country",
         "order",
         "enabled"
       ]
@@ -630,5 +635,3 @@
     "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings like theme, share links, and payment links. A `subscriptionRequests` collection stores user requests. A `whitelist` collection is added to allow admins to grant roles to users by email, now including device fingerprinting for security. A `paymentMethods` collection is added to allow admins to dynamically manage payment options."
   }
 }
-
-    

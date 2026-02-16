@@ -112,8 +112,7 @@ export interface PaymentMethod {
   name: string;
   icon: string;
   link: string;
+  country: string;
   order: number;
   enabled: boolean;
 }
-
-    
