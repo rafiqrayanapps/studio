@@ -34,6 +34,11 @@ export default function BottomNav() {
         return pathname;
     }
     
+    // If we are on a category page, consider 'home' to be the active path.
+    if (pathname.startsWith('/categories')) {
+        return '/home';
+    }
+
     return '';
   }
   
@@ -65,10 +70,12 @@ export default function BottomNav() {
     return () => clearTimeout(timeoutId);
   }, [activeIndex, pathname, mounted]);
 
-  // Hide on splash page, admin pages, and until mounted to prevent hydration issues
-  if (pathname === '/' || pathname.startsWith('/admin') || !mounted) {
+  const hideOnPaths = ['/', '/login', '/signup', '/activate', '/subscribe'];
+  // Hide on splash, auth pages, admin pages, and until mounted to prevent hydration issues
+  if (hideOnPaths.some(p => pathname.startsWith(p)) || pathname.startsWith('/admin') || !mounted) {
     return null;
   }
+
 
   const NavItem = ({ item, index }: { item: (typeof navItems)[0], index: number }) => {
     const { id, href, icon: Icon, label } = item;
