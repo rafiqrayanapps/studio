@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig, SubscriptionRequest } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -143,7 +143,7 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
   const { isAdmin, isEditor } = useUserProfile();
 
-  const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification' | 'whitelist' | 'plan', entity: WithId<any> } | null>(null);
+  const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification' | 'whitelist' | 'plan' | 'request', entity: WithId<any> } | null>(null);
 
   // Categories state
   const [editingCategory, setEditingCategory] = useState<WithId<CategoryType> | null>(null);
@@ -183,6 +183,9 @@ export default function AdminDashboardPage() {
 
   const paymentLinksRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'paymentLinks') : null, [firestore]);
   const { data: paymentLinksData } = useDoc<PaymentLinksConfig>(paymentLinksRef);
+  
+  const subscriptionRequestsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'subscriptionRequests'), orderBy('createdAt', 'desc')) : null, [firestore]);
+  const { data: subscriptionRequests, isLoading: isLoadingRequests } = useCollection<SubscriptionRequest>(subscriptionRequestsQuery);
 
 
   useEffect(() => {
@@ -542,6 +545,9 @@ export default function AdminDashboardPage() {
     } else if (type === 'plan') {
        deleteDocumentNonBlocking(doc(firestore, 'pricingPlans', entity.id));
        toast({ title: "تم حذف خطة الأسعار" });
+    } else if (type === 'request') {
+       deleteDocumentNonBlocking(doc(firestore, 'subscriptionRequests', entity.id));
+       toast({ title: "تم حذف طلب الاشتراك" });
     }
     
     setDeletingEntity(null);
@@ -695,9 +701,10 @@ export default function AdminDashboardPage() {
         </Header>
         <main className="flex-1 container mx-auto max-w-5xl py-8 px-4">
             <Tabs defaultValue="categories" dir="rtl">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 mb-6 h-auto">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5 mb-6 h-auto">
                     <TabsTrigger value="categories" className="py-2">الأقسام والمحتوى</TabsTrigger>
                     {isAdmin && <TabsTrigger value="plans" className="py-2">خطط الأسعار</TabsTrigger>}
+                    {isAdmin && <TabsTrigger value="requests" className="py-2">طلبات الاشتراك</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="users" className="py-2">المستخدمين</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="settings" className="py-2">الإعدادات العامة</TabsTrigger>}
                 </TabsList>
@@ -851,6 +858,42 @@ export default function AdminDashboardPage() {
                         </CardContent>
                     </Card>
                 </TabsContent>}
+
+                {isAdmin && <TabsContent value="requests" className="space-y-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>طلبات الاشتراك الواردة</CardTitle>
+                            <CardDescription>هنا تظهر الطلبات الجديدة من المستخدمين للاشتراك في الخطط.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {isLoadingRequests ? <Skeleton className="h-20 w-full" /> : (subscriptionRequests && subscriptionRequests.length > 0) ? subscriptionRequests.map((req) => (
+                                    <Card key={req.id} className="bg-secondary">
+                                        <CardHeader className="flex flex-row items-start gap-4 py-4">
+                                            <div className="flex-1">
+                                                <CardTitle className="text-lg">{req.name}</CardTitle>
+                                                <CardDescription>
+                                                    طلب اشتراك في خطة: <span className="font-bold text-primary">{req.planName}</span>
+                                                </CardDescription>
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'request', entity: req })}>
+                                                <Trash2 />
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent className="space-y-2 text-sm pt-0 pb-4">
+                                            <p><strong>البريد الإلكتروني:</strong> <span className="font-mono">{req.email}</span></p>
+                                            <p><strong>رقم الهاتف:</strong> <span className="font-mono" dir="ltr">{req.phoneNumber}</span></p>
+                                            <p className="text-xs text-muted-foreground pt-2">
+                                                تاريخ الطلب: {safeFormatFirebaseTimestamp(req.createdAt)}
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                )) : <p className="text-muted-foreground text-center p-4">لا توجد طلبات اشتراك حالياً.</p>}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>}
+
 
                  {isAdmin && <TabsContent value="users" className="space-y-8">
                      <Card>

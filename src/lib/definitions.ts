@@ -96,3 +96,12 @@ export interface PaymentLinksConfig {
     whatsappUrl?: string;
     telegramUrl?: string;
 }
+
+export interface SubscriptionRequest {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  planName: string;
+  email: string;
+  createdAt: any; // Firebase Timestamp
+}

@@ -101,13 +101,15 @@ export default function PricingPage() {
                     </ul>
                   </CardContent>
                   <CardFooter>
-                    <Button
-                      className="w-full"
-                      variant={plan.isFeatured ? 'default' : 'secondary'}
-                      onClick={() => handleSubscribeClick(plan)}
-                    >
-                      {plan.price === '0' ? 'ابدأ الآن' : 'اطلب الاشتراك'}
-                    </Button>
+                    {plan.price !== '0' && (
+                        <Button
+                          className="w-full"
+                          variant={plan.isFeatured ? 'default' : 'secondary'}
+                          onClick={() => handleSubscribeClick(plan)}
+                        >
+                          اطلب الاشتراك
+                        </Button>
+                    )}
                   </CardFooter>
                 </Card>
               ))
