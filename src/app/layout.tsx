@@ -36,8 +36,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="hsl(350 72% 51%)" />
-        {/* The theme-color meta tag is now managed by ThemeManager.tsx */}
+        {/* The theme-color meta tag is now managed by ThemeManager.tsx and manifest.json */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
