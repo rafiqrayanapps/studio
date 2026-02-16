@@ -173,7 +173,7 @@ export default function ProActivationForm() {
                     <FormControl>
                         <div className="relative">
                         <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input placeholder="أدخل كود التفعيل" {...field} className="pl-10 text-left" dir="ltr" />
+                        <Input {...field} className="pl-10 text-left" dir="ltr" />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -225,8 +225,8 @@ export default function ProActivationForm() {
                             </FormItem>
                         )}
                     />
-                     <FormField control={createAccountForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>كلمة المرور الجديدة</FormLabel><FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" placeholder="••••••••••••" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={createAccountForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>تأكيد كلمة المرور</FormLabel><FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" placeholder="••••••••••••" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={createAccountForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>كلمة المرور الجديدة</FormLabel><FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={createAccountForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>تأكيد كلمة المرور</FormLabel><FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl><FormMessage /></FormItem>)} />
                     
                     {error && (
                         <div className="flex items-center justify-center gap-2 text-destructive pt-2 text-sm">

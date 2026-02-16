@@ -154,7 +154,7 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
                   <FormControl>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input type="email" placeholder="email@example.com" {...field} className="pl-10 text-left" dir="ltr" />
+                      <Input type="email" {...field} className="pl-10 text-left" dir="ltr" />
                     </div>
                   </FormControl>
                   <FormMessage />
