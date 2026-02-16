@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { PaymentLinksConfig } from '@/lib/definitions';
+import { useRouter } from 'next/navigation';
 
 const subscriptionRequestSchema = z.object({
   name: z.string().min(3, { message: "الاسم يجب أن يكون 3 أحرف على الأقل" }),
@@ -30,6 +31,7 @@ interface SubscriptionRequestFormProps {
 export default function SubscriptionRequestForm({ planName, onSuccess }: SubscriptionRequestFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
 
   const paymentLinksRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'paymentLinks') : null, [firestore]);
   const { data: paymentLinksData } = useDoc<PaymentLinksConfig>(paymentLinksRef);
@@ -58,11 +60,12 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
     
     toast({
       title: "تم استلام طلبك بنجاح!",
-      description: "سنتواصل معك في أقرب وقت ممكن لتأكيد الاشتراك.",
+      description: "سيتم توجيهك الآن للخطوة التالية.",
     });
 
     form.reset();
     onSuccess();
+    router.push('/subscribe');
   };
 
   return (
@@ -134,12 +137,15 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
         {/* Payment Instructions & Links */}
         {(paymentLinksData?.paymentInstructions || paymentLinksData?.paypalUrl) && (
             <div className="space-y-3 pt-4 border-t">
-                {paymentLinksData.paymentInstructions && (
+                 {paymentLinksData.paymentInstructions && (
                     <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md border space-y-1">
                         <p className="font-bold text-foreground">تعليمات الدفع:</p>
                         <p className="whitespace-pre-wrap">{paymentLinksData.paymentInstructions}</p>
                     </div>
                 )}
+                <p className="text-center text-sm text-muted-foreground">
+                    **مهم:** بعد الدفع، سجّل بياناتك أعلاه.
+                </p>
                 {paymentLinksData.paypalUrl && (
                     <Button variant="outline" asChild className="w-full">
                         <a href={paymentLinksData.paypalUrl} target="_blank" rel="noopener noreferrer">
@@ -153,36 +159,12 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
 
         {/* Submit Form */}
         <div className="space-y-4 pt-4 border-t">
-          <p className="text-center text-sm text-muted-foreground">
-            **مهم:** بعد الدفع، سجّل بياناتك أعلاه ثم تواصل معنا لإرسال إثبات الدفع.
-          </p>
+         
           <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل بيانات الطلب'}
+              {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل بيانات الطلب والمتابعة'}
           </Button>
-
-          {/* Contact Links */}
-          <div className="grid grid-cols-2 gap-2">
-              {paymentLinksData?.whatsappUrl && (
-                  <Button variant="outline" asChild className="w-full bg-green-50 hover:bg-green-100 text-green-700 border-green-200 hover:text-green-800">
-                      <a href={paymentLinksData.whatsappUrl} target="_blank" rel="noopener noreferrer">
-                          <MessageSquare className="ml-2 h-5 w-5" />
-                          إرسال الإثبات (واتساب)
-                      </a>
-                  </Button>
-              )}
-              {paymentLinksData?.telegramUrl && (
-                   <Button variant="outline" asChild className="w-full bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200 hover:text-sky-800">
-                       <a href={paymentLinksData.telegramUrl} target="_blank" rel="noopener noreferrer">
-                           <Send className="ml-2 h-5 w-5" />
-                           إرسال الإثبات (تلجرام)
-                       </a>
-                   </Button>
-              )}
-          </div>
         </div>
       </form>
     </Form>
   );
 }
-
-    

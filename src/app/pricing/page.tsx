@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Check, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import type { PricingPlan } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState } from 'react';
@@ -19,14 +19,14 @@ export default function PricingPage() {
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
 
   const plansQuery = useMemoFirebase(
-    () => firestore ? query(collection(firestore, 'pricingPlans'), orderBy('order', 'asc')) : null,
+    () => firestore ? query(collection(firestore, 'pricingPlans')) : null,
     [firestore]
   );
   const { data: allPlans, isLoading } = useCollection<PricingPlan>(plansQuery);
 
   const plans = useMemo(() => {
     if (!allPlans) return [];
-    return allPlans.filter(plan => plan.enabled);
+    return allPlans.filter(plan => plan.enabled).sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [allPlans]);
 
 
