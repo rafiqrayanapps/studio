@@ -17,7 +17,6 @@ import {
   ChevronLeft,
   Share2,
   Star,
-  Info,
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -42,7 +41,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
   const navItems = [
     { href: '/home', label: "الرئيسيه" },
     { href: '/colors', label: "منسق الالوان" },
-    { href: '/about', label: "حول التطبيق", icon: Info },
+    { href: '/about', label: "حول التطبيق" },
   ];
 
   const handleShare = async () => {

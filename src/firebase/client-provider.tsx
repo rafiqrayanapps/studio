@@ -6,7 +6,6 @@ import { FirebaseProvider } from './provider';
 import { FirebaseApp } from 'firebase/app';
 import { Auth } from 'firebase/auth';
 import { Firestore, enableIndexedDbPersistence } from 'firebase/firestore';
-import AiSuggestions from '@/components/ai/AiSuggestions';
 
 export function FirebaseClientProvider({ children }: { children: ReactNode }) {
   const [services, setServices] = useState<{
@@ -55,7 +54,6 @@ export function FirebaseClientProvider({ children }: { children: ReactNode }) {
       firestore={services.firestore}
     >
       {children}
-      <AiSuggestions />
     </FirebaseProvider>
   );
 }
