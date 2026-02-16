@@ -6,24 +6,29 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Check, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import type { PricingPlan } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { AlertDialog, AlertDialogContent } from '@/components/ui/alert-dialog';
+import SubscriptionRequestForm from '@/components/forms/SubscriptionRequestForm';
 
 export default function PricingPage() {
   const firestore = useFirestore();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+
   const plansQuery = useMemoFirebase(
-    () => firestore ? query(collection(firestore, 'pricingPlans'), where('enabled', '==', true)) : null,
+    () => firestore ? query(collection(firestore, 'pricingPlans'), where('enabled', '==', true), orderBy('order', 'asc')) : null,
     [firestore]
   );
-  const { data: unsortedPlans, isLoading } = useCollection<PricingPlan>(plansQuery);
+  const { data: plans, isLoading } = useCollection<PricingPlan>(plansQuery);
 
-  const plans = useMemo(() => {
-    if (!unsortedPlans) return null;
-    return [...unsortedPlans].sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [unsortedPlans]);
 
+  const handleSubscribeClick = (plan: PricingPlan) => {
+    setSelectedPlan(plan);
+    setIsDialogOpen(true);
+  };
 
   const PlanSkeleton = () => (
     <Card className="flex flex-col">
@@ -91,11 +96,17 @@ export default function PricingPage() {
                     </ul>
                   </CardContent>
                   <CardFooter>
-                    <Button asChild className="w-full" variant={plan.isFeatured ? 'default' : 'secondary'}>
-                      <Link href={plan.isFeatured ? (plan.link || '/activate/pro') : (plan.link || '/subscribe')}>
-                        {plan.isFeatured ? 'الترقية الآن' : 'ابدأ مجاناً'}
-                      </Link>
-                    </Button>
+                    {plan.price === '0' ? (
+                       <Button asChild className="w-full" variant={plan.isFeatured ? 'default' : 'secondary'}>
+                          <Link href={plan.link || '/login'}>
+                            ابدأ مجاناً
+                          </Link>
+                        </Button>
+                    ) : (
+                       <Button className="w-full" variant={plan.isFeatured ? 'default' : 'secondary'} onClick={() => handleSubscribeClick(plan)}>
+                          اطلب الاشتراك
+                        </Button>
+                    )}
                   </CardFooter>
                 </Card>
               ))
@@ -103,6 +114,18 @@ export default function PricingPage() {
           </div>
         </div>
       </main>
+      <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <AlertDialogContent>
+              {selectedPlan && (
+                  <SubscriptionRequestForm 
+                    planName={selectedPlan.name} 
+                    onSuccess={() => setIsDialogOpen(false)}
+                  />
+              )}
+          </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+    

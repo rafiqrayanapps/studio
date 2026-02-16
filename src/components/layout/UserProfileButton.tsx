@@ -84,9 +84,9 @@ export default function UserProfileButton() {
         <>
             <li>
                 <SheetClose asChild>
-                    <Link href="/activate/pro" className="block group">
+                    <Link href="/pricing" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                            <span className="font-semibold text-lg">تفعيل اشتراك برو</span>
+                            <span className="font-semibold text-lg">الاشتراك</span>
                             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </div>
                     </Link>
@@ -94,7 +94,7 @@ export default function UserProfileButton() {
             </li>
             <li>
                 <SheetClose asChild>
-                    <Link href="/login/admin" className="block group">
+                    <Link href="/login" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
                             <span className="font-semibold text-lg">تسجيل الدخول</span>
                             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
@@ -105,3 +105,5 @@ export default function UserProfileButton() {
         </>
     );
 }
+
+    
