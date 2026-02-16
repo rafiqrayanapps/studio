@@ -2,8 +2,8 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, doc, orderBy } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
 import type { Category, ContentItem } from '@/lib/definitions';
 import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
+import { useCategories } from '@/components/providers/CategoryProvider';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -34,27 +35,20 @@ export default function CategoryPage() {
   const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
-  // Fetch current category, all categories (for sub-categories), and items directly.
-  // Firestore persistence provides caching.
-  const categoryRef = useMemoFirebase(() => (firestore && id ? doc(firestore, 'categories', id) : null), [firestore, id]);
-  const { data: category, isLoading: isCategoryLoading, error: categoryError } = useDoc<Category>(categoryRef);
-
-  const allCategoriesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'categories'), orderBy('order', 'asc'));
-  }, [firestore]);
-  const { data: allCategories, isLoading: areAllCategoriesLoading } = useCollection<Category>(allCategoriesQuery);
+  // Get categories data from the global provider
+  const { subCategories: allSubCategories, categoryMap, isLoadingCategories: areAllCategoriesLoading } = useCategories();
+  
+  // The category for the current page, derived from the global map
+  const category = useMemo(() => categoryMap.get(id), [categoryMap, id]);
+  
+  // The sub-categories for the current page, derived from the global map
+  const subCategories = useMemo(() => allSubCategories.get(id) || [], [allSubCategories, id]);
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
       return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
   }, [firestore, id]);
   const { data: items, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
-
-  const subCategories = useMemo(() => {
-    if (!allCategories) return [];
-    return allCategories.filter((cat) => cat.parentId === id).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
-  }, [allCategories, id]);
 
   const isFavorite = (itemId: string) => favorites.some(item => item.id === itemId);
 
@@ -68,7 +62,6 @@ export default function CategoryPage() {
       setFavorites(prev => [...prev, item]);
     }
   };
-
 
   const filteredSubCategories = useMemo(() => {
     if (!subCategories) return [];
@@ -96,7 +89,10 @@ export default function CategoryPage() {
   };
 
   // The page is loading if any of the required data is still being fetched.
-  const isLoading = isCategoryLoading || areAllCategoriesLoading || areItemsLoading || isUserLoading;
+  const isLoading = areAllCategoriesLoading || areItemsLoading || isUserLoading;
+  
+  // Error state is determined by checking if category exists after loading is complete
+  const categoryError = !isLoading && !category;
 
   const FavoriteButton = ({ item }: { item: WithId<ContentItem> }) => (
      <Button 
@@ -370,7 +366,7 @@ export default function CategoryPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
         <div className="sticky top-0 z-20">
-             <Header showMenu={false} title={isCategoryLoading ? '...' : (category?.name || "قسم غير معروف")}>
+             <Header showMenu={false} title={areAllCategoriesLoading ? '...' : (category?.name || "قسم غير معروف")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-10">
@@ -384,7 +380,7 @@ export default function CategoryPage() {
         </div>
 
       <main className="flex-1 px-6 pt-2 pb-24">
-        {categoryError && !isLoading ? (
+        {categoryError ? (
             <div className="text-center text-destructive p-12 bg-destructive/10 rounded-2xl mt-4 space-y-2">
                 <AlertTriangle className="mx-auto h-8 w-8" /><h3 className="font-bold text-lg">خطأ في تحميل القسم</h3>
                 <p className="text-sm">لم نتمكن من العثور على هذا القسم أو ليس لديك إذن لعرضه.</p>

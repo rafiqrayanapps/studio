@@ -30,6 +30,7 @@ import { getAuth as getAuthInstance, createUserWithEmailAndPassword } from 'fire
 import { firebaseConfig } from '@/firebase/config';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { Badge } from '@/components/ui/badge';
+import { useCategories } from '@/components/providers/CategoryProvider';
 
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
@@ -157,8 +158,7 @@ export default function AdminDashboardPage() {
 
 
   // Data fetching
-  const categoriesCollectionQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories'), orderBy('order', 'asc')) : null, [firestore]);
-  const { data: allCategories, isLoading: isLoadingCategories } = useCollection<CategoryType>(categoriesCollectionQuery);
+  const { mainCategories, subCategories, categoryMap, isLoadingCategories } = useCategories();
   
   const itemsCollectionQuery = useMemoFirebase(() => (firestore && selectedContentCategory) ? query(collection(firestore, 'categories', selectedContentCategory, 'items'), orderBy('order', 'asc')) : null, [firestore, selectedContentCategory]);
   const { data: items, isLoading: isLoadingItems } = useCollection<ContentItem>(itemsCollectionQuery);
@@ -193,27 +193,6 @@ export default function AdminDashboardPage() {
     }
   }, [items]);
 
-
-  const { mainCategories, subCategories, categoryMap } = useMemo(() => {
-    if (!allCategories) return { mainCategories: [], subCategories: new Map(), categoryMap: new Map() };
-    
-    const main: WithId<CategoryType>[] = [];
-    const sub = new Map<string, WithId<CategoryType>[]>();
-    const catMap = new Map<string, WithId<CategoryType>>();
-
-    allCategories.forEach(cat => {
-        catMap.set(cat.id, cat);
-        if (cat.parentId) {
-            if (!sub.has(cat.parentId)) sub.set(cat.parentId, []);
-            sub.get(cat.parentId)!.push(cat);
-        } else {
-            main.push(cat);
-        }
-    });
-
-    return { mainCategories: main, subCategories: sub, categoryMap: catMap };
-  }, [allCategories]);
-  
 
   // Forms
   const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema } = useFormSchemas();

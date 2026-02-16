@@ -1,8 +1,7 @@
 'use client';
 import { useState, useMemo } from 'react';
 import Header from '@/components/layout/Header';
-import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { WithId } from '@/firebase';
 import type { Category as CategoryType } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
 import { Search, Crown } from 'lucide-react';
@@ -11,35 +10,26 @@ import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
+import { useCategories } from '@/components/providers/CategoryProvider';
 
 export default function HomePage() {
-  const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
   const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
   const router = useRouter();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
-  // Fetch all categories from Firestore.
-  // Firestore's persistence cache will handle speed.
-  const categoriesQuery = useMemoFirebase(
-    () => {
-      if (!firestore) return null;
-      return query(collection(firestore, 'categories'), orderBy('order', 'asc'));
-    },
-    [firestore]
-  );
-  const { data: categories, isLoading: isLoadingCategories } = useCollection<CategoryType>(categoriesQuery);
+  // Get categories from the global provider.
+  const { mainCategories: allMainCategories, isLoadingCategories } = useCategories();
 
   // Filter for main categories from the live data.
   const mainCategories = useMemo(() => {
-    if (!categories) return [];
-    
-    const main = categories.filter(cat => !cat.parentId);
+    if (!allMainCategories) return [];
     
     // Then filter by search term.
-    if (!searchTerm) return main;
-    return main.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [categories, searchTerm]);
+    if (!searchTerm) return allMainCategories;
+    return allMainCategories.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [allMainCategories, searchTerm]);
+
 
   const handleCategoryClick = (category: WithId<CategoryType>) => {
     const isLocked = category.visibility === 'pro' && !isPro && !isAdmin;

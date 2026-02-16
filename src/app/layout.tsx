@@ -8,6 +8,7 @@ import ServiceWorkerRegistrar from '@/components/layout/ServiceWorkerRegistrar';
 import OnlineStatusDetector from '@/components/layout/OnlineStatusDetector';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import BottomNav from '@/components/layout/BottomNav';
+import { CategoryProvider } from '@/components/providers/CategoryProvider';
 
 export const metadata: Metadata = {
   applicationName: 'رفيق المصمم',
@@ -47,11 +48,13 @@ export default function RootLayout({
       <body className={cn('font-body antialiased')}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <FirebaseClientProvider>
-              <ThemeManager />
-              <OnlineStatusDetector />
-              <ServiceWorkerRegistrar />
-              {children}
-              <BottomNav />
+              <CategoryProvider>
+                <ThemeManager />
+                <OnlineStatusDetector />
+                <ServiceWorkerRegistrar />
+                {children}
+                <BottomNav />
+              </CategoryProvider>
             </FirebaseClientProvider>
         </ThemeProvider>
         <Toaster />
