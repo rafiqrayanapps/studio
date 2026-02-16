@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,10 +16,13 @@ import { FirebaseError } from 'firebase/app';
 import { doc, getDoc, getDocs, query, collection, where, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { WhitelistEntry } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
+import { Checkbox } from "@/components/ui/checkbox";
+import useLocalStorage from '@/hooks/use-local-storage';
 
 const formSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
   password: z.string().min(1, { message: 'كلمة المرور مطلوبة' }),
+  rememberMe: z.boolean().default(false).optional(),
 });
 
 type LoginFormValues = z.infer<typeof formSchema>;
@@ -28,6 +31,7 @@ export default function AdminLoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [savedEmail, setSavedEmail] = useLocalStorage('rememberedEmail', '');
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -35,8 +39,15 @@ export default function AdminLoginForm() {
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: '', password: '', rememberMe: false },
   });
+
+  useEffect(() => {
+      if (savedEmail) {
+          form.setValue('email', savedEmail);
+          form.setValue('rememberMe', true);
+      }
+  }, [savedEmail, form]);
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
@@ -45,6 +56,12 @@ export default function AdminLoginForm() {
         const email = data.email.toLowerCase();
         const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
         const user = userCredential.user;
+
+        if (data.rememberMe) {
+            setSavedEmail(email);
+        } else {
+            setSavedEmail('');
+        }
 
         if (!firestore) {
             await auth.signOut();
@@ -153,6 +170,26 @@ export default function AdminLoginForm() {
               )}
             />
             
+            <FormField
+              control={form.control}
+              name="rememberMe"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      تذكرني (لتسهيل الدخول بالبصمة مستقبلاً)
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+
             {error && (
                 <div className="flex items-center justify-center gap-2 text-destructive pt-2 text-sm">
                     <ShieldAlert className="h-5 w-5" />
