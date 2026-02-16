@@ -10,7 +10,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Loader2, Mail, Lock, ShieldAlert, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
@@ -31,6 +31,8 @@ export default function AdminSignupForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -120,7 +122,7 @@ export default function AdminSignupForm() {
   return (
     <>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">إنشاء حساب مسؤول</CardTitle>
+        <CardTitle>إنشاء حساب مسؤول</CardTitle>
         <CardDescription>أدخل البريد الإلكتروني الذي تم منحك صلاحياته.</CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -135,7 +137,7 @@ export default function AdminSignupForm() {
                   <FormControl>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input type="email" {...field} className="pl-10 text-left" dir="ltr" />
+                      <Input type="email" {...field} className="pl-10 text-left" dir="ltr" placeholder="يرجى إدخال بريدك الإلكتروني"/>
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -151,7 +153,8 @@ export default function AdminSignupForm() {
                   <FormControl>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input type="password" {...field} className="pl-10 text-left" dir="ltr" />
+                      <Input type={showPassword ? 'text' : 'password'} {...field} className="pl-10 pr-10 text-left" dir="ltr" placeholder="يرجى إدخال كلمة السر" />
+                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -167,7 +170,8 @@ export default function AdminSignupForm() {
                   <FormControl>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input type="password" {...field} className="pl-10 text-left" dir="ltr" />
+                      <Input type={showConfirmPassword ? 'text' : 'password'} {...field} className="pl-10 pr-10 text-left" dir="ltr" placeholder="تأكيد كلمة السر" />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
                     </div>
                   </FormControl>
                   <FormMessage />

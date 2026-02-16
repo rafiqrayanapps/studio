@@ -10,7 +10,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDocs, query, where, writeBatch, collection, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, Key, Frown, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Loader2, Mail, Lock, Key, Frown, CheckCircle, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
@@ -43,6 +43,8 @@ export default function ProActivationForm() {
   const [validatedCode, setValidatedCode] = useState<string | null>(null);
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   const [whitelistData, setWhitelistData] = useState<WhitelistEntry | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -158,7 +160,7 @@ export default function ProActivationForm() {
     return (
       <>
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">تفعيل اشتراك برو</CardTitle>
+          <CardTitle>تفعيل اشتراك برو</CardTitle>
           <CardDescription>أدخل كود التفعيل الذي حصلت عليه</CardDescription>
         </CardHeader>
         <Form {...activationForm}>
@@ -203,7 +205,7 @@ export default function ProActivationForm() {
       return (
          <>
             <CardHeader className="text-center">
-                <CardTitle className="text-2xl">إنشاء حساب جديد</CardTitle>
+                <CardTitle>إنشاء حساب جديد</CardTitle>
                 <CardDescription>الكود صحيح! الآن قم بإنشاء حسابك لربطه بالاشتراك.</CardDescription>
             </CardHeader>
             <Form {...createAccountForm}>
@@ -225,8 +227,8 @@ export default function ProActivationForm() {
                             </FormItem>
                         )}
                     />
-                     <FormField control={createAccountForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>كلمة المرور الجديدة</FormLabel><FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={createAccountForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>تأكيد كلمة المرور</FormLabel><FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={createAccountForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>كلمة المرور الجديدة</FormLabel><FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type={showPassword ? 'text' : 'password'} {...field} className="pl-10 pr-10 text-left" dir="ltr" placeholder="يرجى إدخال كلمة السر" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></div></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={createAccountForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>تأكيد كلمة المرور</FormLabel><FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type={showConfirmPassword ? 'text' : 'password'} {...field} className="pl-10 pr-10 text-left" dir="ltr" placeholder="تأكيد كلمة السر" /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></div></FormControl><FormMessage /></FormItem>)} />
                     
                     {error && (
                         <div className="flex items-center justify-center gap-2 text-destructive pt-2 text-sm">
