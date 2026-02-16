@@ -342,7 +342,7 @@
         "email": {
           "type": "string",
           "format": "email",
-          "description": "The user's email address (optional)."
+          "description": "The user's email address."
         },
         "createdAt": {
           "type": "string",
@@ -354,6 +354,7 @@
         "name",
         "phoneNumber",
         "planName",
+        "email",
         "createdAt"
       ]
     },
@@ -580,5 +581,3 @@
     "reasoning": "The Firestore structure is designed for scalability and security. User-specific data like 'Suggestion' is nested under user documents for strict ownership (`/users/{userId}/suggestions/{suggestionId}`). The `categories` collection stores all content sections in a flat structure; sub-sections are defined by a `parentId`, allowing a flexible hierarchy. Content items are stored in a sub-collection (`/categories/{categoryId}/items/{itemId}`), which simplifies querying and enables granular security rules based on the parent category. A single-document collection `appConfig` is used for global settings like theme, share links, and payment links. A `subscriptionRequests` collection stores user requests. A `whitelist` collection is added to allow admins to grant roles to users by email, now including device fingerprinting for security."
   }
 }
-
-    
