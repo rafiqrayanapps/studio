@@ -23,10 +23,11 @@ export function useUserProfile() {
     const { data: whitelistEntry, isLoading: isWhitelistLoading } = useDoc<WhitelistEntry>(whitelistRef);
     
     const isAdmin = whitelistEntry?.role === 'admin';
+    const isEditor = whitelistEntry?.role === 'editor';
 
     let isPro = false;
-    if (isAdmin) {
-        // Admins have all pro privileges
+    if (isAdmin || isEditor) {
+        // Admins and Editors have all pro privileges
         isPro = true;
     } else if (userProfile?.subscriptionTier === 'pro') {
         const endDate = userProfile.subscriptionEndDate?.toDate();
@@ -42,6 +43,7 @@ export function useUserProfile() {
         userProfile, 
         isPro, 
         isAdmin, 
+        isEditor,
         isLoading: isAuthLoading || isProfileLoading || isWhitelistLoading 
     };
 }

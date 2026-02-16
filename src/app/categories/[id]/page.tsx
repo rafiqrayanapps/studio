@@ -98,9 +98,14 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!displayItems) return [];
-    // The query is now always ordered, so we don't need to sort on the client.
-    return displayItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [displayItems, searchTerm]);
+    
+    // Admins see everything. Others see only approved items (or legacy items without a status).
+    const viewableItems = isAdmin
+      ? displayItems
+      : displayItems.filter(item => item.status === 'approved' || !item.status);
+    
+    return viewableItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [displayItems, searchTerm, isAdmin]);
 
   const handleSubCategoryClick = (category: WithId<Category>) => {
     const isLocked = category.visibility === 'pro' && !isPro && !isAdmin;

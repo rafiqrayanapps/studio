@@ -6,7 +6,7 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocume
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -28,6 +28,9 @@ import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 import { initializeApp, deleteApp, FirebaseError } from 'firebase/app';
 import { getAuth as getAuthInstance, createUserWithEmailAndPassword } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
+import { useUserProfile } from '@/hooks/use-user-profile';
+import { Badge } from '@/components/ui/badge';
+
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
 
@@ -89,7 +92,7 @@ const useFormSchemas = () => {
 
     const whitelistSchema = z.object({
         email: z.string().email("البريد الإلكتروني غير صالح."),
-        role: z.enum(['admin', 'pro'], { required_error: "الدور مطلوب." }),
+        role: z.enum(['admin', 'editor', 'pro'], { required_error: "الدور مطلوب." }),
         password: z.string().optional(),
         activationCode: z.string().optional(),
         subscriptionDuration: z.preprocess(
@@ -137,6 +140,7 @@ export default function AdminDashboardPage() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
+  const { isAdmin, isEditor } = useUserProfile();
 
   const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification' | 'whitelist' | 'plan', entity: WithId<any> } | null>(null);
 
@@ -304,7 +308,7 @@ export default function AdminDashboardPage() {
 
   // Handlers
   const onCategorySubmit = (values: CategoryFormValues) => {
-    if (!firestore) return;
+    if (!firestore || !isAdmin) return;
     
     const parentId = (values.parentId === 'root' || !values.parentId) ? null : values.parentId;
 
@@ -379,19 +383,24 @@ export default function AdminDashboardPage() {
     }
 
     if (editingItem) {
+      if (!isAdmin) {
+          toast({ variant: "destructive", title: "غير مصرح لك" });
+          return;
+      }
       updateDocumentNonBlocking(doc(firestore, 'categories', selectedContentCategory, 'items', editingItem.id), itemData);
       toast({ title: "تم تحديث المحتوى" });
       setEditingItem(null);
     } else {
+      const status = isAdmin ? 'approved' : 'pending';
       const newOrder = sortedItems.length > 0 ? Math.max(...sortedItems.map(i => i.order ?? 0)) + 1 : 0;
-      addDocumentNonBlocking(collection(firestore, 'categories', selectedContentCategory, 'items'), { ...itemData, order: newOrder, createdAt: serverTimestamp() });
+      addDocumentNonBlocking(collection(firestore, 'categories', selectedContentCategory, 'items'), { ...itemData, status, order: newOrder, createdAt: serverTimestamp() });
       toast({ title: "تم إضافة محتوى جديد" });
     }
     contentItemForm.reset({ title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' });
   };
 
   const onPricingPlanSubmit = (values: PricingPlanFormValues) => {
-    if (!firestore) return;
+    if (!firestore || !isAdmin) return;
     
     const planData = {
       ...values,
@@ -411,19 +420,19 @@ export default function AdminDashboardPage() {
   };
   
   const onSubscriptionDialogSubmit = (values: SubscriptionDialogFormValues) => {
-    if (!firestore || !subscriptionDialogRef) return;
+    if (!firestore || !subscriptionDialogRef || !isAdmin) return;
     setDocumentNonBlocking(subscriptionDialogRef, values, { merge: true });
     toast({ title: "تم حفظ إعدادات النافذة المنبثقة" });
   };
   
   const onShareLinkSubmit = (values: ShareLinkFormValues) => {
-    if (!firestore || !shareLinkRef) return;
+    if (!firestore || !shareLinkRef || !isAdmin) return;
     setDocumentNonBlocking(shareLinkRef, values, { merge: true });
     toast({ title: "تم حفظ إعدادات رابط المشاركة" });
   };
   
   const onThemeSubmit = (values: ThemeFormValues) => {
-    if (!firestore || !themeRef) return;
+    if (!firestore || !themeRef || !isAdmin) return;
     const dataToSave = {
         ...values,
         primaryColorDark: values.primaryColorDark || values.primaryColor,
@@ -433,14 +442,14 @@ export default function AdminDashboardPage() {
   };
 
   const onNotificationSubmit = (values: NotificationFormValues) => {
-    if (!firestore) return;
+    if (!firestore || !isAdmin) return;
     addDocumentNonBlocking(collection(firestore, 'notifications'), { ...values, createdAt: serverTimestamp() });
     toast({ title: "تم إرسال الإشعار بنجاح" });
     notificationForm.reset();
   };
 
   const onWhitelistSubmit = async (values: WhitelistFormValues) => {
-    if (!firestore) return;
+    if (!firestore || !isAdmin) return;
     
     const email = values.email.toLowerCase();
 
@@ -496,12 +505,12 @@ export default function AdminDashboardPage() {
             await deleteApp(tempApp);
         }
 
-    } else if (values.role === 'pro') {
+    } else if (values.role === 'pro' || values.role === 'editor') {
         const docRef = doc(firestore, 'whitelist', email);
         
         const dataToSet: Partial<WhitelistEntry> = {
           email: email,
-          role: 'pro',
+          role: values.role,
           activationCode: values.activationCode,
           createdAt: serverTimestamp(),
           isActivated: false,
@@ -509,7 +518,7 @@ export default function AdminDashboardPage() {
           deviceFingerprint: null,
         };
 
-        if (values.subscriptionDuration) {
+        if (values.role === 'pro' && values.subscriptionDuration) {
             const startDate = new Date();
             const endDate = new Date();
             endDate.setDate(startDate.getDate() + values.subscriptionDuration);
@@ -520,20 +529,23 @@ export default function AdminDashboardPage() {
 
         await setDoc(docRef, dataToSet, { merge: true });
         
-        toast({ title: "تم إضافة المستخدم إلى قائمة التفعيل 'برو'." });
+        const successMessage = values.role === 'pro' 
+            ? "تم إضافة المستخدم إلى قائمة التفعيل 'برو'." 
+            : "تم إضافة المستخدم بصلاحيات 'محرر'.";
+        toast({ title: successMessage });
         whitelistForm.reset({ email: '', role: 'pro', password: '', activationCode: '' });
     }
   };
   
   const onPaymentLinksSubmit = (values: PaymentLinksFormValues) => {
-    if (!firestore || !paymentLinksRef) return;
+    if (!firestore || !paymentLinksRef || !isAdmin) return;
     setDocumentNonBlocking(paymentLinksRef, values, { merge: true });
     toast({ title: "تم حفظ روابط الدفع والتواصل" });
   };
 
 
   const handleDelete = () => {
-    if (!firestore || !deletingEntity) return;
+    if (!firestore || !deletingEntity || !isAdmin) return;
     const { type, entity } = deletingEntity;
     
     if(type === 'category') {
@@ -557,7 +569,7 @@ export default function AdminDashboardPage() {
   };
   
   const handleMove = (list: WithId<{order?: number}>[], index: number, direction: 'up' | 'down', collectionPath: string) => {
-    if (!firestore) return;
+    if (!firestore || !isAdmin) return;
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
 
     if (targetIndex < 0 || targetIndex >= list.length) return;
@@ -573,6 +585,13 @@ export default function AdminDashboardPage() {
           toast({ variant: 'destructive', title: "فشل تحديث الترتيب", description: e.message });
         });
     }
+  };
+
+  const handleApprove = (itemId: string) => {
+    if (!firestore || !selectedContentCategory || !isAdmin) return;
+    const itemRef = doc(firestore, 'categories', selectedContentCategory, 'items', itemId);
+    updateDocumentNonBlocking(itemRef, { status: 'approved' });
+    toast({ title: "تمت الموافقة على المحتوى" });
   };
 
 
@@ -699,16 +718,16 @@ export default function AdminDashboardPage() {
             <Tabs defaultValue="categories" dir="rtl">
                 <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 mb-6 h-auto">
                     <TabsTrigger value="categories" className="py-2">الأقسام والمحتوى</TabsTrigger>
-                    <TabsTrigger value="plans" className="py-2">خطط الأسعار</TabsTrigger>
-                    <TabsTrigger value="users" className="py-2">المستخدمين</TabsTrigger>
-                    <TabsTrigger value="settings" className="py-2">الإعدادات العامة</TabsTrigger>
+                    {isAdmin && <TabsTrigger value="plans" className="py-2">خطط الأسعار</TabsTrigger>}
+                    {isAdmin && <TabsTrigger value="users" className="py-2">المستخدمين</TabsTrigger>}
+                    {isAdmin && <TabsTrigger value="settings" className="py-2">الإعدادات العامة</TabsTrigger>}
                 </TabsList>
 
                 <TabsContent value="categories" className="space-y-8">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                         <div className="space-y-6">
-                            <CategoryForm />
-                            <Card>
+                            {isAdmin && <CategoryForm />}
+                            {isAdmin && <Card>
                                 <CardHeader>
                                     <CardTitle>الأقسام الحالية</CardTitle>
                                 </CardHeader>
@@ -722,12 +741,12 @@ export default function AdminDashboardPage() {
                                                         {cat.name}
                                                         {cat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}
                                                     </div>
-                                                    <div className="flex items-center gap-2 mr-auto">
+                                                    {isAdmin && <div className="flex items-center gap-2 mr-auto">
                                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'up', 'categories') }} disabled={index === 0}><span><ArrowUp/></span></Button>
                                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'down', 'categories') }} disabled={index === mainCategories.length - 1}><span><ArrowDown/></span></Button>
                                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); }}><span><Edit/></span></Button>
                                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDeletingEntity({ type: 'category', entity: cat }); }}><span><Trash2/></span></Button>
-                                                    </div>
+                                                    </div>}
                                                 </AccordionTrigger>
                                                 <AccordionContent className="p-4 bg-secondary rounded-md">
                                                     <div className="space-y-2">
@@ -735,10 +754,12 @@ export default function AdminDashboardPage() {
                                                         {(subCategories.get(cat.id) || []).map((subCat, subIndex) => (
                                                             <div key={subCat.id} className="flex items-center bg-card p-2 rounded-md border">
                                                                 <p className="flex-1 flex items-center gap-2">{subCat.name} {subCat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'up', 'categories')} disabled={subIndex === 0}><ArrowUp/></Button>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'down', 'categories')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {setEditingCategory(subCat); }}><Edit/></Button>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'category', entity: subCat })}><Trash2/></Button>
+                                                                {isAdmin && <>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'up', 'categories')} disabled={subIndex === 0}><ArrowUp/></Button>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'down', 'categories')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {setEditingCategory(subCat); }}><Edit/></Button>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'category', entity: subCat })}><Trash2/></Button>
+                                                                </>}
                                                             </div>
                                                         ))}
                                                     </div>
@@ -748,7 +769,7 @@ export default function AdminDashboardPage() {
                                     </Accordion>
                                 )}
                                 </CardContent>
-                            </Card>
+                            </Card>}
                         </div>
                         <div className="space-y-6">
                             <Card>
@@ -779,12 +800,16 @@ export default function AdminDashboardPage() {
                                     <CardContent>
                                         <div className="space-y-2">
                                             {isLoadingItems ? <Skeleton className="h-10 w-full" /> : sortedItems.map((item, index) => (
-                                                <div key={item.id} className="flex items-center bg-secondary p-2 rounded-md">
+                                                <div key={item.id} className="flex items-center gap-2 bg-secondary p-2 rounded-md">
                                                     <p className="flex-1 flex items-center gap-2">{item.title} {item.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'up', `categories/${selectedContentCategory}/items`)} disabled={index === 0}><ArrowUp/></Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'down', `categories/${selectedContentCategory}/items`)} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'item', entity: item })}><Trash2/></Button>
+                                                    {item.status === 'pending' && <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">قيد المراجعة</Badge>}
+                                                    {isAdmin && item.status === 'pending' && <Button size="sm" onClick={() => handleApprove(item.id)}><CheckCircle className="ml-1 h-4 w-4"/> موافقة</Button>}
+                                                    {isAdmin && <>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'up', `categories/${selectedContentCategory}/items`)} disabled={index === 0}><ArrowUp/></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'down', `categories/${selectedContentCategory}/items`)} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'item', entity: item })}><Trash2/></Button>
+                                                    </>}
                                                 </div>
                                             ))}
                                             {!isLoadingItems && sortedItems.length === 0 && (
@@ -798,7 +823,7 @@ export default function AdminDashboardPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="plans">
+                {isAdmin && <TabsContent value="plans">
                      <Card>
                         <CardHeader>
                             <CardTitle>إدارة خطط الأسعار</CardTitle>
@@ -846,9 +871,9 @@ export default function AdminDashboardPage() {
                                 )}
                         </CardContent>
                     </Card>
-                </TabsContent>
+                </TabsContent>}
 
-                 <TabsContent value="users" className="space-y-8">
+                 {isAdmin && <TabsContent value="users" className="space-y-8">
                      <Card>
                         <CardHeader>
                             <CardTitle>تفعيل المستخدمين</CardTitle>
@@ -866,7 +891,8 @@ export default function AdminDashboardPage() {
                                                 <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
                                                 <SelectContent>
                                                     <SelectItem value="pro">Pro</SelectItem>
-                                                    <SelectItem value="admin">Admin</SelectItem>
+                                                    <SelectItem value="editor">Editor (إضافة محتوى فقط)</SelectItem>
+                                                    <SelectItem value="admin">Admin (صلاحيات كاملة)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -926,22 +952,22 @@ export default function AdminDashboardPage() {
                                         <div className="flex-1">
                                             <p className="font-bold">{user.email}</p>
                                             <div className="text-sm text-muted-foreground flex gap-4 flex-wrap">
-                                                <p>الصلاحية: <span className="font-semibold text-primary">{user.role === 'admin' ? 'Admin' : 'Pro'}</span></p>
+                                                <p>الصلاحية: <span className="font-semibold text-primary">{user.role}</span></p>
                                                 {user.activationCode && <p>الكود: <span className="font-mono text-foreground">{user.activationCode}</span></p>}
                                                 {user.subscriptionEndDate && <p>تاريخ الانتهاء: <span className="font-mono text-foreground rtl:ml-2">{safeFormatFirebaseTimestamp(user.subscriptionEndDate)}</span></p>}
                                                 {user.deviceFingerprint && <p>بصمة الجهاز: <span className="font-mono text-xs text-foreground">{user.deviceFingerprint}</span></p>}
                                                 <p>الحالة: {user.isActivated ? <span className="font-semibold text-green-500">مفعل</span> : <span className="font-semibold text-yellow-500">غير مفعل</span>}</p>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'whitelist', entity: user })}><Trash2/></Button>
+                                        {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'whitelist', entity: user })}><Trash2/></Button>}
                                     </div>
                                 )) : <p className="text-muted-foreground text-center p-4">لا يوجد مستخدمون في القائمة البيضاء.</p>}
                             </div>
                         </CardContent>
                     </Card>
-                </TabsContent>
+                </TabsContent>}
 
-                <TabsContent value="settings">
+                {isAdmin && <TabsContent value="settings">
                     <Accordion type="multiple" className="w-full space-y-4">
                         <AccordionItem value="payment-links" className="border-none">
                              <Card>
@@ -1031,7 +1057,7 @@ export default function AdminDashboardPage() {
                             </Card>
                         </AccordionItem>
                     </Accordion>
-                </TabsContent>
+                </TabsContent>}
             </Tabs>
         </main>
         <AlertDialog open={!!deletingEntity} onOpenChange={(open) => !open && setDeletingEntity(null)}>

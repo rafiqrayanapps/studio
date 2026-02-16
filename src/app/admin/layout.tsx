@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const { user, isAdmin, isLoading } = useUserProfile();
+    const { user, isAdmin, isEditor, isLoading } = useUserProfile();
     const router = useRouter();
     const [isAllowed, setIsAllowed] = useState(false);
 
@@ -14,14 +14,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             return; // Still waiting for user data to load
         }
 
-        if (user && isAdmin) {
-            // If loading is complete, and the user is an admin, allow access.
+        if (user && (isAdmin || isEditor)) {
+            // If loading is complete, and the user is an admin or editor, allow access.
             setIsAllowed(true);
         } else {
-            // If loading is complete and user is not an admin, redirect.
+            // If loading is complete and user is not an admin/editor, redirect.
             router.replace('/login/admin');
         }
-    }, [user, isAdmin, isLoading, router]);
+    }, [user, isAdmin, isEditor, isLoading, router]);
 
     // While waiting for the effect to determine access, show a loader.
     // This prevents rendering children prematurely.

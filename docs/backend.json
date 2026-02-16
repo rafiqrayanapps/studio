@@ -152,6 +152,12 @@
           "type": "string",
           "description": "Determines who can see the content item.",
           "enum": [ "public", "pro" ]
+        },
+        "status": {
+          "type": "string",
+          "description": "The approval status of the content item. Items created by editors are 'pending' until approved by an admin.",
+          "enum": [ "pending", "approved" ],
+          "default": "approved"
         }
       },
       "required": [
@@ -362,6 +368,7 @@
           "description": "The role assigned to the user.",
           "enum": [
             "admin",
+            "editor",
             "pro"
           ]
         },

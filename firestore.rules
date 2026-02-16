@@ -13,9 +13,13 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      // An admin is explicitly defined in the whitelist collection by their email.
       return isSignedIn() && (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
              get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'admin');
+    }
+
+    function isEditor() {
+      return isSignedIn() && (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
+             get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'editor');
     }
 
     function isFirstAdminWrite(database) {
@@ -42,10 +46,12 @@ service cloud.firestore {
     }
 
     match /categories/{categoryId}/items/{itemId} {
-      // Allow everyone to read all items. UI will handle locking.
+      // Allow everyone to read all items. UI will handle filtering based on status.
       allow read: if true;
-      // Only admins can write content items.
-      allow write: if isAdmin();
+      // An 'admin' can create/update/delete any item.
+      // An 'editor' can only create items, and they must be in 'pending' status.
+      allow create: if isAdmin() || (isEditor() && request.resource.data.status == 'pending');
+      allow update, delete: if isAdmin();
     }
 
     // --- App Configuration Rules ---

@@ -26,6 +26,7 @@ export interface ContentItem {
   screenshots?: string[];
   appVersion?: string;
   visibility: 'public' | 'pro';
+  status?: 'pending' | 'approved';
 }
 
 export interface SubscriptionDialogConfig {
@@ -66,7 +67,7 @@ export interface UserProfile {
 export interface WhitelistEntry {
   id?: string;
   email: string;
-  role: 'admin' | 'pro';
+  role: 'admin' | 'editor' | 'pro';
   activationCode?: string;
   createdAt: any;
   subscriptionStartDate?: any;
