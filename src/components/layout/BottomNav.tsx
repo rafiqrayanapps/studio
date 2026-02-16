@@ -11,9 +11,9 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 export default function BottomNav() {
   const pathname = usePathname();
   const hasNewNotifications = useHasNewNotifications();
-  const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
+  const { isPro, isAdmin } = useUserProfile();
 
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: '50%', opacity: 0 });
   const navRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<(HTMLAnchorElement | null)[]>([]);
   
@@ -23,11 +23,11 @@ export default function BottomNav() {
         return pathname;
     }
     
-    const profileRelatedPaths = ['/account', '/login/pro', '/activate/pro', '/admin/dashboard'];
+    const profileRelatedPaths = ['/account', '/login', '/activate/pro'];
     if (profileRelatedPaths.some(p => pathname.startsWith(p))) {
         if (isAdmin) return '/admin/dashboard';
         if (isPro) return '/account';
-        return '/activate/pro';
+        return '/login';
     }
     return ''; // Return empty for non-nav pages like /categories/[id]
   }
@@ -48,7 +48,7 @@ export default function BottomNav() {
         if (item.id === 'profile') {
             if (isAdmin) finalHref = '/admin/dashboard';
             else if (isPro) finalHref = '/account';
-            else finalHref = '/activate/pro';
+            else finalHref = '/login';
         }
         return finalHref === activePath;
     });
@@ -63,18 +63,18 @@ export default function BottomNav() {
         if (activeItemEl && navEl) {
             const navRect = navEl.getBoundingClientRect();
             const itemRect = activeItemEl.getBoundingClientRect();
+            const left = itemRect.left + itemRect.width / 2 - navRect.left;
             setIndicatorStyle({
-                left: itemRect.left - navRect.left,
-                width: itemRect.width,
+                left: `${left}px`,
                 opacity: 1
             });
         } else {
              setIndicatorStyle(s => ({ ...s, opacity: 0 }));
         }
-    }, 50); // A small delay to ensure DOM is ready
+    }, 50);
 
     return () => clearTimeout(timeoutId);
-  }, [activeIndex]);
+  }, [activeIndex, pathname]);
 
 
   const NavItem = ({ item, index }: { item: (typeof navItems)[0], index: number }) => {
@@ -84,7 +84,7 @@ export default function BottomNav() {
     if (id === 'profile') {
         if (isAdmin) finalHref = '/admin/dashboard';
         else if (isPro) finalHref = '/account';
-        else finalHref = '/activate/pro';
+        else finalHref = '/login';
     }
 
     const isActive = activeIndex === index;
@@ -113,15 +113,6 @@ export default function BottomNav() {
     );
   };
 
-  // Do not render the nav on certain pages
-  if (isUserLoading || pathname.startsWith('/admin') || pathname === '/') {
-      return null;
-  }
-  
-  if (pathname.startsWith('/login')) {
-      return null;
-  }
-
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden flex items-center justify-center px-4">
       <div 
@@ -130,17 +121,15 @@ export default function BottomNav() {
         style={{boxShadow: '0 4px 20px rgba(0,0,0,0.1)'}}
         >
         
-        {/* Sliding Indicator */}
+        {/* Sliding Dot Indicator */}
         <div
-            className="absolute top-0 h-full bg-primary/10 rounded-full transition-all duration-500 ease-in-out"
+            className="absolute top-2 h-1.5 w-1.5 bg-primary rounded-full transition-all duration-500 ease-in-out"
             style={{
                 left: indicatorStyle.left,
-                width: indicatorStyle.width,
                 opacity: indicatorStyle.opacity,
+                transform: 'translateX(-50%)'
             }}
-        >
-            <div className="absolute top-1.5 left-1/2 -translate-x-1/2 h-1 w-5 bg-primary rounded-full" />
-        </div>
+        />
 
         {navItems.map((item, index) => (
           <NavItem key={item.id} item={item} index={index} />
