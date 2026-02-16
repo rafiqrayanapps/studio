@@ -10,7 +10,7 @@ import { collection, query } from 'firebase/firestore';
 import type { PricingPlan } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState } from 'react';
-import { AlertDialog, AlertDialogContent } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import SubscriptionRequestForm from '@/components/forms/SubscriptionRequestForm';
 
 export default function PricingPage() {
@@ -119,6 +119,12 @@ export default function PricingPage() {
       </main>
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>طلب اشتراك</AlertDialogTitle>
+                  <AlertDialogDescription>
+                  أكمل بياناتك لطلب الاشتراك في خطة "{selectedPlan?.name}". سيتم توجيهك بعد ذلك للتواصل معنا وإرسال إثبات الدفع.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
               {selectedPlan && (
                   <SubscriptionRequestForm 
                     planName={selectedPlan.name} 

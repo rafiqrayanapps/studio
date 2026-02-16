@@ -9,7 +9,7 @@ import { useFirestore, addDocumentNonBlocking, useDoc, useMemoFirebase } from '@
 import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { Loader2, User, Phone, Mail, MessageSquare, Package, CreditCard, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { PaymentLinksConfig } from '@/lib/definitions';
 import { useRouter } from 'next/navigation';
@@ -73,11 +73,6 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <CardHeader className="text-center p-0">
-            <CardTitle>طلب اشتراك</CardTitle>
-            <CardDescription>أكمل بياناتك وأرسل إثبات الدفع.</CardDescription>
-        </CardHeader>
-
         {/* Fields */}
         <CardContent className="p-0 space-y-4">
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg text-sm">
