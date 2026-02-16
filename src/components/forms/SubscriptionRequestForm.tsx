@@ -5,16 +5,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useFirestore, addDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, serverTimestamp, doc } from 'firebase/firestore';
-import { Loader2, User, Phone, Mail, MessageSquare, Package, CreditCard, Send } from 'lucide-react';
+import { useFirestore, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, serverTimestamp, doc, query, orderBy, where } from 'firebase/firestore';
+import { Loader2, User, Phone, Mail, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import type { PaymentLinksConfig } from '@/lib/definitions';
+import type { PaymentLinksConfig, PaymentMethod } from '@/lib/definitions';
 import { useRouter } from 'next/navigation';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
+import { useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import DynamicIcon from '@/components/ui/dynamic-icon';
+
 
 const subscriptionRequestSchema = z.object({
   name: z.string().min(3, { message: "الاسم يجب أن يكون 3 أحرف على الأقل" }),
@@ -37,6 +41,14 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
 
   const paymentLinksRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'paymentLinks') : null, [firestore]);
   const { data: paymentLinksData } = useDoc<PaymentLinksConfig>(paymentLinksRef);
+
+  const paymentMethodsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'paymentMethods'), orderBy('order', 'asc')) : null, [firestore]);
+  const { data: allPaymentMethods, isLoading: isLoadingPaymentMethods } = useCollection<PaymentMethod>(paymentMethodsQuery);
+
+  const enabledPaymentMethods = useMemo(() => {
+      if (!allPaymentMethods) return [];
+      return allPaymentMethods.filter(method => method.enabled);
+  }, [allPaymentMethods]);
 
   const form = useForm<SubscriptionRequestFormValues>({
     resolver: zodResolver(subscriptionRequestSchema),
@@ -73,12 +85,40 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Fields */}
         <CardContent className="p-0 space-y-4">
+            <div className="space-y-3 pt-4 border-t">
+                {paymentLinksData?.paymentInstructions && (
+                    <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md border space-y-1">
+                        <p className="font-bold text-foreground">تعليمات الدفع:</p>
+                        <p className="whitespace-pre-wrap">{paymentLinksData.paymentInstructions}</p>
+                    </div>
+                )}
+
+                <div className="space-y-2">
+                    {isLoadingPaymentMethods ? (
+                        <Skeleton className="h-10 w-full" />
+                    ) : (
+                        enabledPaymentMethods.map(method => (
+                            <Button key={method.id} variant="outline" asChild className="w-full">
+                                <a href={method.link} target="_blank" rel="noopener noreferrer">
+                                    <DynamicIcon name={method.icon} className="ml-2 h-5 w-5" />
+                                    {method.name}
+                                </a>
+                            </Button>
+                        ))
+                    )}
+                </div>
+
+                <p className="text-center text-sm text-muted-foreground pt-2">
+                    **مهم:** بعد الدفع، سجّل بياناتك أدناه.
+                </p>
+            </div>
+            
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg text-sm">
                 <Package className="h-5 w-5 text-primary" />
                 <span>الخطة المطلوبة: <strong>{planName}</strong></span>
             </div>
+
             <FormField
               control={form.control}
               name="name"
@@ -135,32 +175,7 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
             />
         </CardContent>
 
-        {/* Payment Instructions & Links */}
-        {(paymentLinksData?.paymentInstructions || paymentLinksData?.paypalUrl) && (
-            <div className="space-y-3 pt-4 border-t">
-                 {paymentLinksData.paymentInstructions && (
-                    <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md border space-y-1">
-                        <p className="font-bold text-foreground">تعليمات الدفع:</p>
-                        <p className="whitespace-pre-wrap">{paymentLinksData.paymentInstructions}</p>
-                    </div>
-                )}
-                <p className="text-center text-sm text-muted-foreground">
-                    **مهم:** بعد الدفع، سجّل بياناتك أعلاه.
-                </p>
-                {paymentLinksData.paypalUrl && (
-                    <Button variant="outline" asChild className="w-full">
-                        <a href={paymentLinksData.paypalUrl} target="_blank" rel="noopener noreferrer">
-                            <CreditCard className="ml-2 h-5 w-5 text-blue-600" />
-                            الدفع عبر PayPal
-                        </a>
-                    </Button>
-                )}
-            </div>
-        )}
-
-        {/* Submit Form */}
         <div className="space-y-4 pt-4 border-t">
-         
           <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل بيانات الطلب والمتابعة'}
           </Button>
@@ -169,3 +184,5 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
     </Form>
   );
 }
+
+    

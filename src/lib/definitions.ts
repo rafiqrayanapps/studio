@@ -107,4 +107,13 @@ export interface SubscriptionRequest {
   createdAt: any; // Firebase Timestamp
 }
 
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  icon: string;
+  link: string;
+  order: number;
+  enabled: boolean;
+}
+
     

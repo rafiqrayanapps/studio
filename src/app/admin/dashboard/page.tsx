@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig, SubscriptionRequest } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig, SubscriptionRequest, PaymentMethod } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -124,7 +124,14 @@ const useFormSchemas = () => {
         paymentInstructions: z.string().optional(),
     });
 
-    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema };
+    const paymentMethodSchema = z.object({
+        name: z.string().min(1, "الاسم مطلوب"),
+        icon: z.string().min(1, "الأيقونة مطلوبة (اسم أيقونة من Lucide)"),
+        link: z.string().url("رابط غير صالح"),
+        enabled: z.boolean().default(true),
+    });
+
+    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema, paymentMethodSchema };
 }
 
 type CategoryFormValues = z.infer<Return<(typeof useFormSchemas)>['categorySchema']>;
@@ -136,6 +143,7 @@ type NotificationFormValues = z.infer<Return<(typeof useFormSchemas)>['notificat
 type WhitelistFormValues = z.infer<Return<(typeof useFormSchemas)>['whitelistSchema']>;
 type PricingPlanFormValues = z.infer<Return<(typeof useFormSchemas)>['pricingPlanSchema']>;
 type PaymentLinksFormValues = z.infer<Return<(typeof useFormSchemas)>['paymentLinksSchema']>;
+type PaymentMethodFormValues = z.infer<Return<(typeof useFormSchemas)>['paymentMethodSchema']>;
 
 
 export default function AdminDashboardPage() {
@@ -144,7 +152,7 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
   const { isAdmin, isEditor } = useUserProfile();
 
-  const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification' | 'whitelist' | 'plan' | 'request', entity: WithId<any> } | null>(null);
+  const [deletingEntity, setDeletingEntity] = useState<{ type: 'category' | 'item' | 'notification' | 'whitelist' | 'plan' | 'request' | 'paymentMethod', entity: WithId<any> } | null>(null);
 
   // Categories state
   const [editingCategory, setEditingCategory] = useState<WithId<CategoryType> | null>(null);
@@ -156,6 +164,9 @@ export default function AdminDashboardPage() {
   
   // Pricing plans state
   const [editingPlan, setEditingPlan] = useState<WithId<PricingPlan> | null>(null);
+
+  // Payment methods state
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<WithId<PaymentMethod> | null>(null);
 
 
   // Data fetching
@@ -188,6 +199,9 @@ export default function AdminDashboardPage() {
   const subscriptionRequestsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'subscriptionRequests'), orderBy('createdAt', 'desc')) : null, [firestore]);
   const { data: subscriptionRequests, isLoading: isLoadingRequests } = useCollection<SubscriptionRequest>(subscriptionRequestsQuery);
 
+  const paymentMethodsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'paymentMethods'), orderBy('order', 'asc')) : null, [firestore]);
+  const { data: paymentMethods, isLoading: isLoadingPaymentMethods } = useCollection<PaymentMethod>(paymentMethodsQuery);
+
 
   useEffect(() => {
     if (items) {
@@ -199,7 +213,7 @@ export default function AdminDashboardPage() {
 
 
   // Forms
-  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema } = useFormSchemas();
+  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema, paymentMethodSchema } = useFormSchemas();
   const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '', visibility: 'public' } });
   const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' } });
   const pricingPlanForm = useForm<PricingPlanFormValues>({ resolver: zodResolver(pricingPlanSchema), defaultValues: { name: '', price: '', currency: 'ر.س', frequency: '/شهرياً', description: '', features: '', isFeatured: false, enabled: true, link: '' } });
@@ -209,6 +223,7 @@ export default function AdminDashboardPage() {
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
   const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', role: 'pro', password: '', activationCode: '' } });
   const paymentLinksForm = useForm<PaymentLinksFormValues>({ resolver: zodResolver(paymentLinksSchema), defaultValues: { paypalUrl: '', whatsappUrl: '', telegramUrl: '', paymentInstructions: '' } });
+  const paymentMethodForm = useForm<PaymentMethodFormValues>({ resolver: zodResolver(paymentMethodSchema), defaultValues: { name: '', icon: 'CreditCard', link: '', enabled: true } });
   const watchWhitelistRole = whitelistForm.watch('role');
 
 
@@ -258,6 +273,14 @@ export default function AdminDashboardPage() {
       pricingPlanForm.reset({ name: '', price: '', currency: 'ر.س', frequency: '/شهرياً', description: '', features: '', isFeatured: false, enabled: true, link: '' });
     }
   }, [editingPlan, pricingPlanForm]);
+
+  useEffect(() => {
+    if (editingPaymentMethod) {
+      paymentMethodForm.reset(editingPaymentMethod);
+    } else {
+      paymentMethodForm.reset({ name: '', icon: 'CreditCard', link: '', enabled: true });
+    }
+  }, [editingPaymentMethod, paymentMethodForm]);
 
   useEffect(() => {
     if (subscriptionDialogData) {
@@ -402,6 +425,21 @@ export default function AdminDashboardPage() {
       toast({ title: 'تم إضافة خطة أسعار جديدة' });
     }
     pricingPlanForm.reset();
+  };
+
+  const onPaymentMethodSubmit = (values: PaymentMethodFormValues) => {
+    if (!firestore || !isAdmin) return;
+    
+    if (editingPaymentMethod) {
+      updateDocumentNonBlocking(doc(firestore, 'paymentMethods', editingPaymentMethod.id), values);
+      toast({ title: 'تم تحديث طريقة الدفع' });
+      setEditingPaymentMethod(null);
+    } else {
+      const newOrder = paymentMethods ? (paymentMethods.length > 0 ? Math.max(...paymentMethods.map(p => p.order ?? 0)) + 1 : 0) : 0;
+      addDocumentNonBlocking(collection(firestore, 'paymentMethods'), { ...values, order: newOrder });
+      toast({ title: 'تم إضافة طريقة دفع جديدة' });
+    }
+    paymentMethodForm.reset();
   };
   
   const onSubscriptionDialogSubmit = (values: SubscriptionDialogFormValues) => {
@@ -550,6 +588,9 @@ export default function AdminDashboardPage() {
     } else if (type === 'request') {
        deleteDocumentNonBlocking(doc(firestore, 'subscriptionRequests', entity.id));
        toast({ title: "تم حذف طلب الاشتراك" });
+    } else if (type === 'paymentMethod') {
+       deleteDocumentNonBlocking(doc(firestore, 'paymentMethods', entity.id));
+       toast({ title: "تم حذف طريقة الدفع" });
     }
     
     setDeletingEntity(null);
@@ -703,9 +744,10 @@ export default function AdminDashboardPage() {
         </Header>
         <main className="flex-1 container mx-auto max-w-5xl py-8 px-4">
             <Tabs defaultValue="categories" dir="rtl">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5 mb-6 h-auto">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-6 mb-6 h-auto">
                     <TabsTrigger value="categories" className="py-2">الأقسام والمحتوى</TabsTrigger>
                     {isAdmin && <TabsTrigger value="plans" className="py-2">خطط الأسعار</TabsTrigger>}
+                    {isAdmin && <TabsTrigger value="paymentMethods" className="py-2">طرق الدفع</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="requests" className="py-2">طلبات الاشتراك</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="users" className="py-2">المستخدمين</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="settings" className="py-2">الإعدادات العامة</TabsTrigger>}
@@ -852,6 +894,47 @@ export default function AdminDashboardPage() {
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(pricingPlans!, index, 'down', 'pricingPlans')} disabled={index === pricingPlans!.length - 1}><ArrowDown/></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingPlan(plan)}><Edit/></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'plan', entity: plan })}><Trash2/></Button>
+                                        </div>
+                                    </div>
+                                    ))}
+                                </div>
+                                )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>}
+
+                {isAdmin && <TabsContent value="paymentMethods">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>إدارة طرق الدفع</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="mb-6">
+                                <h3 className="text-lg font-bold mb-4">{editingPaymentMethod ? 'تعديل طريقة الدفع' : 'إضافة طريقة دفع جديدة'}</h3>
+                                <Form {...paymentMethodForm}>
+                                <form onSubmit={paymentMethodForm.handleSubmit(onPaymentMethodSubmit)} className="space-y-4 p-4 border rounded-lg bg-background">
+                                    <FormField control={paymentMethodForm.control} name="name" render={({ field }) => <FormItem><FormLabel>اسم الطريقة</FormLabel><FormControl><Input placeholder="PayPal" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={paymentMethodForm.control} name="icon" render={({ field }) => <FormItem><FormLabel>أيقونة (Lucide)</FormLabel><FormControl><Input placeholder="CreditCard" {...field} /></FormControl><FormDescription>ابحث عن اسم الأيقونة في موقع <a href="https://lucide.dev/icons/" target="_blank" className="text-primary underline">lucide.dev/icons</a></FormDescription><FormMessage /></FormItem>} />
+                                    <FormField control={paymentMethodForm.control} name="link" render={({ field }) => <FormItem><FormLabel>رابط الدفع</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={paymentMethodForm.control} name="enabled" render={({ field }) => <FormItem className="flex items-center gap-2 pt-2"><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>مفعلة؟</FormLabel></FormItem>} />
+                                    <div className="flex gap-2">
+                                        {editingPaymentMethod && <Button type="button" variant="secondary" onClick={() => { setEditingPaymentMethod(null); }} className="w-full">إلغاء</Button>}
+                                        <Button type="submit" disabled={paymentMethodForm.formState.isSubmitting} className="w-full">{editingPaymentMethod ? 'حفظ' : 'إضافة'}</Button>
+                                    </div>
+                                </form>
+                                </Form>
+                            </div>
+                             <h3 className="text-lg font-bold my-4">طرق الدفع الحالية</h3>
+                                {isLoadingPaymentMethods ? <Skeleton className="h-20 w-full" /> : (
+                                <div className="space-y-2">
+                                    {(paymentMethods || []).map((method, index) => (
+                                    <div key={method.id} className="flex items-center bg-secondary p-2 rounded-md">
+                                        <p className="flex-1 font-semibold">{method.name}</p>
+                                        <div className="flex items-center gap-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(paymentMethods!, index, 'up', 'paymentMethods')} disabled={index === 0}><ArrowUp/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(paymentMethods!, index, 'down', 'paymentMethods')} disabled={index === paymentMethods!.length - 1}><ArrowDown/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingPaymentMethod(method)}><Edit/></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'paymentMethod', entity: method })}><Trash2/></Button>
                                         </div>
                                     </div>
                                     ))}
@@ -1107,3 +1190,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
