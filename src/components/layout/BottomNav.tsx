@@ -33,33 +33,27 @@ export default function BottomNav() {
     const isActive = (item.href ? activePath === item.href : false);
 
     const content = (
-      <div className="relative flex flex-col items-center justify-center gap-1 w-16 h-16">
+      <div className="relative flex items-center justify-center w-12 h-12">
         <div className={cn(
           "absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out",
           isActive ? "scale-100 opacity-100" : "scale-0 opacity-0"
         )}>
-            <div className="w-16 h-8 bg-primary/10 rounded-full"></div>
+            <div className="w-10 h-10 bg-primary/10 rounded-full"></div>
         </div>
         <Icon className={cn(
           "h-6 w-6 z-10 transition-colors duration-300", 
           isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
         )} />
-        <span className={cn(
-          "text-[10px] font-medium z-10 transition-colors duration-300",
-          isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-        )}>
-          {label}
-        </span>
         {id === 'notifications' && hasNewNotifications && (
-            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-card z-20"></span>
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive border border-card z-20"></span>
         )}
       </div>
     );
     
     if (href) {
-        return <Link href={href} className="group" data-path={href}>{content}</Link>;
+        return <Link href={href} aria-label={label} className="group">{content}</Link>;
     }
-    return <button onClick={action} className="group" data-path={id}>{content}</button>;
+    return <button onClick={action} aria-label={label} className="group">{content}</button>;
   };
 
   if (pathname.startsWith('/admin') || pathname === '/' || pathname.startsWith('/login')) {
@@ -67,9 +61,9 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-24 md:hidden px-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden px-4">
       <div 
-        className="relative h-20 w-full max-w-md mx-auto bg-card rounded-full shadow-lg flex items-center justify-around"
+        className="relative h-16 w-full max-w-md mx-auto bg-card rounded-full shadow-lg flex items-center justify-around"
         style={{boxShadow: '0 -4px 15px rgba(0,0,0,0.08)'}}
         >
         
