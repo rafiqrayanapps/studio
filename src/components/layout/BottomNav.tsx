@@ -2,18 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Heart, Bell, Palette, Moon, Sun } from 'lucide-react';
+import { Home, Heart, Bell, Palette, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 export default function BottomNav() {
   const pathname = usePathname();
   const hasNewNotifications = useHasNewNotifications();
-  const { setTheme, resolvedTheme } = useTheme();
+  const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
 
-  // State to manage the position and size of the active indicator
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
   const navRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<(HTMLAnchorElement | HTMLButtonElement | null)[]>([]);
@@ -21,6 +20,9 @@ export default function BottomNav() {
   const getActivePath = () => {
     if (pathname.startsWith('/categories')) return '/home';
     if (pathname.startsWith('/colors')) return '/colors';
+    if (pathname.startsWith('/account')) return '/account';
+    if (pathname.startsWith('/login')) return '/account'; // Group login pages under profile
+    if (pathname.startsWith('/activate/pro')) return '/account';
     return pathname;
   }
   const activePath = getActivePath();
@@ -30,13 +32,14 @@ export default function BottomNav() {
     { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
     { id: 'colors', href: '/colors', icon: Palette, label: 'الألوان' },
     { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
-    { id: 'theme-toggle', action: () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark'), icon: resolvedTheme === 'dark' ? Sun : Moon, label: 'الوضع' },
-  ], [resolvedTheme, setTheme]);
+    { id: 'profile', href: '/account', icon: User, label: 'حسابي' },
+  ], []);
 
   useEffect(() => {
+    // Determine the active item based on the current path
     const activeIndex = navItems.findIndex(item => item.href && activePath === item.href);
     
-    // Timeout to allow the DOM to render and refs to be populated correctly.
+    // A short timeout to ensure the DOM is ready before we measure elements
     const timeoutId = setTimeout(() => {
         const activeItem = itemsRef.current[activeIndex];
         const nav = navRef.current;
@@ -49,27 +52,40 @@ export default function BottomNav() {
                 opacity: 1
             });
         } else {
-            // Hide indicator if no item is active (e.g., theme toggle)
+            // Hide indicator if no item is active
             setIndicatorStyle(s => ({ ...s, opacity: 0 }));
         }
-    }, 50); // A small delay can help ensure layout is calculated
+    }, 50);
 
     return () => clearTimeout(timeoutId);
-  }, [activePath, navItems, pathname]); // Re-run when path changes
+  }, [activePath, navItems]);
 
 
   const NavItem = ({ item, index }: { item: (typeof navItems)[0], index: number }) => {
-    const { id, href, icon: Icon, action, label } = item;
-    const isActive = (item.href ? activePath === item.href : false);
+    const { id, href, icon: Icon, label } = item;
+    
+    // Determine the correct destination for the profile link
+    let finalHref = href;
+    if (id === 'profile') {
+        if (isAdmin) finalHref = '/admin/dashboard';
+        else if (isPro) finalHref = '/account';
+        else finalHref = '/activate/pro'; // Send non-pro users to activation
+    }
+
+    const isActive = activePath === finalHref;
 
     const content = (
-      <div className="relative flex items-center justify-center w-full h-full">
+      <div className="relative flex flex-col items-center justify-center w-full h-full gap-1">
         <Icon className={cn(
           "h-6 w-6 z-10 transition-colors duration-200", 
           isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
         )} />
+        <span className={cn(
+            "text-[10px] font-bold transition-colors duration-200",
+            isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
+        )}>{label}</span>
         {id === 'notifications' && hasNewNotifications && (
-            <span className="absolute top-[25%] right-[25%] translate-x-1/4 -translate-y-1/4 h-2 w-2 rounded-full bg-destructive border-2 border-card z-20"></span>
+            <span className="absolute top-1 right-1/2 translate-x-3 h-2 w-2 rounded-full bg-destructive z-20"></span>
         )}
       </div>
     );
@@ -80,28 +96,33 @@ export default function BottomNav() {
         ref: (el: any) => (itemsRef.current[index] = el),
     };
 
-    if (href) {
-        return <Link href={href} {...commonProps}>{content}</Link>;
-    }
-    return <button onClick={action} {...commonProps}>{content}</button>;
+    return <Link href={finalHref} {...commonProps}>{content}</Link>;
   };
 
-  if (pathname.startsWith('/admin') || pathname === '/' || pathname.startsWith('/login')) {
+  // Do not render the nav on certain pages
+  if (isUserLoading || pathname.startsWith('/admin') || pathname === '/') {
+      return null;
+  }
+  
+  if (pathname.startsWith('/login')) {
       return null;
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden px-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-24 md:hidden px-4">
       <div 
         ref={navRef}
-        className="relative h-16 w-full max-w-md mx-auto bg-card rounded-full shadow-lg flex items-center justify-around"
-        style={{boxShadow: '0 -4px 15px rgba(0,0,0,0.08)'}}
+        className="relative h-20 w-full max-w-md mx-auto bg-card rounded-t-2xl flex items-center justify-around"
+        style={{boxShadow: '0 -4px 20px rgba(0,0,0,0.08)'}}
         >
         
-        {/* Active item indicator */}
+        {/* Active item indicator dot */}
         <div
-            className="absolute top-1/2 -translate-y-1/2 h-10 rounded-full bg-primary/10 transition-all duration-300 ease-in-out"
-            style={indicatorStyle}
+            className="absolute top-0 -translate-y-1/2 w-2 h-2 bg-primary rounded-full transition-all duration-300 ease-in-out"
+            style={{
+                left: `calc(${indicatorStyle.left}px + ${indicatorStyle.width / 2}px - 4px)`,
+                opacity: indicatorStyle.opacity,
+            }}
         />
 
         {navItems.map((item, index) => (
