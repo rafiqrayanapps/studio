@@ -26,8 +26,8 @@ export default function BottomNav() {
   const navItems = useMemo(() => [
     { id: 'home', href: '/home', icon: Home, label: 'الرئيسية' },
     { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
-    { id: 'theme-toggle', icon: theme === 'dark' ? Sun : Moon, label: 'الوضع' },
     { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
+    { id: 'theme-toggle', icon: theme === 'dark' ? Sun : Moon, label: 'الوضع' },
     { id: 'profile', href: '/account', icon: User, label: 'حسابي' },
   ], [theme]);
 
