@@ -3,7 +3,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { Button } from '@/components/ui/button';
 import { SheetClose } from '@/components/ui/sheet';
 import Link from 'next/link';
-import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key } from 'lucide-react';
+import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, ChevronLeft } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/firebase';
 
@@ -27,10 +27,8 @@ export default function UserProfileButton() {
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="w-full justify-between h-auto p-3 hover:bg-secondary">
-                            <div className='flex items-center gap-2'>
-                               <Shield className="h-5 w-5 text-green-500" />
-                               <span className="font-semibold text-lg">حساب المدير</span>
-                            </div>
+                            <span className="font-semibold text-lg">حساب المدير</span>
+                             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="start">
@@ -57,10 +55,8 @@ export default function UserProfileButton() {
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                          <Button variant="ghost" className="w-full justify-between h-auto p-3 hover:bg-secondary">
-                            <div className='flex items-center gap-2'>
-                               <Crown className="h-5 w-5 text-yellow-500" />
-                               <span className="font-semibold text-lg">حساب برو</span>
-                            </div>
+                            <span className="font-semibold text-lg">حساب برو</span>
+                            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="start" dir="rtl">
@@ -90,8 +86,8 @@ export default function UserProfileButton() {
                 <SheetClose asChild>
                     <Link href="/activate/pro" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                            <span className="font-semibold text-lg text-yellow-500">تفعيل اشتراك برو</span>
-                            <Key className="h-5 w-5 text-yellow-500" />
+                            <span className="font-semibold text-lg text-primary">تفعيل اشتراك برو</span>
+                            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </div>
                     </Link>
                 </SheetClose>
@@ -101,7 +97,7 @@ export default function UserProfileButton() {
                     <Link href="/login/pro" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
                             <span className="font-semibold text-lg">الدخول للمشتركين برو</span>
-                            <UserIcon className="h-5 w-5 text-muted-foreground" />
+                            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </div>
                     </Link>
                 </SheetClose>
@@ -111,7 +107,7 @@ export default function UserProfileButton() {
                     <Link href="/login/admin" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
                             <span className="font-semibold text-lg">الدخول للادمن</span>
-                            <Shield className="h-5 w-5 text-muted-foreground" />
+                            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </div>
                     </Link>
                 </SheetClose>
