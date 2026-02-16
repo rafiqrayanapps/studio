@@ -86,7 +86,7 @@ export default function UserProfileButton() {
                 <SheetClose asChild>
                     <Link href="/activate/pro" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                            <span className="font-semibold text-lg text-primary">تفعيل اشتراك برو</span>
+                            <span className="font-semibold text-lg">تفعيل اشتراك برو</span>
                             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </div>
                     </Link>
@@ -94,19 +94,9 @@ export default function UserProfileButton() {
             </li>
             <li>
                 <SheetClose asChild>
-                    <Link href="/login/pro" className="block group">
-                        <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                            <span className="font-semibold text-lg">الدخول للمشتركين برو</span>
-                            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                    </Link>
-                </SheetClose>
-            </li>
-             <li>
-                <SheetClose asChild>
                     <Link href="/login/admin" className="block group">
                         <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                            <span className="font-semibold text-lg">الدخول للادمن</span>
+                            <span className="font-semibold text-lg">تسجيل الدخول</span>
                             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </div>
                     </Link>

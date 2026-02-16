@@ -62,7 +62,7 @@ export default function ProActivationPage() {
             <p className="px-8 text-center text-sm text-muted-foreground">
              هل لديك حساب بالفعل؟{' '}
             <Link
-                href="/login/pro"
+                href="/login/admin"
                 className="underline underline-offset-4 hover:text-primary"
             >
                 سجل الدخول من هنا

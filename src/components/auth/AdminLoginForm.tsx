@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, getDocs, query, collection, where, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, ShieldAlert } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
+import { doc, getDoc, getDocs, query, collection, where, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
+import type { WhitelistEntry } from '@/lib/definitions';
+import { getDeviceFingerprint } from '@/lib/fingerprint';
 
 const formSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
@@ -40,33 +42,30 @@ export default function AdminLoginForm() {
     setError(null);
     try {
         const email = data.email.toLowerCase();
-        // Step 1: Authenticate user
-        await signInWithEmailAndPassword(auth, email, data.password);
-        
+        const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
+        const user = userCredential.user;
+
         if (!firestore) {
             await auth.signOut();
             throw new Error("خدمة قاعدة البيانات غير متاحة.");
         }
 
-        // Step 2: Check if any admin exists in the system
+        // --- First Admin Bootstrap ---
+        // Check if any admin exists in the system. If not, this user becomes the first.
         const adminQuery = query(collection(firestore, 'whitelist'), where('role', '==', 'admin'), limit(1));
         const adminSnapshot = await getDocs(adminQuery);
 
         if (adminSnapshot.empty) {
-            // --- First Admin Bootstrap ---
-            // No admins exist, so this user becomes the first admin.
             const batch = writeBatch(firestore);
-
-            // a) Create the admin entry in whitelist
             const userWhitelistRef = doc(firestore, 'whitelist', email);
             batch.set(userWhitelistRef, {
                 email: email,
                 role: 'admin',
                 createdAt: serverTimestamp(),
-                isActivated: true, // First admin is activated by default
+                isActivated: true,
+                activatedByUid: user.uid,
             });
             
-            // b) Create the admin lock to prevent this from happening again
             const adminLockRef = doc(firestore, 'appConfig', 'adminLock');
             batch.set(adminLockRef, {
                 locked: true,
@@ -76,22 +75,33 @@ export default function AdminLoginForm() {
 
             await batch.commit();
             router.push('/admin/dashboard');
+            return;
+        }
 
-        } else {
-            // --- Standard Admin Login ---
-            // Admins already exist, so verify if this user is one of them.
-            const userWhitelistRef = doc(firestore, 'whitelist', email);
-            const userWhitelistSnap = await getDoc(userWhitelistRef);
+        // --- Standard Login ---
+        // If admins exist, check the user's role from the whitelist.
+        const whitelistRef = doc(firestore, 'whitelist', email);
+        const whitelistSnap = await getDoc(whitelistRef);
 
-            const isWhitelistedAdmin = userWhitelistSnap.exists() && userWhitelistSnap.data().role === 'admin';
+        if (whitelistSnap.exists()) {
+            const whitelistData = whitelistSnap.data() as WhitelistEntry;
 
-            if (isWhitelistedAdmin) {
+            if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
                 router.push('/admin/dashboard');
-            } else {
-                await auth.signOut();
-                throw new Error("هذا الحساب ليس لديه صلاحيات المسؤول.");
+                return;
+            }
+            
+            if (whitelistData.role === 'pro' && whitelistData.deviceFingerprint) {
+                const currentFingerprint = await getDeviceFingerprint();
+                if (whitelistData.deviceFingerprint !== currentFingerprint) {
+                    await auth.signOut();
+                    throw new Error("عذراً، هذا الحساب مرتبط بجهاز آخر.");
+                }
             }
         }
+
+        // Default redirect for Pro users or any other authenticated user
+        router.push('/home');
 
     } catch (e: any) {
        let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
@@ -111,8 +121,8 @@ export default function AdminLoginForm() {
   return (
     <>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">دخول المسؤول</CardTitle>
-        <CardDescription>الرجاء إدخال بياناتك للمتابعة</CardDescription>
+        <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
+        <CardDescription>أهلاً بعودتك! سجل الدخول للمتابعة</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>

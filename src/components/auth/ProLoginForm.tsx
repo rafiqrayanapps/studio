@@ -9,13 +9,13 @@ import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, Frown, ShieldAlert } from 'lucide-react';
+import { Loader2, Mail, Lock, ShieldAlert } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
+import { doc, getDoc, getDocs, query, collection, where, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
+import type { WhitelistEntry } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
-import { doc, getDoc } from 'firebase/firestore';
-import { WhitelistEntry } from '@/lib/definitions';
 
 const formSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
@@ -41,32 +41,67 @@ export default function ProLoginForm() {
     setIsSubmitting(true);
     setError(null);
     try {
-      // 1. Sign in the user
-      const email = data.email.toLowerCase();
-      const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
-      const user = userCredential.user;
+        const email = data.email.toLowerCase();
+        const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
+        const user = userCredential.user;
 
-      if (!firestore) throw new Error("Firestore not available");
-
-      // 2. Get device fingerprint
-      const currentFingerprint = await getDeviceFingerprint();
-
-      // 3. Check against whitelist record
-      const whitelistRef = doc(firestore, 'whitelist', email);
-      const whitelistSnap = await getDoc(whitelistRef);
-
-      if (whitelistSnap.exists()) {
-        const whitelistData = whitelistSnap.data() as WhitelistEntry;
-        // If there's a fingerprint on record, it MUST match
-        if (whitelistData.deviceFingerprint && whitelistData.deviceFingerprint !== currentFingerprint) {
-            // If it doesn't match, sign the user out immediately and throw an error
+        if (!firestore) {
             await auth.signOut();
-            throw new Error("عذراً، هذا الحساب مرتبط بجهاز آخر.");
+            throw new Error("خدمة قاعدة البيانات غير متاحة.");
         }
-      }
-      
-      // 4. If all checks pass, proceed
-      router.push('/home');
+
+        // --- First Admin Bootstrap ---
+        // Check if any admin exists in the system. If not, this user becomes the first.
+        const adminQuery = query(collection(firestore, 'whitelist'), where('role', '==', 'admin'), limit(1));
+        const adminSnapshot = await getDocs(adminQuery);
+
+        if (adminSnapshot.empty) {
+            const batch = writeBatch(firestore);
+            const userWhitelistRef = doc(firestore, 'whitelist', email);
+            batch.set(userWhitelistRef, {
+                email: email,
+                role: 'admin',
+                createdAt: serverTimestamp(),
+                isActivated: true,
+                activatedByUid: user.uid,
+            });
+            
+            const adminLockRef = doc(firestore, 'appConfig', 'adminLock');
+            batch.set(adminLockRef, {
+                locked: true,
+                firstAdminEmail: email,
+                createdAt: serverTimestamp(),
+            });
+
+            await batch.commit();
+            router.push('/admin/dashboard');
+            return;
+        }
+
+        // --- Standard Login ---
+        // If admins exist, check the user's role from the whitelist.
+        const whitelistRef = doc(firestore, 'whitelist', email);
+        const whitelistSnap = await getDoc(whitelistRef);
+
+        if (whitelistSnap.exists()) {
+            const whitelistData = whitelistSnap.data() as WhitelistEntry;
+
+            if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
+                router.push('/admin/dashboard');
+                return;
+            }
+            
+            if (whitelistData.role === 'pro' && whitelistData.deviceFingerprint) {
+                const currentFingerprint = await getDeviceFingerprint();
+                if (whitelistData.deviceFingerprint !== currentFingerprint) {
+                    await auth.signOut();
+                    throw new Error("عذراً، هذا الحساب مرتبط بجهاز آخر.");
+                }
+            }
+        }
+
+        // Default redirect for Pro users or any other authenticated user
+        router.push('/home');
 
     } catch (e: any) {
        let description = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.";
@@ -86,7 +121,7 @@ export default function ProLoginForm() {
   return (
     <>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">دخول المشتركين</CardTitle>
+        <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
         <CardDescription>أهلاً بعودتك! سجل الدخول للمتابعة</CardDescription>
       </CardHeader>
       <Form {...form}>
