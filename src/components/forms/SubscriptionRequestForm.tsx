@@ -13,11 +13,13 @@ import { CardContent, CardDescription, CardHeader, CardTitle } from '@/component
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { PaymentLinksConfig } from '@/lib/definitions';
 import { useRouter } from 'next/navigation';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 const subscriptionRequestSchema = z.object({
   name: z.string().min(3, { message: "الاسم يجب أن يكون 3 أحرف على الأقل" }),
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
-  phoneNumber: z.string().min(9, { message: "الرجاء إدخال رقم هاتف صالح" }),
+  phoneNumber: z.string().refine(isValidPhoneNumber, { message: "الرجاء إدخال رقم هاتف صالح" }),
   planName: z.string(),
 });
 
@@ -123,10 +125,14 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
                 <FormItem>
                   <FormLabel>رقم التواصل (واتساب)</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input type="tel" placeholder="9665xxxxxxxx" {...field} className="pl-10 text-left" dir="ltr" />
-                    </div>
+                    <PhoneInput
+                        {...field}
+                        international
+                        defaultCountry="SA"
+                        placeholder="أدخل رقم الهاتف"
+                        dir="ltr"
+                        className="SubscriptionRequestForm-phoneInput"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
