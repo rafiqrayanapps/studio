@@ -15,15 +15,23 @@ export default function BottomNav() {
 
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
   const navRef = useRef<HTMLDivElement>(null);
-  const itemsRef = useRef<(HTMLAnchorElement | HTMLButtonElement | null)[]>([]);
+  const itemsRef = useRef<(HTMLAnchorElement | null)[]>([]);
   
   const getActivePath = () => {
-    if (pathname.startsWith('/colors')) return '/colors';
-    if (pathname.startsWith('/account')) return '/account';
-    if (pathname.startsWith('/login')) return '/account'; // Group login pages under profile
-    if (pathname.startsWith('/activate/pro')) return '/account';
-    return pathname;
+    const topLevelPaths = ['/home', '/favorites', '/colors', '/notifications'];
+    if (topLevelPaths.includes(pathname)) {
+        return pathname;
+    }
+    
+    const profileRelatedPaths = ['/account', '/login/pro', '/activate/pro', '/admin/dashboard'];
+    if (profileRelatedPaths.some(p => pathname.startsWith(p))) {
+        if (isAdmin) return '/admin/dashboard';
+        if (isPro) return '/account';
+        return '/activate/pro';
+    }
+    return ''; // Return empty for non-nav pages like /categories/[id]
   }
+  
   const activePath = getActivePath();
 
   const navItems = useMemo(() => [
@@ -34,68 +42,75 @@ export default function BottomNav() {
     { id: 'profile', href: '/account', icon: User, label: 'حسابي' },
   ], []);
 
+  const activeIndex = useMemo(() => {
+    return navItems.findIndex(item => {
+        let finalHref = item.href;
+        if (item.id === 'profile') {
+            if (isAdmin) finalHref = '/admin/dashboard';
+            else if (isPro) finalHref = '/account';
+            else finalHref = '/activate/pro';
+        }
+        return finalHref === activePath;
+    });
+  }, [navItems, activePath, isAdmin, isPro]);
+
+
   useEffect(() => {
-    // Determine the active item based on the current path
-    const activeIndex = navItems.findIndex(item => item.href && activePath === item.href);
-    
-    // A short timeout to ensure the DOM is ready before we measure elements
     const timeoutId = setTimeout(() => {
-        const activeItem = itemsRef.current[activeIndex];
-        const nav = navRef.current;
-        if (activeItem && nav) {
-            const navRect = nav.getBoundingClientRect();
-            const itemRect = activeItem.getBoundingClientRect();
+        const activeItemEl = itemsRef.current[activeIndex];
+        const navEl = navRef.current;
+
+        if (activeItemEl && navEl) {
+            const navRect = navEl.getBoundingClientRect();
+            const itemRect = activeItemEl.getBoundingClientRect();
             setIndicatorStyle({
                 left: itemRect.left - navRect.left,
                 width: itemRect.width,
                 opacity: 1
             });
         } else {
-            // Hide indicator if no item is active
-            setIndicatorStyle(s => ({ ...s, opacity: 0 }));
+             setIndicatorStyle(s => ({ ...s, opacity: 0 }));
         }
-    }, 50);
+    }, 50); // A small delay to ensure DOM is ready
 
     return () => clearTimeout(timeoutId);
-  }, [activePath, navItems]);
+  }, [activeIndex]);
 
 
   const NavItem = ({ item, index }: { item: (typeof navItems)[0], index: number }) => {
     const { id, href, icon: Icon, label } = item;
     
-    // Determine the correct destination for the profile link
     let finalHref = href;
     if (id === 'profile') {
         if (isAdmin) finalHref = '/admin/dashboard';
         else if (isPro) finalHref = '/account';
-        else finalHref = '/activate/pro'; // Send non-pro users to activation
+        else finalHref = '/activate/pro';
     }
 
-    const isActive = activePath === finalHref;
+    const isActive = activeIndex === index;
 
     const content = (
-      <div className="relative flex flex-col items-center justify-center w-full h-full gap-1">
+      <div className="relative flex flex-col items-center justify-center w-full h-full gap-1 z-10">
         <Icon className={cn(
-          "h-6 w-6 z-10 transition-colors duration-200", 
-          isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
+          "h-6 w-6 transition-colors duration-200", 
+          isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
         )} />
-        <span className={cn(
-            "text-[10px] font-bold transition-colors duration-200",
-            isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
-        )}>{label}</span>
         {id === 'notifications' && hasNewNotifications && (
-            <span className="absolute top-1 right-1/2 translate-x-3 h-2 w-2 rounded-full bg-destructive z-20"></span>
+            <span className="absolute top-2 right-1/2 translate-x-3.5 h-2 w-2 rounded-full bg-destructive z-20"></span>
         )}
       </div>
     );
     
-    const commonProps = {
-        'aria-label': label,
-        className: 'group flex-1 h-full flex items-center justify-center',
-        ref: (el: any) => (itemsRef.current[index] = el),
-    };
-
-    return <Link href={finalHref || '#'} {...commonProps}>{content}</Link>;
+    return (
+        <Link 
+            href={finalHref || '#'}
+            aria-label={label}
+            ref={(el) => (itemsRef.current[index] = el)}
+            className="group flex-1 h-full flex items-center justify-center transition-all duration-300"
+        >
+          {content}
+        </Link>
+    );
   };
 
   // Do not render the nav on certain pages
@@ -108,21 +123,24 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-24 md:hidden px-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden flex items-center justify-center px-4">
       <div 
         ref={navRef}
-        className="relative h-20 w-full max-w-md mx-auto bg-card rounded-t-2xl flex items-center justify-around"
-        style={{boxShadow: '0 -4px 20px rgba(0,0,0,0.08)'}}
+        className="relative h-16 w-full max-w-md mx-auto bg-card rounded-full flex items-center justify-around"
+        style={{boxShadow: '0 4px 20px rgba(0,0,0,0.1)'}}
         >
         
-        {/* Active item indicator dot */}
+        {/* Sliding Indicator */}
         <div
-            className="absolute top-0 -translate-y-1/2 w-2 h-2 bg-primary rounded-full transition-all duration-300 ease-in-out"
+            className="absolute top-0 h-full bg-primary/10 rounded-full transition-all duration-500 ease-in-out"
             style={{
-                left: `calc(${indicatorStyle.left}px + ${indicatorStyle.width / 2}px - 4px)`,
+                left: indicatorStyle.left,
+                width: indicatorStyle.width,
                 opacity: indicatorStyle.opacity,
             }}
-        />
+        >
+            <div className="absolute top-1.5 left-1/2 -translate-x-1/2 h-1 w-5 bg-primary rounded-full" />
+        </div>
 
         {navItems.map((item, index) => (
           <NavItem key={item.id} item={item} index={index} />
