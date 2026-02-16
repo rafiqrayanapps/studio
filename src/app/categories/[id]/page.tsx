@@ -126,8 +126,7 @@ export default function CategoryPage() {
               return (
               <div
                 key={item.id}
-                className="flex flex-col text-center group relative gap-y-3 opacity-0 animate-fade-in-up"
-                style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
+                className="flex flex-col text-center group relative gap-y-3"
               >
                 <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
                 <div className="relative cursor-pointer aspect-square w-full" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}>
@@ -153,8 +152,7 @@ export default function CategoryPage() {
               return (
               <div
                 key={item.id}
-                className="flex flex-col text-center group gap-y-3 opacity-0 animate-fade-in-up"
-                style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
+                className="flex flex-col text-center group gap-y-3"
               >
                  <h3 className="font-bold text-base">{item.title}</h3>
                 <div className="relative w-full cursor-pointer" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}>
@@ -248,7 +246,7 @@ export default function CategoryPage() {
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {typedItems.map((item, index) => (
-                <div key={item.id} className="opacity-0 animate-fade-in-up h-full" style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}>
+                <div key={item.id} className="h-full">
                     <Style3Item item={item} />
                 </div>
             ))}
@@ -262,8 +260,7 @@ export default function CategoryPage() {
                      return (
                      <div
                         key={item.id}
-                        className="opacity-0 animate-fade-in-up h-full"
-                        style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}
+                        className="h-full"
                     >
                         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
                              {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-300 z-10" />}
@@ -352,7 +349,7 @@ export default function CategoryPage() {
             return (
                 <div className="space-y-6">
                     {typedItems.map((item, index) => (
-                        <div key={item.id} className="opacity-0 animate-fade-in-up" style={{ animationDelay: `${(filteredSubCategories.length + index) * 100}ms` }}>
+                        <div key={item.id}>
                             <Style5Item item={item} />
                         </div>
                     ))}
@@ -399,8 +396,7 @@ export default function CategoryPage() {
                   return (
                   <div
                     key={cat.id}
-                    className="relative group opacity-0 animate-fade-in-up"
-                    style={{ animationDelay: `${index * 100}ms` }}
+                    className="relative group"
                     onClick={() => handleSubCategoryClick(cat)}
                   >
                        <div className="relative bg-primary p-4 text-primary-foreground rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm h-full min-h-36">

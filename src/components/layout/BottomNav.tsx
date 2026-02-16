@@ -65,8 +65,8 @@ export default function BottomNav() {
     return () => clearTimeout(timeoutId);
   }, [activeIndex, pathname, mounted]);
 
-  // Hide on splash page and until mounted to prevent hydration issues
-  if (pathname === '/' || !mounted) {
+  // Hide on splash page, admin pages, and until mounted to prevent hydration issues
+  if (pathname === '/' || pathname.startsWith('/admin') || !mounted) {
     return null;
   }
 
