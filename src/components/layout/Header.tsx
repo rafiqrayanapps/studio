@@ -85,10 +85,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                   {/* Header part */}
                   <div className="flex items-center justify-center h-40">
                     <div className="text-center text-primary-foreground">
-                      <h2 className="text-3xl font-bold">رفيق المصمم</h2>
-                      <div className="mt-1 bg-primary-foreground text-primary px-4 py-1 rounded-lg inline-block">
-                        <h3 className="text-2xl font-bold tracking-widest">المصمم</h3>
-                      </div>
+                      <h2 className="text-4xl font-bold">رفيق المصمم</h2>
                     </div>
                   </div>
                   

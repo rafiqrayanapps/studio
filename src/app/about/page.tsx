@@ -6,9 +6,6 @@ const AppLogo = () => {
     return (
         <div className="bg-card p-8 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center w-full leading-tight">
             <span className="text-5xl font-bold text-foreground">رفيق المصمم</span>
-            <div className="text-primary mt-2">
-                <span className="text-4xl font-bold">المصمم</span>
-            </div>
         </div>
     );
 };
