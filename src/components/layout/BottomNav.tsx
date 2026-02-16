@@ -2,74 +2,95 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Heart, Bell, Moon, Sun } from 'lucide-react';
+import { Home, Heart, Bell, Moon, Sun, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useTheme } from 'next-themes';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import type { ShareLinkConfig } from '@/lib/definitions';
+import { Button } from '@/components/ui/button';
+
+// The SVG for the notched background
+const NavBackground = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 375 88"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M0 29C0 12.4315 13.4315 0 30 0H147.519C154.276 0 160.627 2.87188 165.235 7.78401L170.054 13.0133C178.632 22.3489 191.368 22.3489 199.946 13.0133L204.765 7.78401C209.373 2.87188 215.724 0 222.481 0H345C361.569 0 375 12.4315 375 29V88H0V29Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
 
 export default function BottomNav() {
   const pathname = usePathname();
   const hasNewNotifications = useHasNewNotifications();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  
+  const firestore = useFirestore();
+  const [canShare, setCanShare] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      setCanShare(true);
+    }
+  }, []);
+
+  const shareLinkRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'shareLink') : null, [firestore]);
+  const { data: shareLinkConfig } = useDoc<ShareLinkConfig>(shareLinkRef);
+
+  const handleShare = async () => {
+    if (canShare && shareLinkConfig?.enabled && shareLinkConfig.url) {
+      try {
+        await navigator.share({
+          title: "رفيق المصمم",
+          text: shareLinkConfig.text || "مشاركة التطبيق",
+          url: shareLinkConfig.url,
+        });
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error('Error sharing:', error);
+        }
+      }
+    }
+  };
 
   const navItems = useMemo(() => [
-    { id: 'home', href: '/home', icon: Home, label: 'الرئيسية' },
-    { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
-    { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
-    { id: 'theme-toggle', icon: Moon, label: 'الوضع الليلي' },
-  ], []);
+    { id: 'home', href: '/home', icon: Home },
+    { id: 'favorites', href: '/favorites', icon: Heart },
+    { id: 'notifications', href: '/notifications', icon: Bell },
+    { id: 'theme-toggle', action: () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark'), icon: resolvedTheme === 'dark' ? Sun : Moon },
+  ], [resolvedTheme, setTheme]);
 
-  const getActiveIndex = () => {
-    if (pathname.startsWith('/categories')) return 0;
-    if (pathname.startsWith('/pricing') || pathname.startsWith('/subscribe') || pathname.startsWith('/about') || pathname.startsWith('/colors') || pathname.startsWith('/account') || pathname.startsWith('/activate/pro')) return -1;
-    const exactMatchIndex = navItems.findIndex(item => item.href === pathname);
-    return exactMatchIndex;
-  };
-  
-  const activeIndex = getActiveIndex();
-  
-  const ITEMS_COUNT = navItems.length;
-  
-  const NavItem = ({ item, isActive }: { item: typeof navItems[0]; isActive: boolean; }) => {
-    const { id, href, icon: Icon } = item;
-    const effectiveTheme = theme === 'system' ? resolvedTheme : theme;
+  const getActivePath = () => {
+    if (pathname.startsWith('/categories')) return '/home';
+    return pathname;
+  }
+  const activePath = getActivePath();
+
+  const NavItem = ({ item }: { item: typeof navItems[0] }) => {
+    const { id, href, icon: Icon, action } = item;
+    const isActive = href ? activePath === href : false;
 
     const content = (
-        <div className="relative z-10 flex flex-col items-center justify-center text-center group flex-1 h-full">
-            {id === 'theme-toggle' ? (
-                effectiveTheme === 'dark' ? 
-                <Sun className={cn("h-6 w-6 transition-colors", isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary')} /> :
-                <Moon className={cn("h-6 w-6 transition-colors", isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary')} />
-            ) : (
-                <Icon className={cn(
-                  "h-6 w-6 transition-colors",
-                  isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
-                )} />
-            )}
-            {id === 'notifications' && hasNewNotifications && (
-              <span className="absolute top-2 right-1/2 h-2 w-2 translate-x-4 rounded-full bg-destructive border border-card"></span>
-            )}
-        </div>
+      <div className="relative flex flex-col items-center justify-center gap-1 w-16 h-16">
+        <Icon className={cn("h-6 w-6 transition-colors", isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary')} />
+        {id === 'notifications' && hasNewNotifications && (
+            <span className="absolute top-4 right-4 h-2 w-2 rounded-full bg-destructive border border-card"></span>
+        )}
+      </div>
     );
     
-    if (id === 'theme-toggle') {
-        return (
-            <button 
-                onClick={(e) => { e.preventDefault(); setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}} 
-                className="flex-1 h-full"
-                aria-label="Toggle theme"
-            >
-                {content}
-            </button>
-        );
+    if (href) {
+        return <Link href={href} className="group">{content}</Link>;
     }
-
-    return (
-      <Link href={href!} className="flex-1 h-full">
-        {content}
-      </Link>
-    );
+    return <button onClick={action} className="group">{content}</button>;
   };
 
   if (pathname.startsWith('/admin') || pathname === '/' || pathname.startsWith('/login')) {
@@ -77,32 +98,29 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden px-4 pointer-events-none">
-      <div className="relative h-full w-full max-w-xs mx-auto pointer-events-auto"> 
-        <div className="absolute bottom-4 w-full h-16 bg-card rounded-3xl shadow-lg pointer-events-none"></div>
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-28 md:hidden px-4 pointer-events-none">
+      <div className="relative h-full w-full max-w-md mx-auto pointer-events-auto">
+        <NavBackground className="absolute bottom-0 w-full h-auto text-card" style={{filter: 'drop-shadow(0 -4px 10px rgba(0,0,0,0.05))'}} />
         
-        <div 
-          className="absolute top-4 w-[80px] h-[40px] bg-card pointer-events-none"
-          style={{
-            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 40px)` : '-100px',
-            transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            clipPath: 'ellipse(60% 100% at 50% 0%)'
-          }}
+        <Button
+            size="icon"
+            onClick={handleShare}
+            className="absolute bottom-[42px] left-1/2 -translate-x-1/2 h-16 w-16 rounded-full bg-primary text-primary-foreground shadow-lg z-10 border-4 border-card"
+            disabled={!(canShare && shareLinkConfig?.enabled)}
         >
-        </div>
-        
-        <div 
-          className="absolute top-4 w-2.5 h-2.5 bg-primary rounded-full pointer-events-none"
-          style={{
-            right: activeIndex !== -1 ? `calc(${activeIndex * (100 / ITEMS_COUNT)}% + ${(100 / ITEMS_COUNT) / 2}% - 5px)` : '-100px',
-            transition: 'right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            transform: `translateY(-50%) scale(${activeIndex !== -1 ? 1 : 0.5})`,
-            transformOrigin: 'bottom',
-          }}
-        />
-        
-        <div className="relative h-full flex justify-around items-center pt-4">
-          {navItems.map((item, index) => <NavItem key={item.id} item={item} isActive={activeIndex === index} />)}
+            <Share2 className="h-7 w-7" />
+        </Button>
+
+        <div className="absolute bottom-0 w-full h-24 flex items-center justify-around z-0">
+            <div className="flex justify-around items-end w-full pb-1">
+                <div className="flex-1 flex justify-center"><NavItem item={navItems[0]} /></div>
+                <div className="flex-1 flex justify-center"><NavItem item={navItems[1]} /></div>
+                
+                <div className="w-20 flex-shrink-0" />
+
+                <div className="flex-1 flex justify-center"><NavItem item={navItems[2]} /></div>
+                <div className="flex-1 flex justify-center"><NavItem item={navItems[3]} /></div>
+            </div>
         </div>
       </div>
     </nav>
