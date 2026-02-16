@@ -101,17 +101,13 @@ export default function PricingPage() {
                     </ul>
                   </CardContent>
                   <CardFooter>
-                    {plan.price === '0' ? (
-                       <Button asChild className="w-full" variant={plan.isFeatured ? 'default' : 'secondary'}>
-                          <Link href={plan.link || '/login'}>
-                            ابدأ مجاناً
-                          </Link>
-                        </Button>
-                    ) : (
-                       <Button className="w-full" variant={plan.isFeatured ? 'default' : 'secondary'} onClick={() => handleSubscribeClick(plan)}>
-                          اطلب الاشتراك
-                        </Button>
-                    )}
+                    <Button
+                      className="w-full"
+                      variant={plan.isFeatured ? 'default' : 'secondary'}
+                      onClick={() => handleSubscribeClick(plan)}
+                    >
+                      {plan.price === '0' ? 'ابدأ الآن' : 'اطلب الاشتراك'}
+                    </Button>
                   </CardFooter>
                 </Card>
               ))
