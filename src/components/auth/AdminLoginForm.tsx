@@ -55,16 +55,18 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
     isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
+
+    // Handle "remember me" choice before async operations
+    const email = data.email.toLowerCase();
+    if (data.rememberMe) {
+        setSavedEmail(email);
+    } else {
+        setSavedEmail('');
+    }
+    
     try {
-        const email = data.email.toLowerCase();
         const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
         const user = userCredential.user;
-
-        if (data.rememberMe) {
-            setSavedEmail(email);
-        } else {
-            setSavedEmail('');
-        }
 
         if (!firestore) {
             await auth.signOut();
