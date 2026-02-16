@@ -1,7 +1,6 @@
 'use client';
 
 import Header from '@/components/layout/Header';
-import BottomNav from '@/components/layout/BottomNav';
 import SubscriptionForm from '@/components/forms/SubscriptionForm';
 import { Button } from '@/components/ui/button';
 import { MessageCircle } from 'lucide-react';
@@ -37,7 +36,6 @@ export default function SubscribePage() {
           </Button>
         </div>
       </main>
-      <BottomNav />
     </div>
   );
 }

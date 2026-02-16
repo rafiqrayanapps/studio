@@ -6,7 +6,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import BottomNav from '@/components/layout/BottomNav';
 
 const palettes = [
   { name: 'أزرق سماوي', shades: ['#93C5FD', '#60A5FA', '#3B82F6'], tints: ['#EFF6FF', '#BFDBFE'] },
@@ -99,7 +98,6 @@ export default function ColorsPage() {
           </div>
         </div>
       </main>
-      <BottomNav />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 'use client';
 import { useEffect } from 'react';
 import Header from '@/components/layout/Header';
-import BottomNav from '@/components/layout/BottomNav';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import type { Notification } from '@/lib/definitions';
@@ -83,7 +82,6 @@ export default function NotificationsPage() {
           )}
         </div>
       </main>
-      <BottomNav />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import ThemeManager from '@/components/theme/ThemeManager';
 import ServiceWorkerRegistrar from '@/components/layout/ServiceWorkerRegistrar';
 import OnlineStatusDetector from '@/components/layout/OnlineStatusDetector';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import BottomNav from '@/components/layout/BottomNav';
 
 export const metadata: Metadata = {
   applicationName: 'رفيق المصمم',
@@ -50,6 +51,7 @@ export default function RootLayout({
               <OnlineStatusDetector />
               <ServiceWorkerRegistrar />
               {children}
+              <BottomNav />
             </FirebaseClientProvider>
         </ThemeProvider>
         <Toaster />

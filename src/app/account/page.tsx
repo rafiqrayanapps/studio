@@ -1,7 +1,6 @@
 'use client';
 
 import Header from '@/components/layout/Header';
-import BottomNav from '@/components/layout/BottomNav';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -63,7 +62,6 @@ export default function AccountPage() {
             <AccountInfoSkeleton />
           </div>
         </main>
-        <BottomNav />
       </div>
     );
   }
@@ -117,7 +115,6 @@ export default function AccountPage() {
           </Card>
         </div>
       </main>
-      <BottomNav />
     </div>
   );
 }

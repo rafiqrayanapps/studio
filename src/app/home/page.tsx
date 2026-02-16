@@ -6,7 +6,6 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
 import { Search, Crown } from 'lucide-react';
-import BottomNav from '@/components/layout/BottomNav';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -96,7 +95,6 @@ export default function HomePage() {
           </>
         )}
       </main>
-      <BottomNav />
       <SubscriptionDialog />
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
     </div>

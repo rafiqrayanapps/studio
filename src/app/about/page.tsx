@@ -1,6 +1,5 @@
 'use client';
 import Header from '@/components/layout/Header';
-import BottomNav from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
 
 const AppLogo = () => {
@@ -55,8 +54,6 @@ export default function AboutPage() {
                 </footer>
             </div>
 
-            {/* Standard Bottom Navigation */}
-            <BottomNav />
         </div>
     );
 }

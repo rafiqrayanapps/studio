@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Download, Copy, Trash2, Heart, PlayCircle, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import BottomNav from '@/components/layout/BottomNav';
 import { WithId } from '@/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -162,7 +161,6 @@ export default function FavoritesPage() {
           </div>
         )}
       </main>
-      <BottomNav />
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
           <DialogHeader className="sr-only">
