@@ -18,7 +18,6 @@ export default function BottomNav() {
   const itemsRef = useRef<(HTMLAnchorElement | HTMLButtonElement | null)[]>([]);
   
   const getActivePath = () => {
-    if (pathname.startsWith('/categories')) return '/home';
     if (pathname.startsWith('/colors')) return '/colors';
     if (pathname.startsWith('/account')) return '/account';
     if (pathname.startsWith('/login')) return '/account'; // Group login pages under profile
@@ -96,7 +95,7 @@ export default function BottomNav() {
         ref: (el: any) => (itemsRef.current[index] = el),
     };
 
-    return <Link href={finalHref} {...commonProps}>{content}</Link>;
+    return <Link href={finalHref || '#'} {...commonProps}>{content}</Link>;
   };
 
   // Do not render the nav on certain pages
