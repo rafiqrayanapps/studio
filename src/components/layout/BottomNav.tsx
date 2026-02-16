@@ -2,16 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Heart, Bell, User, Sun, Moon } from 'lucide-react';
+import { Home, Heart, Bell, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useUserProfile } from '@/hooks/use-user-profile';
 import { useTheme } from 'next-themes';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { isPro, isAdmin } = useUserProfile();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -28,7 +26,6 @@ export default function BottomNav() {
     { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
     { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
     { id: 'theme-toggle', icon: theme === 'dark' ? Sun : Moon, label: 'الوضع' },
-    { id: 'profile', href: '/account', icon: User, label: 'حسابي' },
   ], [theme]);
 
   const getActivePath = () => {
@@ -37,28 +34,14 @@ export default function BottomNav() {
         return pathname;
     }
     
-    if (pathname.startsWith('/admin')) return '/admin/dashboard';
-    if (pathname.startsWith('/account')) return '/account';
-    if (pathname.startsWith('/login')) return '/login';
-    
     return '';
   }
   
   const activePath = getActivePath();
 
   const activeIndex = useMemo(() => {
-    return navItems.findIndex(item => {
-        if (!item.href) return false;
-        
-        let finalHref = item.href;
-        if (item.id === 'profile') {
-            if (isAdmin) finalHref = '/admin/dashboard';
-            else if (isPro) finalHref = '/account';
-            else finalHref = '/login';
-        }
-        return finalHref === activePath;
-    });
-  }, [navItems, activePath, isAdmin, isPro]);
+    return navItems.findIndex(item => item.href === activePath);
+  }, [navItems, activePath]);
 
 
   useEffect(() => {
@@ -91,13 +74,7 @@ export default function BottomNav() {
     const { id, href, icon: Icon, label } = item;
     const hasNewNotifications = useHasNewNotifications();
     
-    let finalHref = href;
-    if (id === 'profile') {
-        if (isAdmin) finalHref = '/admin/dashboard';
-        else if (isPro) finalHref = '/account';
-        else finalHref = '/login';
-    }
-
+    const finalHref = href;
     const isActive = activeIndex === index;
 
     const content = (
