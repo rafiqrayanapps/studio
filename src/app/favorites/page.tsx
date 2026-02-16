@@ -7,13 +7,14 @@ import type { ContentItem } from '@/lib/definitions';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Download, Copy, Trash2, Heart, PlayCircle, Lock } from 'lucide-react';
+import { Download, Copy, Trash2, Heart, PlayCircle, Lock, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { WithId } from '@/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 // Reusable Remove Button
 const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
@@ -76,14 +77,22 @@ const PromptItemCard = ({ item, onRemove, onImageClick, isLocked }: { item: With
 };
 
 // A component for Video-based items (Style 4)
-const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove: (id: string) => void }) => {
+const VideoItemCard = ({ item, onRemove, isLocked }: { item: WithId<ContentItem>, onRemove: (id: string) => void, isLocked: boolean }) => {
+    const router = useRouter();
+
+    const handleLockedClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        router.push('/pricing');
+    };
+
     return (
         <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
+            {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-300 z-10" />}
             <div className="pb-2">
                 <h3 className="font-bold text-lg text-center">{item.title}</h3>
             </div>
             
-            <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="relative block">
+            <a href={isLocked ? '#' : item.videoUrl || '#'} onClick={isLocked ? handleLockedClick : undefined} target="_blank" rel="noopener noreferrer" className="relative block">
                 <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
                     <RemoveButton onRemove={() => onRemove(item.id)} />
                     {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
@@ -91,16 +100,17 @@ const VideoItemCard = ({ item, onRemove }: { item: WithId<ContentItem>, onRemove
             </a>
             
             <div className="pt-4 mt-auto">
-                <a href={item.videoUrl || '#'} target="_blank" rel="noopener noreferrer" className="w-full">
-                    <Button variant="secondary" className="w-full">
-                        <PlayCircle className="ml-2 h-4 w-4" />
-                        مشاهدة الفيديو
-                    </Button>
-                </a>
+                <Button asChild variant="secondary" className="w-full">
+                    <a href={isLocked ? '#' : item.videoUrl || '#'} onClick={isLocked ? handleLockedClick : undefined} target="_blank" rel="noopener noreferrer">
+                        {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <PlayCircle className="ml-2 h-4 w-4" />}
+                        {isLocked ? 'الترقية للمشاهدة' : 'مشاهدة الفيديو'}
+                    </a>
+                </Button>
             </div>
         </div>
     );
 };
+
 
 // A component for Downloadable items (Style 1/2)
 const DownloadItemCard = ({ item, onRemove, onImageClick, isLocked }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void, isLocked: boolean }) => {
@@ -148,7 +158,7 @@ export default function FavoritesPage() {
                 return <PromptItemCard key={item.id} item={item} onRemove={removeFromFavorites} onImageClick={setSelectedImage} isLocked={isLocked} />;
               }
               if (item.videoUrl) {
-                return <VideoItemCard key={item.id} item={item} onRemove={removeFromFavorites} />;
+                return <VideoItemCard key={item.id} item={item} onRemove={removeFromFavorites} isLocked={isLocked} />;
               }
               return <DownloadItemCard key={item.id} item={item} onRemove={removeFromFavorites} onImageClick={setSelectedImage} isLocked={isLocked} />;
             })}
