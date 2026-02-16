@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, AnimationEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -47,14 +47,10 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
     defaultValues: { email: '', password: '', rememberMe: false },
   });
 
-  useEffect(() => {
-      if (savedEmail) {
-          form.setValue('email', savedEmail);
-          form.setValue('rememberMe', true);
-      }
-  }, [savedEmail, form]);
+  const onSubmit = useCallback(async (data: LoginFormValues) => {
+    // Prevent multiple submissions
+    if (isSubmitting) return;
 
-  const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     setError(null);
     try {
@@ -111,7 +107,29 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [auth, firestore, router, setSavedEmail, isSubmitting]);
+
+
+  useEffect(() => {
+      if (savedEmail) {
+          form.setValue('email', savedEmail);
+          form.setValue('rememberMe', true);
+      }
+  }, [savedEmail, form]);
+  
+  const handleAutofill = useCallback((e: AnimationEvent<HTMLInputElement>) => {
+    if (e.animationName === 'onAutoFillStart') {
+        // Use a small delay to ensure the browser has time to fill all fields
+        setTimeout(() => {
+            // Check if form is valid before submitting
+            const email = form.getValues('email');
+            const password = form.getValues('password');
+            if(email && password){
+                 form.handleSubmit(onSubmit)();
+            }
+        }, 100);
+    }
+  }, [form, onSubmit]);
 
   return (
     <>
@@ -134,6 +152,7 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
                       <Input 
                         type="email" 
                         {...field} 
+                        onAnimationStart={handleAutofill}
                         className="pl-10 text-left" 
                         dir="ltr"
                         placeholder="يرجى إدخال بريدك الإلكتروني"
@@ -156,6 +175,7 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
                       <Input 
                         type={showPassword ? 'text' : 'password'}
                         {...field} 
+                        onAnimationStart={handleAutofill}
                         className="pl-10 pr-10 text-left"
                         dir="ltr" 
                         placeholder="يرجى إدخال كلمة السر"

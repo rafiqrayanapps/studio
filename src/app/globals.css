@@ -85,6 +85,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Autofill detection trick */
+  @keyframes onAutoFillStart {
+    from {}
+    to {}
+  }
+
+  input:-webkit-autofill {
+    animation-name: onAutoFillStart;
+  }
 }
 
 .SubscriptionRequestForm-phoneInput .PhoneInputInput {
