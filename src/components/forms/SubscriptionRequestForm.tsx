@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFirestore, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, serverTimestamp, doc, query, orderBy, where } from 'firebase/firestore';
-import { Loader2, User, Phone, Mail, Package } from 'lucide-react';
+import { Loader2, User, Phone, Mail, Package, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -104,12 +104,35 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
                         <Skeleton className="h-10 w-full" />
                     ) : (
                         filteredPaymentMethods.map(method => (
-                            <Button key={method.id} variant="outline" asChild className="w-full">
-                                <a href={method.link} target="_blank" rel="noopener noreferrer">
-                                    <DynamicIcon name={method.icon} className="ml-2 h-5 w-5" />
-                                    {method.name}
-                                </a>
-                            </Button>
+                           method.isUrl ? (
+                                <Button key={method.id} variant="outline" asChild className="w-full">
+                                    <a href={method.link} target="_blank" rel="noopener noreferrer">
+                                        <DynamicIcon name={method.icon} className="ml-2 h-5 w-5" />
+                                        {method.name}
+                                    </a>
+                                </Button>
+                            ) : (
+                                <div key={method.id} className="space-y-1.5">
+                                    <FormLabel className="text-xs flex items-center gap-1.5">
+                                        <DynamicIcon name={method.icon} className="h-4 w-4 text-primary" />
+                                        <span>{method.name}</span>
+                                    </FormLabel>
+                                    <div className="flex gap-2">
+                                        <p className="flex-1 rounded-md border border-input bg-muted px-3 py-2 text-sm text-left" dir="ltr">{method.link}</p>
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="secondary"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(method.link);
+                                                toast({ title: "تم النسخ بنجاح" });
+                                            }}
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
                         ))
                     )}
                 </div>
