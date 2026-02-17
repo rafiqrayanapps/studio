@@ -32,8 +32,11 @@ export default function BottomNav() {
   
   const activePath = getActivePath();
 
-  const hideOnPaths = ['/', '/login', '/signup', '/activate', '/subscribe', '/admin'];
-  const shouldHide = hideOnPaths.some(p => pathname.startsWith(p));
+  // Define paths where the bottom nav should be hidden.
+  // We use `startsWith` for sections like /login, /admin, etc.
+  // The root path '/' is an exact match to avoid hiding it on all pages.
+  const hideOnPaths = ['/login', '/signup', '/activate', '/payment', '/pricing', '/admin'];
+  const shouldHide = pathname === '/' || hideOnPaths.some(p => pathname.startsWith(p));
 
   if (!mounted || shouldHide) {
     return null;
