@@ -118,7 +118,7 @@ export default function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 md:hidden flex items-center justify-center px-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 h-20 flex items-center justify-center px-4">
       <div 
         ref={navRef}
         className="relative h-16 w-full max-w-md mx-auto bg-card rounded-full flex items-center justify-around"
