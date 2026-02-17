@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig, SubscriptionRequest, PaymentMethod } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig, SubscriptionRequest, PaymentMethod, RequestDesignConfig } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle, HardHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -81,6 +81,11 @@ const useFormSchemas = () => {
         text: z.string().optional(),
         enabled: z.boolean().default(false),
     });
+
+    const requestDesignSchema = z.object({
+        url: z.string().url("رابط غير صالح").or(z.literal('')),
+        enabled: z.boolean().default(false),
+    });
     
     const themeSchema = z.object({
         primaryColor: z.string().min(1, "كود اللون مطلوب").regex(colorRegex, "صيغة اللون غير صحيحة. مثال: 350 72% 51%"),
@@ -128,18 +133,20 @@ const useFormSchemas = () => {
     const paymentMethodSchema = z.object({
         name: z.string().min(1, "الاسم مطلوب"),
         icon: z.string().min(1, "الأيقونة مطلوبة (اسم أيقونة من Lucide)"),
-        link: z.string().url("رابط غير صالح"),
+        link: z.string().min(1, "الرابط أو القيمة مطلوبة"),
+        isUrl: z.boolean().default(true),
         country: z.string().min(2, "الدولة مطلوبة"),
         enabled: z.boolean().default(true),
     });
 
-    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema, paymentMethodSchema };
+    return { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema, paymentMethodSchema, requestDesignSchema };
 }
 
 type CategoryFormValues = z.infer<Return<(typeof useFormSchemas)>['categorySchema']>;
 type ContentItemFormValues = z.infer<Return<(typeof useFormSchemas)>['contentItemSchema']>;
 type SubscriptionDialogFormValues = z.infer<Return<(typeof useFormSchemas)>['subscriptionDialogSchema']>;
 type ShareLinkFormValues = z.infer<Return<(typeof useFormSchemas)>['shareLinkSchema']>;
+type RequestDesignFormValues = z.infer<Return<(typeof useFormSchemas)>['requestDesignSchema']>;
 type ThemeFormValues = z.infer<Return<(typeof useFormSchemas)>['themeSchema']>;
 type NotificationFormValues = z.infer<Return<(typeof useFormSchemas)>['notificationSchema']>;
 type WhitelistFormValues = z.infer<Return<(typeof useFormSchemas)>['whitelistSchema']>;
@@ -183,6 +190,9 @@ export default function AdminDashboardPage() {
   const shareLinkRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'shareLink') : null, [firestore]);
   const { data: shareLinkData } = useDoc<ShareLinkConfig>(shareLinkRef);
   
+  const requestDesignRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'requestDesign') : null, [firestore]);
+  const { data: requestDesignConfigData } = useDoc<RequestDesignConfig>(requestDesignRef);
+
   const themeRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'theme') : null, [firestore]);
   const { data: themeData } = useDoc<ThemeConfig>(themeRef);
   
@@ -215,17 +225,18 @@ export default function AdminDashboardPage() {
 
 
   // Forms
-  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema, paymentMethodSchema } = useFormSchemas();
+  const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema, paymentMethodSchema, requestDesignSchema } = useFormSchemas();
   const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '', visibility: 'public', isUnderMaintenance: false } });
   const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' } });
   const pricingPlanForm = useForm<PricingPlanFormValues>({ resolver: zodResolver(pricingPlanSchema), defaultValues: { name: '', price: '', currency: 'ر.س', frequency: '/شهرياً', description: '', features: '', isFeatured: false, enabled: true, link: '' } });
   const subscriptionDialogForm = useForm<SubscriptionDialogFormValues>({ resolver: zodResolver(subscriptionDialogSchema), defaultValues: { title: '', description: '', link: '', enabled: false } });
   const shareLinkForm = useForm<ShareLinkFormValues>({ resolver: zodResolver(shareLinkSchema), defaultValues: { url: '', text: '', enabled: false } });
+  const requestDesignForm = useForm<RequestDesignFormValues>({ resolver: zodResolver(requestDesignSchema), defaultValues: { url: '', enabled: false } });
   const themeForm = useForm<ThemeFormValues>({ resolver: zodResolver(themeSchema), defaultValues: { primaryColor: '', primaryColorDark: '' } });
   const notificationForm = useForm<NotificationFormValues>({ resolver: zodResolver(notificationSchema), defaultValues: { title: '', description: '' } });
   const whitelistForm = useForm<WhitelistFormValues>({ resolver: zodResolver(whitelistSchema), defaultValues: { email: '', role: 'pro', password: '', activationCode: '' } });
   const paymentLinksForm = useForm<PaymentLinksFormValues>({ resolver: zodResolver(paymentLinksSchema), defaultValues: { paypalUrl: '', whatsappUrl: '', telegramUrl: '', paymentInstructions: '' } });
-  const paymentMethodForm = useForm<PaymentMethodFormValues>({ resolver: zodResolver(paymentMethodSchema), defaultValues: { name: '', icon: 'CreditCard', link: '', country: 'ALL', enabled: true } });
+  const paymentMethodForm = useForm<PaymentMethodFormValues>({ resolver: zodResolver(paymentMethodSchema), defaultValues: { name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', enabled: true } });
   const watchWhitelistRole = whitelistForm.watch('role');
 
 
@@ -281,7 +292,7 @@ export default function AdminDashboardPage() {
     if (editingPaymentMethod) {
       paymentMethodForm.reset(editingPaymentMethod);
     } else {
-      paymentMethodForm.reset({ name: '', icon: 'CreditCard', link: '', country: 'ALL', enabled: true });
+      paymentMethodForm.reset({ name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', enabled: true });
     }
   }, [editingPaymentMethod, paymentMethodForm]);
 
@@ -296,6 +307,12 @@ export default function AdminDashboardPage() {
         shareLinkForm.reset(shareLinkData);
     }
   }, [shareLinkData, shareLinkForm]);
+  
+  useEffect(() => {
+    if (requestDesignConfigData) {
+        requestDesignForm.reset(requestDesignConfigData);
+    }
+  }, [requestDesignConfigData, requestDesignForm]);
 
   useEffect(() => {
     if (themeData) {
@@ -444,7 +461,7 @@ export default function AdminDashboardPage() {
       addDocumentNonBlocking(collection(firestore, 'paymentMethods'), { ...values, order: newOrder });
       toast({ title: 'تم إضافة طريقة دفع جديدة' });
     }
-    paymentMethodForm.reset({ name: '', icon: 'CreditCard', link: '', country: 'ALL', enabled: true });
+    paymentMethodForm.reset({ name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', enabled: true });
   };
   
   const onSubscriptionDialogSubmit = (values: SubscriptionDialogFormValues) => {
@@ -459,6 +476,12 @@ export default function AdminDashboardPage() {
     toast({ title: "تم حفظ إعدادات رابط المشاركة" });
   };
   
+  const onRequestDesignSubmit = (values: RequestDesignFormValues) => {
+    if (!firestore || !requestDesignRef || !isAdmin) return;
+    setDocumentNonBlocking(requestDesignRef, values, { merge: true });
+    toast({ title: "تم حفظ إعدادات 'اطلب تصميمك'" });
+  };
+
   const onThemeSubmit = (values: ThemeFormValues) => {
     if (!firestore || !themeRef || !isAdmin) return;
     const dataToSave = {
@@ -943,7 +966,8 @@ export default function AdminDashboardPage() {
                                 <form onSubmit={paymentMethodForm.handleSubmit(onPaymentMethodSubmit)} className="space-y-4 p-4 border rounded-lg bg-background">
                                     <FormField control={paymentMethodForm.control} name="name" render={({ field }) => <FormItem><FormLabel>اسم الطريقة</FormLabel><FormControl><Input placeholder="PayPal" {...field} /></FormControl><FormMessage /></FormItem>} />
                                     <FormField control={paymentMethodForm.control} name="icon" render={({ field }) => <FormItem><FormLabel>أيقونة (Lucide)</FormLabel><FormControl><Input placeholder="CreditCard" {...field} /></FormControl><FormDescription>ابحث عن اسم الأيقونة في موقع <a href="https://lucide.dev/icons/" target="_blank" className="text-primary underline">lucide.dev/icons</a></FormDescription><FormMessage /></FormItem>} />
-                                    <FormField control={paymentMethodForm.control} name="link" render={({ field }) => <FormItem><FormLabel>رابط الدفع</FormLabel><FormControl><Input placeholder="https://..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={paymentMethodForm.control} name="link" render={({ field }) => <FormItem><FormLabel>الرابط أو القيمة</FormLabel><FormControl><Input placeholder="https://... or IBAN/Phone" {...field} dir="ltr" /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={paymentMethodForm.control} name="isUrl" render={({ field }) => <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 mt-4"><div className="space-y-0.5"><FormLabel>هل هذه القيمة رابط (URL)؟</FormLabel><FormDescription>إذا تم تفعيله، سيفتح كـ رابط. إذا تم إلغاؤه، سيعرض كنص للنسخ.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>} />
                                     <FormField
                                         control={paymentMethodForm.control}
                                         name="country"
@@ -985,6 +1009,7 @@ export default function AdminDashboardPage() {
                                         <p className="flex-1 font-semibold flex items-center gap-2">
                                             {method.name}
                                             <Badge variant="secondary" className="font-mono">{method.country}</Badge>
+                                            <Badge variant={method.isUrl ? 'default': 'outline'}>{method.isUrl ? 'رابط' : 'نص'}</Badge>
                                         </p>
                                         <div className="flex items-center gap-1">
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(paymentMethods!, index, 'up', 'paymentMethods')} disabled={index === 0}><ArrowUp/></Button>
@@ -1157,6 +1182,19 @@ export default function AdminDashboardPage() {
                                         <FormField control={themeForm.control} name="primaryColor" render={({ field }) => (<FormItem><FormLabel>اللون الأساسي (الوضع الفاتح)</FormLabel><FormControl><Input placeholder="350 72% 51%" {...field} dir="ltr" /></FormControl><FormDescription>أدخل قيمة اللون بصيغة HSL بدون أقواس. مثال: 350 72% 51%</FormDescription><FormMessage /></FormItem>)} />
                                         <FormField control={themeForm.control} name="primaryColorDark" render={({ field }) => (<FormItem><FormLabel>اللون الأساسي (الوضع الليلي)</FormLabel><FormControl><Input placeholder="350 72% 51%" {...field} dir="ltr" value={field.value ?? ''}/></FormControl><FormDescription>أدخل قيمة اللون بصيغة HSL بدون أقواس. مثال: 350 72% 51%</FormDescription><FormMessage /></FormItem>)} />
                                         <Button type="submit" disabled={themeForm.formState.isSubmitting} className="w-full">{themeForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ اللون"}</Button>
+                                    </form></Form>
+                                </AccordionContent>
+                            </Card>
+                        </AccordionItem>
+                        
+                        <AccordionItem value="request-design" className="border-none">
+                            <Card>
+                                <AccordionTrigger className="p-4 font-bold text-lg hover:no-underline">إعدادات رابط "اطلب تصميمك"</AccordionTrigger>
+                                <AccordionContent className="px-6 pb-6">
+                                    <Form {...requestDesignForm}><form onSubmit={requestDesignForm.handleSubmit(onRequestDesignSubmit)} className="space-y-6">
+                                        <FormField control={requestDesignForm.control} name="enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">تفعيل الخيار في القائمة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )} />
+                                        <FormField control={requestDesignForm.control} name="url" render={({ field }) => ( <FormItem><FormLabel>رابط التواصل</FormLabel><FormControl><Input placeholder="https://wa.me/..." {...field} dir="ltr" /></FormControl><FormMessage /></FormItem> )} />
+                                        <Button type="submit" disabled={requestDesignForm.formState.isSubmitting} className="w-full">{requestDesignForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ الإعدادات"}</Button>
                                     </form></Form>
                                 </AccordionContent>
                             </Card>

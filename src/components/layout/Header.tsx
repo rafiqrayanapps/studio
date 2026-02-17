@@ -16,11 +16,11 @@ import {
   Menu,
   ChevronLeft,
   Share2,
-  Star,
+  Brush,
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { ShareLinkConfig } from '@/lib/definitions';
+import type { ShareLinkConfig, RequestDesignConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import UserProfileButton from './UserProfileButton';
 
@@ -37,6 +37,9 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
 
   const shareLinkRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'shareLink') : null, [firestore]);
   const { data: shareLinkConfig } = useDoc<ShareLinkConfig>(shareLinkRef);
+  
+  const requestDesignRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'requestDesign') : null, [firestore]);
+  const { data: requestDesignConfig } = useDoc<RequestDesignConfig>(requestDesignRef);
   
   const navItems = [
     { href: '/home', label: "الرئيسيه" },
@@ -110,6 +113,19 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                           </li>
                         ))}
                         
+                        {requestDesignConfig?.enabled && (
+                           <li>
+                             <a href={requestDesignConfig.url} target="_blank" rel="noopener noreferrer" className="block group cursor-pointer">
+                               <SheetClose asChild>
+                                  <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
+                                    <span className="font-semibold text-lg">اطلب تصميمك</span>
+                                    <Brush className="h-5 w-5 text-muted-foreground" />
+                                  </div>
+                               </SheetClose>
+                             </a>
+                           </li>
+                        )}
+
                         <UserProfileButton />
                         
                         {shareLinkConfig?.enabled && canShare && (

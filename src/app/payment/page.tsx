@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHea
 import SubscriptionRequestForm from '@/components/forms/SubscriptionRequestForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import DynamicIcon from '@/components/ui/dynamic-icon';
-import { ArrowLeft, Handshake } from 'lucide-react';
+import { ArrowLeft, Handshake, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -51,6 +51,29 @@ function PaymentPageContent() {
         router.push('/home');
     }
 
+    const CopyablePaymentInfo = ({ name, icon, value }: { name: string; icon: string; value: string }) => {
+        const { toast } = useToast();
+        const handleCopy = () => {
+            navigator.clipboard.writeText(value);
+            toast({ title: "تم نسخ المعلومات بنجاح" });
+        };
+
+        return (
+            <div className="border bg-background rounded-lg p-3 flex items-center justify-between gap-2 text-card-foreground">
+                <div className="flex items-center gap-3">
+                    <DynamicIcon name={icon} className="h-7 w-7 text-primary" />
+                    <div>
+                        <p className="font-semibold text-base">{name}</p>
+                        <p className="text-muted-foreground font-mono text-sm tracking-wider" dir="ltr">{value}</p>
+                    </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={handleCopy}>
+                    <Copy className="h-5 w-5" />
+                </Button>
+            </div>
+        )
+    }
+
     if (!planName) {
         return (
              <div className="text-center">
@@ -79,15 +102,22 @@ function PaymentPageContent() {
                     
                     <div className="space-y-2">
                          {isLoadingMethods ? (
-                            <Skeleton className="h-10 w-full" />
+                            <>
+                                <Skeleton className="h-12 w-full" />
+                                <Skeleton className="h-12 w-full" />
+                            </>
                         ) : (
                             filteredPaymentMethods.map(method => (
-                                <Button key={method.id} variant="outline" asChild className="w-full h-12 text-base">
-                                    <a href={method.link} target="_blank" rel="noopener noreferrer">
-                                        <DynamicIcon name={method.icon} className="ml-2 h-5 w-5" />
-                                        {method.name}
-                                    </a>
-                                </Button>
+                                method.isUrl ? (
+                                    <Button key={method.id} variant="outline" asChild className="w-full h-12 text-base">
+                                        <a href={method.link} target="_blank" rel="noopener noreferrer">
+                                            <DynamicIcon name={method.icon} className="ml-2 h-5 w-5" />
+                                            {method.name}
+                                        </a>
+                                    </Button>
+                                ) : (
+                                    <CopyablePaymentInfo key={method.id} name={method.name} icon={method.icon} value={method.link} />
+                                )
                             ))
                         )}
                     </div>

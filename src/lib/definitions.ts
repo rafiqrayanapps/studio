@@ -43,6 +43,11 @@ export interface ShareLinkConfig {
   enabled: boolean;
 }
 
+export interface RequestDesignConfig {
+  url: string;
+  enabled: boolean;
+}
+
 export interface ThemeConfig {
   primaryColor: string;
   primaryColorDark?: string;
@@ -115,6 +120,7 @@ export interface PaymentMethod {
   name: string;
   icon: string;
   link: string;
+  isUrl: boolean;
   country: string;
   order: number;
   enabled: boolean;

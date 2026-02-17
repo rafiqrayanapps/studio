@@ -457,8 +457,12 @@
         },
         "link": {
           "type": "string",
-          "format": "uri",
-          "description": "The URL for the payment button."
+          "description": "The URL or text value (e.g., account number) for the payment method."
+        },
+        "isUrl": {
+          "type": "boolean",
+          "description": "If true, 'link' is a clickable URL. If false, it's text to be displayed.",
+          "default": true
         },
         "country": {
           "type": "string",
@@ -477,10 +481,28 @@
         "name",
         "icon",
         "link",
+        "isUrl",
         "country",
         "order",
         "enabled"
       ]
+    },
+    "RequestDesignConfig": {
+      "title": "Request Design Config",
+      "description": "Configuration for the 'Request a Design' link.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL for the 'Request a Design' button."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the link is active or not."
+        }
+      },
+      "required": [ "url", "enabled" ]
     }
   },
   "auth": {
@@ -589,6 +611,16 @@
             "$ref": "#/backend/entities/ThemeConfig"
           },
           "description": "Stores the global configuration for the app theme. There should only be one document with the ID 'config' in this collection."
+        }
+      },
+      {
+        "path": "/appConfig/requestDesign",
+        "definition": {
+          "entityName": "RequestDesignConfig",
+          "schema": {
+            "$ref": "#/backend/entities/RequestDesignConfig"
+          },
+          "description": "Stores the global configuration for the 'Request a Design' link. There should only be one document with the ID 'config' in this collection."
         }
       },
       {
