@@ -37,7 +37,7 @@ export default function AboutPage() {
 
                         <div className="mt-12 text-muted-foreground space-y-1 text-sm">
                             <p>الإصدار 1.0.0</p>
-                            <p>جميع الحقوق محفوظة © 2026</p>
+                            <p>جميع الحقوق محفوظة © 2024</p>
                         </div>
                     </div>
                 </main>
