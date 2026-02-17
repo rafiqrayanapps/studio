@@ -6,7 +6,7 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocume
 import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig, SubscriptionRequest, PaymentMethod } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle, HardHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -42,6 +42,7 @@ const useFormSchemas = () => {
         displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5'], { required_error: "نمط العرض مطلوب" }),
         fileTypes: z.string().optional(),
         visibility: z.enum(['public', 'pro']).default('public'),
+        isUnderMaintenance: z.boolean().default(false),
     });
 
     const contentItemSchema = z.object({
@@ -215,7 +216,7 @@ export default function AdminDashboardPage() {
 
   // Forms
   const { categorySchema, contentItemSchema, subscriptionDialogSchema, shareLinkSchema, themeSchema, notificationSchema, whitelistSchema, pricingPlanSchema, paymentLinksSchema, paymentMethodSchema } = useFormSchemas();
-  const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '', visibility: 'public' } });
+  const categoryForm = useForm<CategoryFormValues>({ resolver: zodResolver(categorySchema), defaultValues: { name: '', parentId: '', displayStyle: 'style1', fileTypes: '', visibility: 'public', isUnderMaintenance: false } });
   const contentItemForm = useForm<ContentItemFormValues>({ resolver: zodResolver(contentItemSchema), defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' } });
   const pricingPlanForm = useForm<PricingPlanFormValues>({ resolver: zodResolver(pricingPlanSchema), defaultValues: { name: '', price: '', currency: 'ر.س', frequency: '/شهرياً', description: '', features: '', isFeatured: false, enabled: true, link: '' } });
   const subscriptionDialogForm = useForm<SubscriptionDialogFormValues>({ resolver: zodResolver(subscriptionDialogSchema), defaultValues: { title: '', description: '', link: '', enabled: false } });
@@ -230,7 +231,7 @@ export default function AdminDashboardPage() {
 
   // Effects to reset forms when editing state changes
   useEffect(() => {
-    const defaultValues = { name: '', displayStyle: 'style1' as const, fileTypes: '', parentId: '', visibility: 'public' as const};
+    const defaultValues = { name: '', displayStyle: 'style1' as const, fileTypes: '', parentId: '', visibility: 'public' as const, isUnderMaintenance: false};
     if (editingCategory) {
       categoryForm.reset({ 
         name: editingCategory.name,
@@ -238,6 +239,7 @@ export default function AdminDashboardPage() {
         fileTypes: editingCategory.fileTypes || '',
         parentId: editingCategory.parentId || '',
         visibility: editingCategory.visibility || 'public',
+        isUnderMaintenance: editingCategory.isUnderMaintenance || false,
       });
     }
     else {
@@ -328,6 +330,7 @@ export default function AdminDashboardPage() {
         fileTypes: values.fileTypes,
         parentId: parentId,
         visibility: values.visibility,
+        isUnderMaintenance: values.isUnderMaintenance,
       };
       updateDocumentNonBlocking(doc(firestore, 'categories', editingCategory.id), dataToSave);
       toast({ title: "تم تحديث القسم" });
@@ -340,14 +343,15 @@ export default function AdminDashboardPage() {
         displayStyle: values.displayStyle,
         fileTypes: values.fileTypes,
         parentId,
-        visibility: values.visibility, 
+        visibility: values.visibility,
+        isUnderMaintenance: values.isUnderMaintenance,
         order: newOrder, 
         createdAt: serverTimestamp() 
       };
       addDocumentNonBlocking(collection(firestore, 'categories'), data);
       toast({ title: parentId ? "تم إضافة قسم فرعي" : "تم إضافة قسم رئيسي" });
     }
-    categoryForm.reset({ name: '', displayStyle: 'style1', fileTypes: '', parentId: '', visibility: 'public' });
+    categoryForm.reset({ name: '', displayStyle: 'style1', fileTypes: '', parentId: '', visibility: 'public', isUnderMaintenance: false });
   };
 
   const onContentItemSubmit = (values: ContentItemFormValues) => {
@@ -665,7 +669,29 @@ export default function AdminDashboardPage() {
                 <FormField control={categoryForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel>نمط العرض</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="style1">النمط الافقي</SelectItem><SelectItem value="style2">نمط 2</SelectItem><SelectItem value="style3">نمط 3 (برومبت)</SelectItem><SelectItem value="style4">نمط 4 (فيديو)</SelectItem><SelectItem value="style5">النمط 5 (بطاقة معرض)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                 <FormField control={categoryForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel>صيغ الملفات (اختياري)</FormLabel><FormControl><Input placeholder="PSD, AI" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={categoryForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel>الصلاحية</FormLabel><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="public" id="cat-public" /><Label htmlFor="cat-public">عام</Label></FormItem><FormItem className="flex items-center space-x-2 rtl:space-x-reverse"><RadioGroupItem value="pro" id="cat-pro" /><Label htmlFor="cat-pro">برو</Label></FormItem></RadioGroup><FormMessage /></FormItem>)} />
-                <div className="flex gap-2">
+                
+                <FormField
+                    control={categoryForm.control}
+                    name="isUnderMaintenance"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 mt-4">
+                            <div className="space-y-0.5">
+                                <FormLabel>قفل للصيانة</FormLabel>
+                                <FormDescription>
+                                    عرض رسالة صيانة بدلاً من المحتوى.
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+
+                <div className="flex gap-2 pt-4">
                     {editingCategory && <Button type="button" variant="secondary" onClick={() => { setEditingCategory(null); }} className="w-full">إلغاء</Button>}
                     <Button type="submit" disabled={categoryForm.formState.isSubmitting} className="w-full">{editingCategory ? "حفظ" : "إضافة"}</Button>
                 </div>
@@ -771,6 +797,7 @@ export default function AdminDashboardPage() {
                                                     <div className="flex items-center gap-2 flex-1 text-right">
                                                         {cat.name}
                                                         {cat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}
+                                                        {cat.isUnderMaintenance && <HardHat className="h-4 w-4 text-orange-500" />}
                                                     </div>
                                                     {isAdmin && <div className="flex items-center gap-2 mr-auto">
                                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleMove(mainCategories, index, 'up', 'categories') }} disabled={index === 0}><span><ArrowUp/></span></Button>
@@ -784,7 +811,7 @@ export default function AdminDashboardPage() {
                                                         {(subCategories.get(cat.id) || []).length === 0 && <p className="text-muted-foreground text-center">لا توجد أقسام فرعية.</p>}
                                                         {(subCategories.get(cat.id) || []).map((subCat, subIndex) => (
                                                             <div key={subCat.id} className="flex items-center bg-card p-2 rounded-md border">
-                                                                <p className="flex-1 flex items-center gap-2">{subCat.name} {subCat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
+                                                                <p className="flex-1 flex items-center gap-2">{subCat.name} {subCat.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />} {subCat.isUnderMaintenance && <HardHat className="h-4 w-4 text-orange-500" />}</p>
                                                                 {isAdmin && <>
                                                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'up', 'categories')} disabled={subIndex === 0}><ArrowUp/></Button>
                                                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(subCategories.get(cat.id)!, subIndex, 'down', 'categories')} disabled={subIndex === (subCategories.get(cat.id)?.length ?? 1) - 1}><ArrowDown/></Button>
