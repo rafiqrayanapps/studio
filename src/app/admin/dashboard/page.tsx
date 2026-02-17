@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
-import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig, SubscriptionRequest, PaymentMethod, RequestDesignConfig } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle, HardHat } from 'lucide-react';
@@ -31,6 +31,7 @@ import { firebaseConfig } from '@/firebase/config';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { Badge } from '@/components/ui/badge';
 import { useCategories } from '@/components/providers/CategoryProvider';
+import { deleteUserAccount } from '@/lib/user-actions';
 
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
@@ -594,34 +595,51 @@ export default function AdminDashboardPage() {
   };
 
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!firestore || !deletingEntity || !isAdmin) return;
     const { type, entity } = deletingEntity;
-    
-    if(type === 'category') {
-      deleteDocumentNonBlocking(doc(firestore, 'categories', entity.id));
-      toast({ title: "تم حذف القسم" });
-    } else if (type === 'item' && selectedContentCategory){
-       deleteDocumentNonBlocking(doc(firestore, 'categories', selectedContentCategory, 'items', entity.id));
-       toast({ title: "تم حذف المحتوى" });
-    } else if (type === 'notification') {
-       deleteDocumentNonBlocking(doc(firestore, 'notifications', entity.id));
-       toast({ title: "تم حذف الإشعار" });
-    } else if (type === 'whitelist') {
-       deleteDocumentNonBlocking(doc(firestore, 'whitelist', entity.id));
-       toast({ title: "تم إزالة المستخدم من القائمة البيضاء" });
-    } else if (type === 'plan') {
-       deleteDocumentNonBlocking(doc(firestore, 'pricingPlans', entity.id));
-       toast({ title: "تم حذف خطة الأسعار" });
-    } else if (type === 'request') {
-       deleteDocumentNonBlocking(doc(firestore, 'subscriptionRequests', entity.id));
-       toast({ title: "تم حذف طلب الاشتراك" });
-    } else if (type === 'paymentMethod') {
-       deleteDocumentNonBlocking(doc(firestore, 'paymentMethods', entity.id));
-       toast({ title: "تم حذف طريقة الدفع" });
+
+    try {
+        if(type === 'category') {
+          await deleteDoc(doc(firestore, 'categories', entity.id));
+          toast({ title: "تم حذف القسم" });
+        } else if (type === 'item' && selectedContentCategory){
+           await deleteDoc(doc(firestore, 'categories', selectedContentCategory, 'items', entity.id));
+           toast({ title: "تم حذف المحتوى" });
+        } else if (type === 'notification') {
+           await deleteDoc(doc(firestore, 'notifications', entity.id));
+           toast({ title: "تم حذف الإشعار" });
+        } else if (type === 'whitelist') {
+           const whitelistEntry = entity as WithId<WhitelistEntry>;
+
+           // If the user was activated, they have an auth account and a user profile.
+           if (whitelistEntry.activatedByUid) {
+               const result = await deleteUserAccount(whitelistEntry.activatedByUid);
+               if (!result.success) {
+                   // Throw to show toast and stop further deletion
+                   throw new Error(result.error || 'فشل حذف حساب المستخدم من المصادقة.');
+               }
+           }
+           // Also delete the whitelist entry itself from Firestore.
+           await deleteDoc(doc(firestore, 'whitelist', whitelistEntry.id));
+           
+           toast({ title: "تم حذف المستخدم وكل بياناته بنجاح" });
+
+        } else if (type === 'plan') {
+           await deleteDoc(doc(firestore, 'pricingPlans', entity.id));
+           toast({ title: "تم حذف خطة الأسعار" });
+        } else if (type === 'request') {
+           await deleteDoc(doc(firestore, 'subscriptionRequests', entity.id));
+           toast({ title: "تم حذف طلب الاشتراك" });
+        } else if (type === 'paymentMethod') {
+           await deleteDoc(doc(firestore, 'paymentMethods', entity.id));
+           toast({ title: "تم حذف طريقة الدفع" });
+        }
+    } catch(error: any) {
+        toast({ variant: 'destructive', title: "خطأ في الحذف", description: error.message });
+    } finally {
+        setDeletingEntity(null);
     }
-    
-    setDeletingEntity(null);
   };
   
   const handleMove = (list: WithId<{order?: number}>[], index: number, direction: 'up' | 'down', collectionPath: string) => {
