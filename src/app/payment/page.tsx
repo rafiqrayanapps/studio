@@ -51,23 +51,31 @@ function PaymentPageContent() {
         router.push('/home');
     }
 
-    const CopyablePaymentInfo = ({ name, icon, value }: { name: string; icon: string; value: string }) => {
+    const CopyablePaymentInfo = ({ name, icon, value, isUrl }: { name: string; icon: string; value: string; isUrl: boolean; }) => {
         const { toast } = useToast();
         const handleCopy = () => {
             navigator.clipboard.writeText(value);
             toast({ title: "تم نسخ المعلومات بنجاح" });
         };
 
+        const ValueComponent = isUrl ? (
+            <a href={value} target="_blank" rel="noopener noreferrer" className="text-muted-foreground font-mono text-sm tracking-wider hover:underline break-all" dir="ltr">
+                {value}
+            </a>
+        ) : (
+            <p className="text-muted-foreground font-mono text-sm tracking-wider break-all" dir="ltr">{value}</p>
+        );
+
         return (
             <div className="border bg-background rounded-lg p-3 flex items-center justify-between gap-2 text-card-foreground">
-                <div className="flex items-center gap-3">
-                    <DynamicIcon name={icon} className="h-7 w-7 text-primary" />
-                    <div>
-                        <p className="font-semibold text-base">{name}</p>
-                        <p className="text-muted-foreground font-mono text-sm tracking-wider" dir="ltr">{value}</p>
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <DynamicIcon name={icon} className="h-7 w-7 text-primary flex-shrink-0" />
+                    <div className="overflow-hidden">
+                        <p className="font-semibold text-base truncate">{name}</p>
+                        {ValueComponent}
                     </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={handleCopy}>
+                <Button variant="ghost" size="icon" onClick={handleCopy} className="flex-shrink-0">
                     <Copy className="h-5 w-5" />
                 </Button>
             </div>
@@ -103,21 +111,18 @@ function PaymentPageContent() {
                     <div className="space-y-2">
                          {isLoadingMethods ? (
                             <>
-                                <Skeleton className="h-12 w-full" />
-                                <Skeleton className="h-12 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
                             </>
                         ) : (
                             filteredPaymentMethods.map(method => (
-                                method.isUrl ? (
-                                    <Button key={method.id} variant="outline" asChild className="w-full h-12 text-base">
-                                        <a href={method.link} target="_blank" rel="noopener noreferrer">
-                                            <DynamicIcon name={method.icon} className="ml-2 h-5 w-5" />
-                                            {method.name}
-                                        </a>
-                                    </Button>
-                                ) : (
-                                    <CopyablePaymentInfo key={method.id} name={method.name} icon={method.icon} value={method.link} />
-                                )
+                                <CopyablePaymentInfo 
+                                    key={method.id} 
+                                    name={method.name} 
+                                    icon={method.icon} 
+                                    value={method.link}
+                                    isUrl={method.isUrl}
+                                />
                             ))
                         )}
                     </div>
