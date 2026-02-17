@@ -23,7 +23,7 @@ export default function BottomNav() {
     { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
     { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
     { id: 'theme-toggle', icon: theme === 'dark' ? Sun : Moon, label: 'الوضع' },
-  ], [theme]);
+  ], [theme, hasNewNotifications]);
 
   const getActivePath = () => {
     const topLevelPaths = ['/home', '/favorites', '/notifications'];
@@ -40,8 +40,11 @@ export default function BottomNav() {
   
   const activePath = getActivePath();
 
-  const hideOnPaths = ['/', '/login', '/signup', '/activate', '/subscribe'];
-  if (hideOnPaths.some(p => pathname.startsWith(p)) || pathname.startsWith('/admin') || !mounted) {
+  // Corrected logic for hiding paths
+  const hideOnPaths = ['/login', '/signup', '/activate', '/subscribe', '/admin'];
+  const shouldHide = pathname === '/' || hideOnPaths.some(p => pathname.startsWith(p));
+
+  if (!mounted || shouldHide) {
     return null;
   }
 
@@ -52,20 +55,35 @@ export default function BottomNav() {
     const isNotificationItem = id === 'notifications';
 
     const content = (
-      <div className="relative flex flex-col items-center justify-center w-16 h-16">
-        {(isActive || (isNotificationItem && hasNewNotifications)) && (
-           <span className="absolute top-3.5 h-1.5 w-1.5 rounded-full bg-destructive z-20"></span>
+      <div className="relative flex flex-col items-center justify-center w-16 h-full gap-1">
+         {/* Top indicator for active item */}
+        {isActive && (
+          <div className="absolute top-0 h-0.5 w-8 rounded-full bg-primary" />
         )}
-        <Icon className={cn(
-          "h-6 w-6 transition-colors duration-200", 
-          isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-        )} />
+        <div className="relative mt-2">
+            <Icon className={cn(
+              "h-6 w-6 transition-colors duration-200", 
+              isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+            )} />
+            {(isNotificationItem && hasNewNotifications) && (
+               <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                </span>
+            )}
+        </div>
+        <span className={cn(
+          "text-xs transition-colors",
+          isActive ? 'text-primary font-semibold' : 'text-muted-foreground'
+        )}>
+            {label}
+        </span>
       </div>
     );
 
     const commonProps = {
         'aria-label': label,
-        className: "group flex-1 flex items-center justify-center transition-all duration-300"
+        className: "group flex-1 flex items-center justify-center h-full"
     };
     
     if (id === 'theme-toggle') {
@@ -84,14 +102,10 @@ export default function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-24 z-30 flex items-center justify-center px-4 pointer-events-none">
-      <div 
-        className="relative h-20 w-full max-w-sm mx-auto bg-card/95 backdrop-blur-sm rounded-full flex items-center justify-around shadow-lg border pointer-events-auto"
-        >
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t z-50 flex items-stretch justify-around shadow-[0_-2px_10px_-3px_rgba(0,0,0,0.05)]">
         {navItems.map((item) => (
           <NavItem key={item.id} item={item} />
         ))}
-      </div>
     </nav>
   );
 }
