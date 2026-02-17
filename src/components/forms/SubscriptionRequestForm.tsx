@@ -12,9 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { PaymentLinksConfig, PaymentMethod } from '@/lib/definitions';
-import { useRouter } from 'next/navigation';
 import PhoneInput, { isValidPhoneNumber, type Country } from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
 import { useMemo, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import DynamicIcon from '@/components/ui/dynamic-icon';
@@ -37,7 +35,6 @@ interface SubscriptionRequestFormProps {
 export default function SubscriptionRequestForm({ planName, onSuccess }: SubscriptionRequestFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const router = useRouter();
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>('SA');
 
   const paymentLinksRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'paymentLinks') : null, [firestore]);
@@ -88,7 +85,6 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
 
     form.reset();
     onSuccess();
-    router.push('/subscribe');
   };
 
   return (

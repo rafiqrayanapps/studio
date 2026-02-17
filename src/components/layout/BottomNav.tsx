@@ -27,10 +27,11 @@ const NavLink = ({ href, icon: Icon, id }: { href: string; icon: React.ElementTy
 
     return (
         <Link href={href} className="relative flex-1 group flex flex-col items-center justify-center p-3 h-full" aria-label={id}>
-             <Icon className={cn("h-6 w-6 sm:h-7 sm:w-7", isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-primary/90 transition-colors")} />
-             {showDot && 
-                <div className="absolute top-2 h-[5px] w-[5px] rounded-full bg-primary" />
-             }
+             <Icon className={cn("h-6 w-6 sm:h-7 sm:w-7 transition-colors", isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-primary/90")} />
+             <div className={cn(
+                "absolute top-2 h-[5px] w-[5px] rounded-full bg-primary transition-all duration-300",
+                showDot ? "opacity-100 scale-100" : "opacity-0 scale-0"
+             )} />
         </Link>
     );
 };

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
+import 'react-phone-number-input/style.css';
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
 import ThemeManager from '@/components/theme/ThemeManager';
