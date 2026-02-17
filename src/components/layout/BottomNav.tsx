@@ -2,15 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Heart, Bell, Sun, Moon } from 'lucide-react';
+import { Home, Heart, Bell, Palette, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
 import React, { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const hasNewNotifications = useHasNewNotifications();
 
@@ -21,28 +19,21 @@ export default function BottomNav() {
   const navItems = React.useMemo(() => [
     { id: 'home', href: '/home', icon: Home, label: 'الرئيسية' },
     { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
+    { id: 'colors', href: '/colors', icon: Palette, label: 'الألوان' },
     { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
-    { id: 'theme-toggle', icon: theme === 'dark' ? Sun : Moon, label: 'الوضع' },
-  ], [theme, hasNewNotifications]);
+    { id: 'about', href: '/about', icon: Settings, label: 'حول' },
+  ], []);
 
   const getActivePath = () => {
-    const topLevelPaths = ['/home', '/favorites', '/notifications'];
-    if (topLevelPaths.includes(pathname)) {
-        return pathname;
-    }
-    
-    if (pathname.startsWith('/categories')) {
-        return '/home';
-    }
-
+    if (pathname.startsWith('/categories')) return '/home';
+    if (navItems.some(item => item.href === pathname)) return pathname;
     return '';
   }
   
   const activePath = getActivePath();
 
-  // Corrected logic for hiding paths
-  const hideOnPaths = ['/login', '/signup', '/activate', '/subscribe', '/admin'];
-  const shouldHide = pathname === '/' || hideOnPaths.some(p => pathname.startsWith(p));
+  const hideOnPaths = ['/', '/login', '/signup', '/activate', '/subscribe', '/admin'];
+  const shouldHide = hideOnPaths.some(p => pathname.startsWith(p));
 
   if (!mounted || shouldHide) {
     return null;
@@ -55,54 +46,31 @@ export default function BottomNav() {
     const isNotificationItem = id === 'notifications';
 
     const content = (
-      <div className="relative flex flex-col items-center justify-center w-16 h-full gap-1">
-         {/* Top indicator for active item */}
-        {isActive && (
-          <div className="absolute top-0 h-0.5 w-8 rounded-full bg-primary" />
-        )}
-        <div className="relative mt-2">
+      <div className="relative flex flex-col items-center justify-center w-16 h-full">
+         <div className="relative">
             <Icon className={cn(
-              "h-6 w-6 transition-colors duration-200", 
-              isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+              "h-7 w-7 transition-transform duration-200", 
+              isActive ? 'text-primary scale-110' : 'text-muted-foreground group-hover:text-foreground'
             )} />
             {(isNotificationItem && hasNewNotifications) && (
-               <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+               <span className="absolute -top-1 -right-1.5 flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
                 </span>
             )}
         </div>
-        <span className={cn(
-          "text-xs transition-colors",
-          isActive ? 'text-primary font-semibold' : 'text-muted-foreground'
-        )}>
-            {label}
-        </span>
       </div>
     );
-
-    const commonProps = {
-        'aria-label': label,
-        className: "group flex-1 flex items-center justify-center h-full"
-    };
-    
-    if (id === 'theme-toggle') {
-        return (
-            <button {...commonProps} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-                {content}
-            </button>
-        )
-    }
     
     return (
-        <Link href={href || '#'} {...commonProps}>
+        <Link href={href || '#'} aria-label={label} className="group flex-1 flex items-center justify-center h-full">
           {content}
         </Link>
     );
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t z-50 flex items-stretch justify-around shadow-[0_-2px_10px_-3px_rgba(0,0,0,0.05)]">
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-sm border-t z-50 flex items-stretch justify-around shadow-[0_-4px_16px_rgba(0,0,0,0.05)] rounded-t-2xl">
         {navItems.map((item) => (
           <NavItem key={item.id} item={item} />
         ))}
