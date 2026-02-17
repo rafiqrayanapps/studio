@@ -4,19 +4,16 @@ import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Loader2 } from 'lucide-react';
-import Link from 'next/link';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import type { PricingPlan } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo, useState } from 'react';
-import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import SubscriptionRequestForm from '@/components/forms/SubscriptionRequestForm';
+import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function PricingPage() {
   const firestore = useFirestore();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+  const router = useRouter();
 
   const plansQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'pricingPlans')) : null,
@@ -29,10 +26,12 @@ export default function PricingPage() {
     return allPlans.filter(plan => plan.enabled).sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [allPlans]);
 
-
   const handleSubscribeClick = (plan: PricingPlan) => {
-    setSelectedPlan(plan);
-    setIsDialogOpen(true);
+    if (plan.link) {
+      window.open(plan.link, '_blank');
+    } else {
+      router.push(`/payment?plan=${encodeURIComponent(plan.name)}`);
+    }
   };
 
   const PlanSkeleton = () => (
@@ -107,7 +106,7 @@ export default function PricingPage() {
                           variant={plan.isFeatured ? 'default' : 'secondary'}
                           onClick={() => handleSubscribeClick(plan)}
                         >
-                          اطلب الاشتراك
+                          {plan.link ? 'الذهاب إلى رابط الدفع' : 'اطلب الاشتراك'}
                         </Button>
                     )}
                   </CardFooter>
@@ -117,22 +116,6 @@ export default function PricingPage() {
           </div>
         </div>
       </main>
-      <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-                  <AlertDialogTitle>طلب اشتراك</AlertDialogTitle>
-                  <AlertDialogDescription>
-                  أكمل بياناتك لطلب الاشتراك في خطة "{selectedPlan?.name}". سيتم توجيهك بعد ذلك للتواصل معنا وإرسال إثبات الدفع.
-                  </AlertDialogDescription>
-              </AlertDialogHeader>
-              {selectedPlan && (
-                  <SubscriptionRequestForm 
-                    planName={selectedPlan.name} 
-                    onSuccess={() => setIsDialogOpen(false)}
-                  />
-              )}
-          </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

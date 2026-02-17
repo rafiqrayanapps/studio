@@ -7,10 +7,10 @@ type SplashState = 'loading' | 'welcoming';
 
 const AppLogo = () => {
     return (
-        <div className="flex flex-col items-center justify-center text-primary-foreground text-center w-full max-w-xs leading-tight">
-             <div className="font-bold text-5xl flex flex-col items-center gap-2 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <div className="flex flex-col items-center justify-center text-primary-foreground text-center w-full max-w-[12rem] leading-tight">
+             <div className="font-bold text-4xl flex flex-col items-center gap-2 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <span>رفيق</span>
-                <span className="bg-white text-primary rounded-2xl px-6 py-2">المصمم</span>
+                <span className="bg-white text-primary rounded-2xl px-5 py-1">المصمم</span>
             </div>
         </div>
     )

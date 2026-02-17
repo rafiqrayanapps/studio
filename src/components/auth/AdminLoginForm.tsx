@@ -13,16 +13,13 @@ import { Loader2, Mail, Lock, ShieldAlert, Eye, EyeOff, ShieldCheck } from 'luci
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
-import { doc, getDoc, getDocs, query, collection, where, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { WhitelistEntry } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
-import { Checkbox } from "@/components/ui/checkbox";
-import useLocalStorage from '@/hooks/use-local-storage';
 
 const formSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
   password: z.string().min(1, { message: 'كلمة المرور مطلوبة' }),
-  rememberMe: z.boolean().default(false).optional(),
 });
 
 type LoginFormValues = z.infer<typeof formSchema>;
@@ -34,10 +31,8 @@ interface AdminLoginFormProps {
 
 export default function AdminLoginForm({ title, description }: AdminLoginFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isSubmittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [savedEmail, setSavedEmail] = useLocalStorage('rememberedEmail', '');
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -45,26 +40,15 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { email: '', password: '', rememberMe: false },
+    defaultValues: { email: '', password: '' },
   });
 
-  const onSubmit = useCallback(async (data: LoginFormValues) => {
-    // Prevent multiple submissions
-    if (isSubmittingRef.current) return;
-
-    isSubmittingRef.current = true;
+  const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     setError(null);
-
-    // Handle "remember me" choice before async operations
-    const email = data.email.toLowerCase();
-    if (data.rememberMe) {
-        setSavedEmail(email);
-    } else {
-        setSavedEmail('');
-    }
     
     try {
+        const email = data.email.toLowerCase();
         const userCredential = await signInWithEmailAndPassword(auth, email, data.password);
         const user = userCredential.user;
 
@@ -73,29 +57,43 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
             throw new Error("خدمة قاعدة البيانات غير متاحة.");
         }
 
-        // --- Standard Login ---
-        // Check the user's role from the whitelist.
         const whitelistRef = doc(firestore, 'whitelist', email);
         const whitelistSnap = await getDoc(whitelistRef);
 
         if (whitelistSnap.exists()) {
             const whitelistData = whitelistSnap.data() as WhitelistEntry;
 
+            // Handle admin/editor login
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
                 router.push('/admin/dashboard');
                 return;
             }
             
-            if (whitelistData.role === 'pro' && whitelistData.deviceFingerprint) {
+            // Handle 'pro' user multi-device logic
+            if (whitelistData.role === 'pro') {
                 const currentFingerprint = await getDeviceFingerprint();
-                if (whitelistData.deviceFingerprint !== currentFingerprint) {
+                const fingerprints = whitelistData.deviceFingerprints || [];
+                const limit = whitelistData.deviceLimit || 1;
+
+                if (fingerprints.includes(currentFingerprint)) {
+                    // Device already registered, allow login
+                    router.push('/home');
+                    return;
+                } else if (fingerprints.length < limit) {
+                    // New device and there's space, register it
+                    const newFingerprints = [...fingerprints, currentFingerprint];
+                    await updateDoc(whitelistRef, { deviceFingerprints: newFingerprints });
+                    router.push('/home');
+                    return;
+                } else {
+                    // Device limit reached
                     await auth.signOut();
-                    throw new Error("عذراً، هذا الحساب مرتبط بجهاز آخر.");
+                    throw new Error("لقد تجاوزت الحد الأقصى لعدد الأجهزة المسموح به لهذا الاشتراك.");
                 }
             }
         }
 
-        // Default redirect for Pro users or any other authenticated user
+        // Default redirect for any other authenticated user
         router.push('/home');
 
     } catch (e: any) {
@@ -109,33 +107,10 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
       }
       setError(description);
     } finally {
-      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [auth, firestore, router, setSavedEmail]);
-
-
-  useEffect(() => {
-      if (savedEmail) {
-          form.setValue('email', savedEmail);
-          form.setValue('rememberMe', true);
-      }
-  }, [savedEmail, form]);
+  };
   
-  const handleAutofill = useCallback((e: AnimationEvent<HTMLInputElement>) => {
-    if (e.animationName === 'onAutoFillStart') {
-        // Use a small delay to ensure the browser has time to fill all fields
-        setTimeout(() => {
-            // Check if form is valid before submitting
-            const email = form.getValues('email');
-            const password = form.getValues('password');
-            if(email && password){
-                 form.handleSubmit(onSubmit)();
-            }
-        }, 100);
-    }
-  }, [form, onSubmit]);
-
   return (
     <>
       <CardHeader className="text-center">
@@ -157,7 +132,6 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
                       <Input 
                         type="email" 
                         {...field} 
-                        onAnimationStart={handleAutofill}
                         className="pl-10 text-left" 
                         dir="ltr"
                         placeholder="يرجى إدخال بريدك الإلكتروني"
@@ -180,7 +154,6 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
                       <Input 
                         type={showPassword ? 'text' : 'password'}
                         {...field} 
-                        onAnimationStart={handleAutofill}
                         className="pl-10 pr-10 text-left"
                         dir="ltr" 
                         placeholder="يرجى إدخال كلمة السر"
@@ -200,26 +173,6 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="rememberMe"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      تذكرني (لتسهيل الدخول بالبصمة مستقبلاً)
-                    </FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
-
             {error && (
                 <div className="flex items-center justify-center gap-2 text-destructive pt-2 text-sm">
                     <ShieldAlert className="h-5 w-5" />
@@ -233,7 +186,7 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
             </Button>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="h-4 w-4 text-green-500" />
-                <span>يتم ربط الحساب ببصمة الجهاز للأمان.</span>
+                <span>يتم ربط كل جهاز ببصمة فريدة للأمان.</span>
             </div>
           </CardFooter>
         </form>

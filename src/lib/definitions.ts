@@ -11,6 +11,7 @@ export interface Category {
   createdAt?: any;
   order?: number;
   visibility: 'public' | 'pro';
+  isUnderMaintenance?: boolean;
 }
 
 export interface ContentItem {
@@ -62,6 +63,7 @@ export interface UserProfile {
   createdAt: any; // Firebase Timestamp
   subscriptionTier: 'free' | 'pro';
   subscriptionEndDate?: any; // Firebase Timestamp
+  contractPdfUrl?: string | null;
 }
 
 export interface WhitelistEntry {
@@ -74,7 +76,8 @@ export interface WhitelistEntry {
   subscriptionEndDate?: any;
   isActivated?: boolean;
   activatedByUid?: string | null;
-  deviceFingerprint?: string | null;
+  deviceFingerprints?: string[] | null;
+  deviceLimit?: number;
 }
 
 export interface PricingPlan {

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Category, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -105,6 +105,16 @@ export default function CategoryPage() {
   );
 
   const renderContent = () => {
+    if (category?.isUnderMaintenance && !isAdmin) {
+       return (
+         <div className="text-center text-muted-foreground p-12 bg-card rounded-2xl mt-4 space-y-4">
+            <HardHat className="mx-auto h-12 w-12 text-primary" />
+            <h3 className="font-bold text-xl text-foreground">قسم قيد الصيانة</h3>
+            <p>عفواً، هذا القسم يخضع للصيانة حاليًا. يرجى المحاولة مرة أخرى لاحقًا.</p>
+        </div>
+       )
+    }
+
     if (!filteredItems || filteredItems.length === 0) return null;
 
     const typedItems = filteredItems as WithId<ContentItem>[];
@@ -409,7 +419,7 @@ export default function CategoryPage() {
               </div>
             )}
             {renderContent()}
-            {(!filteredSubCategories || filteredSubCategories.length === 0) && (!filteredItems || filteredItems.length === 0) && !isLoading && (
+            {(!filteredSubCategories || filteredSubCategories.length === 0) && (!filteredItems || filteredItems.length === 0) && !isLoading && !category?.isUnderMaintenance && (
                  <div className="text-center text-muted-foreground p-12"><p>لا يوجد محتوى في هذا القسم بعد.</p></div>
             )}
           </div>
