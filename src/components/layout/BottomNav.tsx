@@ -2,81 +2,98 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Heart, Bell, Palette, Settings } from 'lucide-react';
+import { Home, Heart, Bell, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
 import React, { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
+
+const NavLink = ({ href, icon: Icon, id }: { href: string; icon: React.ElementType; id: string; }) => {
+    const pathname = usePathname();
+    const hasNewNotifications = useHasNewNotifications();
+    
+    const getIsActive = () => {
+        if (id === 'home') {
+            return pathname === '/home' || pathname.startsWith('/categories');
+        }
+        return pathname.startsWith(href);
+    };
+    
+    const isActive = getIsActive();
+    const isNotificationItem = id === 'notifications';
+    
+    // The dot is shown if the item is active, or if it's the notification icon with new notifications.
+    const showDot = isActive || (isNotificationItem && hasNewNotifications);
+
+    return (
+        <Link href={href} className="relative flex-1 group flex flex-col items-center justify-center p-3 h-full" aria-label={id}>
+             <Icon className={cn("h-6 w-6 sm:h-7 sm:w-7", isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-primary/90 transition-colors")} />
+             {showDot && 
+                <div className="absolute top-2 h-[5px] w-[5px] rounded-full bg-primary" />
+             }
+        </Link>
+    );
+};
+
+const ThemeToggleButton = () => {
+    const { theme, setTheme, systemTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const currentTheme = theme === 'system' ? systemTheme : theme;
+
+    const toggleTheme = () => {
+        setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    };
+    
+    if (!mounted) {
+      // return a placeholder to avoid layout shift and hydration mismatch
+      return <div className="flex-1" />;
+    }
+    
+    return (
+        <button onClick={toggleTheme} className="relative flex-1 group flex flex-col items-center justify-center p-3 h-full" aria-label="Toggle theme">
+            {currentTheme === 'dark' ? 
+                <Sun className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground/70 group-hover:text-primary/90 transition-colors" /> : 
+                <Moon className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground/70 group-hover:text-primary/90 transition-colors" />
+            }
+        </button>
+    );
+}
 
 export default function BottomNav() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const hasNewNotifications = useHasNewNotifications();
-
+  
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const navItems = React.useMemo(() => [
-    { id: 'home', href: '/home', icon: Home, label: 'الرئيسية' },
-    { id: 'favorites', href: '/favorites', icon: Heart, label: 'المفضلة' },
-    { id: 'colors', href: '/colors', icon: Palette, label: 'الألوان' },
-    { id: 'notifications', href: '/notifications', icon: Bell, label: 'الإشعارات' },
-    { id: 'about', href: '/about', icon: Settings, label: 'حول' },
-  ], []);
-
-  const getActivePath = () => {
-    if (pathname.startsWith('/categories')) return '/home';
-    if (navItems.some(item => item.href === pathname)) return pathname;
-    return '';
-  }
-  
-  const activePath = getActivePath();
-
-  // Define paths where the bottom nav should be hidden.
-  // We use `startsWith` for sections like /login, /admin, etc.
-  // The root path '/' is an exact match to avoid hiding it on all pages.
   const hideOnPaths = ['/login', '/signup', '/activate', '/payment', '/pricing', '/admin'];
   const shouldHide = pathname === '/' || hideOnPaths.some(p => pathname.startsWith(p));
 
   if (!mounted || shouldHide) {
     return null;
   }
-
-  const NavItem = ({ item }: { item: (typeof navItems)[0] }) => {
-    const { id, href, icon: Icon, label } = item;
-    
-    const isActive = href === activePath;
-    const isNotificationItem = id === 'notifications';
-
-    const content = (
-      <div className="relative flex flex-col items-center justify-center w-16 h-full">
-         <div className="relative">
-            <Icon className={cn(
-              "h-7 w-7 transition-transform duration-200", 
-              isActive ? 'text-primary scale-110' : 'text-muted-foreground group-hover:text-foreground'
-            )} />
-            {(isNotificationItem && hasNewNotifications) && (
-               <span className="absolute -top-1 -right-1.5 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-                </span>
-            )}
-        </div>
-      </div>
-    );
-    
-    return (
-        <Link href={href || '#'} aria-label={label} className="group flex-1 flex items-center justify-center h-full">
-          {content}
-        </Link>
-    );
-  };
+  
+  const navItems = [
+    { id: 'home', href: '/home', icon: Home },
+    { id: 'favorites', href: '/favorites', icon: Heart },
+    { id: 'notifications', href: '/notifications', icon: Bell },
+  ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-sm border-t z-50 flex items-stretch justify-around shadow-[0_-4px_16px_rgba(0,0,0,0.05)] rounded-t-2xl">
-        {navItems.map((item) => (
-          <NavItem key={item.id} item={item} />
-        ))}
-    </nav>
+    <div className="fixed bottom-4 inset-x-0 z-50 flex justify-center items-center pointer-events-none">
+        <nav className="flex items-stretch h-16 bg-card/95 backdrop-blur-sm border shadow-lg rounded-full pointer-events-auto gap-x-2 px-3">
+            {/* The order is visual, from right-to-left for RTL layout. Home -> Favorites -> Notifications -> Theme */ }
+            {navItems.map((item) => (
+              <NavLink key={item.id} {...item} />
+            ))}
+            <ThemeToggleButton />
+        </nav>
+    </div>
   );
 }
