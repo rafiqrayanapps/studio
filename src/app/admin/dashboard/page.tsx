@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -8,38 +7,22 @@ import {
     Plus, 
     Edit2, 
     Trash2, 
-    Search, 
     Settings, 
-    Bell, 
-    Package, 
     Users, 
     FileText, 
     CheckCircle, 
     XCircle,
     Loader2,
-    Save,
     LayoutDashboard,
     ArrowLeft,
-    Eye,
-    Palette,
-    Share2,
-    Megaphone,
-    UserMinus,
     ShieldCheck,
     Gift,
-    ExternalLink,
-    Brush,
     Layers,
-    Coins,
-    Lock,
-    Image as ImageIcon,
-    Download,
-    Video,
-    Type
+    UserMinus
 } from 'lucide-react';
 
-import { useFirestore, useCollection, useDoc, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, doc, setDoc, where, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, query, orderBy, doc, setDoc, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 
@@ -48,19 +31,16 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-import type { Category, ContentItem, PricingPlan, Notification, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, WhitelistEntry, ReferralConfig, UserProfile } from '@/lib/definitions';
+import type { Category, ContentItem, WhitelistEntry, ReferralConfig } from '@/lib/definitions';
 import { deleteUserAccount } from '@/lib/user-actions';
-import DynamicIcon from '@/components/ui/dynamic-icon';
 
 // Content Item Schema
 const itemSchema = z.object({
@@ -81,7 +61,7 @@ export default function AdminDashboard() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('categories');
+  const [activeTab, setActiveTab] = useState('items');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
 
   // Queries
@@ -134,7 +114,7 @@ export default function AdminDashboard() {
       setReviewItems(allPending);
       setIsLoadingReview(false);
     }
-    if (activeTab === 'review') {
+    if (activeTab === 'review' && isAdmin) {
         fetchPendingItems();
     }
   }, [firestore, isAdmin, categories, activeTab]);

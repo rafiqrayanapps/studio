@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import type { UserProfile, WhitelistEntry } from '@/lib/definitions';
 import { useEffect, useState } from 'react';
@@ -27,20 +27,21 @@ export function useUserProfile() {
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-    // If a user exists but has no profile document, create one (especially for anonymous/new users)
+    // If a user exists but has no profile document, create one
     useEffect(() => {
         if (firestore && user && !isProfileLoading && !userProfile) {
             const createProfile = async () => {
                 const fingerprint = await getDeviceFingerprint();
-                // Requirement: Use first 6 chars of fingerprint as the stable referral code
                 const myReferralCode = fingerprint.substring(0, 6).toUpperCase();
 
+                // Check if a profile with this fingerprint already exists (to handle cross-account data linking)
+                // For simplicity here, we just create a new one if none found for current UID
                 setDoc(doc(firestore, 'users', user.uid), {
                     email: user.email || '',
                     displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
                     subscriptionTier: 'free',
                     createdAt: serverTimestamp(),
-                    points: 0,
+                    points: 1, // Welcome point for first visit
                     referralCode: myReferralCode,
                     referralCount: 0,
                     unlockedProCodes: [],
@@ -90,14 +91,12 @@ export function useUserProfile() {
     if (isAdmin || isEditor) {
         isPro = true;
     } else if (userProfile?.subscriptionTier === 'pro') {
-        // Handle both permanent pro and timed pro
         if (userProfile.subscriptionEndDate) {
             const endDate = userProfile.subscriptionEndDate.toDate();
             if (endDate > new Date()) {
                 isPro = true;
             }
         } else {
-            // No end date means permanent
             isPro = true;
         }
     }

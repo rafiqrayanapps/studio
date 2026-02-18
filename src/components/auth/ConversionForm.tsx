@@ -7,15 +7,16 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, getDocs, query, collection, where, writeBatch, serverTimestamp, getDoc, Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, ShieldAlert, CheckCircle2, Coins, ArrowRight } from 'lucide-react';
+import { Loader2, Mail, Lock, ShieldAlert, CheckCircle2, Coins } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 import type { UserProfile, ReferralConfig } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
+import { FirebaseError } from 'firebase/app';
 
 const conversionSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
@@ -31,7 +32,7 @@ type ConversionValues = z.infer<typeof conversionSchema>;
 export default function ConversionForm() {
   const [checking, setChecking] = useState(true);
   const [eligible, setEligible] = useState(false);
-  const [guestData, setGuestData] = useState<UserProfile | null>(null);
+  const [guestData, setGuestData] = useState<UserProfile & { id: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
@@ -51,8 +52,9 @@ export default function ConversionForm() {
       try {
         const fingerprint = await getDeviceFingerprint();
         
-        // Find guest profile by fingerprint
-        const q = query(collection(firestore, 'users'), where("deviceFingerprint", "==", fingerprint), where("subscriptionTier", "==", "free"));
+        const q = query(collection(firestore, 'users'), 
+            where("deviceFingerprint", "==", fingerprint), 
+            where("subscriptionTier", "==", "free"));
         const snap = await getDocs(q);
         
         if (snap.empty) {
@@ -73,7 +75,7 @@ export default function ConversionForm() {
           setEligible(false);
         }
       } catch (e) {
-        console.error(e);
+        console.error("Eligibility check error:", e);
       } finally {
         setChecking(false);
       }
@@ -89,13 +91,16 @@ export default function ConversionForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Calculate 90 days expiry
+      // 2. Set temporary profile name
+      await updateProfile(user, { displayName: 'مستخدم برو' });
+
+      // 3. Calculate 90 days expiry
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + 90);
 
       const batch = writeBatch(firestore);
       
-      // Update/Create User Profile
+      // Update/Create User Profile with the new UID
       const userRef = doc(firestore, 'users', user.uid);
       batch.set(userRef, {
         ...guestData,
@@ -105,7 +110,7 @@ export default function ConversionForm() {
         updatedAt: serverTimestamp()
       });
 
-      // If it was a different doc ID (guest vs real uid), we might want to delete the old one
+      // Delete the old guest profile document
       if (guestData.id !== user.uid) {
         batch.delete(doc(firestore, 'users', guestData.id));
       }
@@ -116,7 +121,18 @@ export default function ConversionForm() {
       setTimeout(() => router.push('/home'), 2000);
 
     } catch (e: any) {
-      setError(e.message || "فشل تحويل الحساب.");
+      console.error("Conversion error:", e);
+      if (e instanceof FirebaseError) {
+          if (e.code === 'auth/email-already-in-use') {
+              setError("هذا البريد الإلكتروني مسجل بالفعل.");
+          } else if (e.code === 'auth/admin-restricted-operation') {
+              setError("عذراً، يرجى التأكد من تفعيل موفر البريد الإلكتروني في Firebase.");
+          } else {
+              setError(e.message);
+          }
+      } else {
+          setError("فشل تحويل الحساب. يرجى المحاولة لاحقاً.");
+      }
     }
   };
 
@@ -138,11 +154,11 @@ export default function ConversionForm() {
         <div className="space-y-2">
           <CardTitle>غير مؤهل حالياً</CardTitle>
           <CardDescription>
-            تحتاج للوصول إلى الحد المطلوب من الإحالات لتحويل حسابك إلى برو مجاناً لمدة 90 يوم.
+            تحتاج للوصول إلى الحد المطلوب من الإحالات ({guestData?.referralCount || 0} من أصل 5) لتحويل حسابك إلى برو مجاناً لمدة 90 يوم.
           </CardDescription>
         </div>
-        <Button asChild variant="outline" className="w-full">
-          <Link href="/home">العودة لجمع النقاط</Link>
+        <Button asChild variant="outline" className="w-full h-12 rounded-xl">
+          <button onClick={() => router.push('/home')}>العودة لجمع النقاط</button>
         </Button>
       </div>
     );
@@ -191,10 +207,15 @@ export default function ConversionForm() {
                 <FormMessage />
               </FormItem>
             )} />
-            {error && <p className="text-destructive text-sm font-bold text-center">{error}</p>}
+            {error && (
+                <div className="bg-destructive/10 p-3 rounded-lg flex items-center gap-2 text-destructive text-sm font-bold">
+                    <ShieldAlert className="h-4 w-4" />
+                    <p>{error}</p>
+                </div>
+            )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full h-12" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full h-12 rounded-xl" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'تفعيل اشتراك برو الآن'}
             </Button>
           </CardFooter>

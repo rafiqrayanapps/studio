@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Coins, Gift, Share2, Copy, Loader2, Info, CheckCircle2, Ticket } from 'lucide-react';
+import { Coins, Gift, Share2, Copy, Loader2, Info, Ticket } from 'lucide-react';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, increment, getDoc, arrayUnion } from 'firebase/firestore';
@@ -41,6 +40,13 @@ export default function ReferralDialog() {
 
     const handleRedeemReferral = async () => {
         if (!firestore || !user || !referralCode) return;
+        
+        // Anti-Cheat: Check if user already used a code
+        if (userProfile?.referredBy) {
+            toast({ variant: "destructive", title: "تنبيه", description: "لقد استخدمت كوداً سابقاً، لا يمكنك استخدام أكثر من كود." });
+            return;
+        }
+
         setIsSubmitting(true);
         
         try {
@@ -138,7 +144,6 @@ export default function ReferralDialog() {
                 </DialogHeader>
 
                 <div className="space-y-6">
-                    {/* Your Code Section */}
                     <div className="bg-muted p-4 rounded-3xl space-y-2 text-center border-2 border-dashed border-primary/20">
                         <p className="text-xs font-bold text-muted-foreground flex items-center justify-center gap-1">
                             <Ticket className="h-3 w-3" /> كود الإحالة الخاص بك
@@ -153,14 +158,13 @@ export default function ReferralDialog() {
                         </div>
                     </div>
 
-                    {/* Share & Earn Section */}
                     <div className="bg-primary/5 p-5 rounded-3xl border border-primary/10 space-y-4">
                         <div className="flex items-center gap-2 text-sm font-bold text-primary">
                             <Share2 className="h-4 w-4" />
                             <span>شارك واربح نقاطاً ومميزات برو</span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                            عن كل صديق يسجل من خلالك، ستحصل أنت وهو على <strong>{refConfig?.pointsPerReferral || 10} نقاط</strong>. عند وصولك لـ {refConfig?.requiredReferrals || 5} إحالات، سيتم ترقية حسابك لـ "برو" مجاناً!
+                            عن كل صديق يسجل من خلالك، ستحصل أنت وهو على <strong>{refConfig?.pointsPerReferral || 10} نقاط</strong>. عند وصولك لـ {refConfig?.requiredReferrals || 5} إحالة، سيتم ترقية حسابك لـ "برو" مجاناً!
                         </p>
                         <Button className="w-full rounded-2xl h-12 text-base font-bold shadow-md" onClick={copyReferralLink}>
                             <Share2 className="ml-2 h-4 w-4" />
@@ -168,7 +172,6 @@ export default function ReferralDialog() {
                         </Button>
                     </div>
 
-                    {/* Redeem Code Section */}
                     {canShowRedeem && (
                         <div className="space-y-3 px-1">
                             <div className="flex items-center gap-2 text-sm font-bold text-foreground">
@@ -194,7 +197,6 @@ export default function ReferralDialog() {
                         </div>
                     )}
 
-                    {/* Security Notice */}
                     <div className="bg-yellow-50 p-3 rounded-2xl border border-yellow-100 flex gap-3 items-start">
                         <Info className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
                         <p className="text-[10px] text-yellow-800 leading-relaxed font-medium">
