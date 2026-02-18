@@ -4,7 +4,7 @@ import Header from '@/components/layout/Header';
 import { WithId } from '@/firebase';
 import type { Category as CategoryType, ReferralConfig, UserProfile } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
-import { Search, Crown, Gift, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Crown, Gift, Loader2 } from 'lucide-react';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -12,9 +12,9 @@ import { useRouter } from 'next/navigation';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, increment, getDoc } from 'firebase/firestore';
+import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, increment, getDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 
@@ -56,50 +56,61 @@ export default function HomePage() {
       try {
           const fingerprint = await getDeviceFingerprint();
           
-          // 1. Anti-fraud check
+          // 1. Anti-fraud check: Device can only use referral once
           const usedInvRef = doc(firestore, 'used_invitations', fingerprint);
           const usedInvSnap = await getDoc(usedInvRef);
           if (usedInvSnap.exists()) {
-              throw new Error("عذراً، هذا الجهاز استخدم كود دعوة مسبقاً.");
+              throw new Error("عذراً، هذا الجهاز استخدم كود دعوة مسبقاً ولا يمكنه الاستفادة من كود آخر.");
           }
 
-          // 2. Find referrer
-          const refQuery = query(collection(firestore, 'users'), where("referralCode", "==", referralCode.toUpperCase()));
+          // 2. Find referrer by their unique code
+          const refQuery = query(collection(firestore, 'users'), where("referralCode", "==", referralCode.trim().toUpperCase()));
           const refSnap = await getDocs(refQuery);
           if (refSnap.empty) {
-              throw new Error("كود الدعوة غير صحيح.");
+              throw new Error("كود الدعوة المدخل غير صحيح.");
           }
 
           const referrerDoc = refSnap.docs[0];
           const referrerData = referrerDoc.data() as UserProfile;
           
-          if (referrerDoc.id === user.uid || referrerData.referralCode === userProfile?.referralCode) {
+          // Self-referral prevention
+          if (referrerDoc.id === user.uid || referrerData.email.toLowerCase() === user.email?.toLowerCase()) {
               throw new Error("لا يمكنك استخدام كود الدعوة الخاص بك.");
           }
 
           const pointsToAdd = refConfig?.pointsPerReferral || 10;
           const requiredForPro = refConfig?.requiredReferrals || 5;
+          const rewardInterval = refConfig?.rewardInterval || 5;
 
           const batch = writeBatch(firestore);
           
-          // Reward Inviter
+          // 3. Process Referrer Rewards
           const newReferralCount = (referrerData.referralCount || 0) + 1;
           const inviterUpdates: any = {
               referralCount: increment(1),
               points: increment(pointsToAdd)
           };
+
+          // Auto-upgrade to Pro if threshold reached
           if (newReferralCount >= requiredForPro && referrerData.subscriptionTier !== 'pro') {
               inviterUpdates.subscriptionTier = 'pro';
           }
+
+          // Accumulative Bonus: Extra codes for every interval
+          if (newReferralCount % rewardInterval === 0) {
+              const extraCode = `PRO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+              inviterUpdates.unlockedProCodes = arrayUnion(extraCode);
+          }
+
           batch.update(referrerDoc.ref, inviterUpdates);
 
-          // Reward Invitee (Current User)
+          // 4. Reward Invitee (Current User)
           batch.update(doc(firestore, 'users', user.uid), {
               referredBy: referrerDoc.id,
               points: increment(pointsToAdd) // Reward the new user too for joining
           });
 
-          // Register Fingerprint
+          // 5. Register Fingerprint to prevent abuse
           batch.set(usedInvRef, {
               userId: user.uid,
               referrerId: referrerDoc.id,
@@ -107,10 +118,10 @@ export default function HomePage() {
           });
 
           await batch.commit();
-          toast({ title: "تم تفعيل الكود بنجاح! حصلت على نقاط مكافأة." });
+          toast({ title: "تم تفعيل الكود بنجاح!", description: `حصلت أنت وصديقك على ${pointsToAdd} نقطة مكافأة.` });
           setReferralCode('');
       } catch (e: any) {
-          toast({ variant: "destructive", title: "خطأ في الكود", description: e.message });
+          toast({ variant: "destructive", title: "فشل تفعيل الكود", description: e.message });
       } finally {
           setIsSubmittingReferral(false);
       }
@@ -134,7 +145,7 @@ export default function HomePage() {
       </div>
       
       <main className="flex-1 px-6 pb-24 pt-4 space-y-6">
-        {/* Referral Entry for Guests */}
+        {/* Referral Entry for Guests / Users who haven't used one */}
         {canShowReferralEntry && (
             <Card className="border-2 border-primary/20 shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
                 <div className="bg-primary/5 p-4 flex items-center gap-3">

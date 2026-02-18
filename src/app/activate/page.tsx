@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, getDocs, query, where, writeBatch, collection, serverTimestamp, increment } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, where, writeBatch, collection, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Key, CheckCircle, EyeOff, User, Mail, ShieldCheck, UserPlus, ShieldAlert } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -106,6 +106,7 @@ function ActivationForm() {
       let referrerDocRef: any = null;
       let pointsToAdd = 10;
       let requiredForPro = 5;
+      let rewardInterval = 5;
 
       // Fetch Global Config
       const configRef = doc(firestore, 'appConfig', 'referral');
@@ -114,6 +115,7 @@ function ActivationForm() {
           const conf = configSnap.data() as ReferralConfig;
           pointsToAdd = conf.pointsPerReferral || 10;
           requiredForPro = conf.requiredReferrals || 5;
+          rewardInterval = conf.rewardInterval || 5;
       }
 
       if (data.referralCode) {
@@ -125,15 +127,16 @@ function ActivationForm() {
           }
 
           // Find referrer
-          const refQuery = query(collection(firestore, 'users'), where("referralCode", "==", data.referralCode));
+          const refQuery = query(collection(firestore, 'users'), where("referralCode", "==", data.referralCode.trim().toUpperCase()));
           const refSnap = await getDocs(refQuery);
           if (refSnap.empty) {
               throw new Error("كود الدعوة المدخل غير صحيح.");
           }
           
-          const referrerData = refSnap.docs[0].data() as UserProfile;
-          referrerId = refSnap.docs[0].id;
-          referrerDocRef = refSnap.docs[0].ref;
+          const referrerDoc = refSnap.docs[0];
+          const referrerData = referrerDoc.data() as UserProfile;
+          referrerId = referrerDoc.id;
+          referrerDocRef = referrerDoc.ref;
 
           if (referrerData.email.toLowerCase() === data.email.toLowerCase()) {
               throw new Error("لا يمكنك استخدام كود الدعوة الخاص بك.");
@@ -161,18 +164,18 @@ function ActivationForm() {
       batch.set(userProfileRef, {
         email: data.email,
         displayName: data.fullName,
-        subscriptionTier: 'pro', // Users activated via code are Pro by default in this flow
+        subscriptionTier: 'pro', // Users activated via code are Pro by default
         createdAt: serverTimestamp(),
-        points: 0,
+        points: pointsToAdd, // Give them starting points if they used a code
         referralCode: myReferralCode,
         referralCount: 0,
         unlockedProCodes: [],
         referredBy: referrerId,
+        deviceFingerprint: currentFingerprint
       });
 
       // 3. Process Referrer Reward (Atomic)
       if (referrerId && referrerDocRef) {
-          // Fetch latest referrer data to check thresholds
           const rSnap = await getDoc(referrerDocRef);
           const rData = rSnap.data() as UserProfile;
           const newCount = (rData.referralCount || 0) + 1;
@@ -185,6 +188,12 @@ function ActivationForm() {
           // Auto-upgrade to Pro if limit reached
           if (newCount >= requiredForPro && rData.subscriptionTier !== 'pro') {
               updates.subscriptionTier = 'pro';
+          }
+
+          // Accumulative Reward Logic
+          if (newCount % rewardInterval === 0) {
+              const extraCode = `PRO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+              updates.unlockedProCodes = arrayUnion(extraCode);
           }
 
           batch.update(referrerDocRef, updates);
