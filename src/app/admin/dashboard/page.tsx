@@ -32,6 +32,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { Badge } from '@/components/ui/badge';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { deleteUserAccount } from '@/lib/user-actions';
+import { useRouter } from 'next/navigation';
 
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
@@ -159,6 +160,7 @@ type PaymentMethodFormValues = z.infer<Return<(typeof useFormSchemas)>['paymentM
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
   const auth = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const { isAdmin, isEditor } = useUserProfile();
 
@@ -668,6 +670,15 @@ export default function AdminDashboardPage() {
     toast({ title: "تمت الموافقة على المحتوى" });
   };
 
+  const handleLogout = async () => {
+    try {
+        await auth.signOut();
+        router.push('/home');
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+  };
+
 
   const CategoryForm = () => (
     <Card>
@@ -808,7 +819,7 @@ export default function AdminDashboardPage() {
     <div className="flex min-h-dvh flex-col bg-secondary">
         <Header title="لوحة التحكم" showMenu={false}>
             <div className="flex-1" />
-            <Button variant="ghost" size="sm" onClick={() => auth.signOut()}><LogOut className="ml-2 h-4 w-4" />تسجيل الخروج</Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}><LogOut className="ml-2 h-4 w-4" />تسجيل الخروج</Button>
         </Header>
         <main className="flex-1 container mx-auto max-w-5xl py-8 px-4">
             <Tabs defaultValue="categories" dir="rtl">
@@ -1284,14 +1295,14 @@ export default function AdminDashboardPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AccordionContent>
                     سيتم حذف "
                     {deletingEntity?.type === 'whitelist' 
                         ? (deletingEntity.entity as WithId<WhitelistEntry>).email 
                         : ((deletingEntity?.entity as any)?.name || (deletingEntity?.entity as any)?.title || '')
                     }
                     ". هذا الإجراء لا يمكن التراجع عنه.
-                </AlertDialogDescription>
+                </AccordionContent>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>إلغاء</AlertDialogCancel>

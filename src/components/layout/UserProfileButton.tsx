@@ -8,10 +8,21 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useAuth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
+import { useRouter } from 'next/navigation';
 
 export default function UserProfileButton() {
     const { user, userProfile, isPro, isAdmin, isEditor, isLoading } = useUserProfile();
     const auth = useAuth();
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        try {
+            await auth.signOut();
+            router.push('/home');
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -44,7 +55,7 @@ export default function UserProfileButton() {
                                 <span>لوحة التحكم</span>
                             </DropdownMenuItem>
                         </Link>
-                        <DropdownMenuItem onClick={() => auth.signOut()} className="cursor-pointer text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
                             <LogOut className="ml-2 h-4 w-4" />
                             <span>تسجيل الخروج</span>
                         </DropdownMenuItem>
@@ -89,14 +100,17 @@ export default function UserProfileButton() {
                     </SheetClose>
                 </li>
                 <li>
-                    <div className="block group cursor-pointer" onClick={() => auth.signOut()}>
-                        <SheetClose asChild>
+                    <SheetClose asChild>
+                        <button 
+                            className="w-full block group cursor-pointer" 
+                            onClick={handleLogout}
+                        >
                             <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
                                 <span className="font-semibold text-lg text-destructive">تسجيل الخروج</span>
                                 <LogOut className="h-5 w-5 text-destructive" />
                             </div>
-                        </SheetClose>
-                    </div>
+                        </button>
+                    </SheetClose>
                 </li>
             </>
         );

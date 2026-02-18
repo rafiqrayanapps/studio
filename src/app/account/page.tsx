@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Crown, Loader2, Mail, Calendar, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -16,6 +16,7 @@ export default function AccountPage() {
   const { user, userProfile, isPro, isLoading } = useUserProfile();
   const auth = useAuth();
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     // If data has loaded and user is not Pro, redirect them away.
@@ -24,9 +25,15 @@ export default function AccountPage() {
     }
   }, [isLoading, isPro, router]);
 
-  const handleLogout = () => {
-    auth.signOut();
-    router.push('/home');
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+        await auth.signOut();
+        router.push('/home');
+    } catch (error) {
+        console.error('Logout error:', error);
+        setIsLoggingOut(false);
+    }
   };
 
   const AccountInfoSkeleton = () => (
@@ -107,8 +114,13 @@ export default function AccountPage() {
                     </div>
                 </div>
 
-                <Button onClick={handleLogout} variant="outline" className="w-full mt-6">
-                    <LogOut className="ml-2 h-4 w-4" />
+                <Button 
+                    onClick={handleLogout} 
+                    variant="outline" 
+                    className="w-full mt-6"
+                    disabled={isLoggingOut}
+                >
+                    {isLoggingOut ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <LogOut className="ml-2 h-4 w-4" />}
                     تسجيل الخروج
                 </Button>
             </CardContent>
