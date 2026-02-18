@@ -19,10 +19,12 @@ import {
     ShieldCheck,
     Gift,
     Layers,
-    UserMinus
+    UserMinus,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 
-import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, setDoc, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
@@ -39,6 +41,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 
 import type { Category, ContentItem, WhitelistEntry, ReferralConfig } from '@/lib/definitions';
 import { deleteUserAccount } from '@/lib/user-actions';
@@ -47,6 +51,7 @@ import { deleteUserAccount } from '@/lib/user-actions';
 const itemSchema = z.object({
   title: z.string().min(2, "العنوان مطلوب"),
   imageUrl: z.string().url("رابط الصورة غير صالح"),
+  displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5']).default('style1'),
   downloadUrl: z.string().optional(),
   prompt: z.string().optional(),
   instructions: z.string().optional(),
@@ -57,6 +62,18 @@ const itemSchema = z.object({
 
 type ItemFormValues = z.infer<typeof itemSchema>;
 
+// Category Schema
+const categorySchema = z.object({
+    name: z.string().min(2, "الاسم مطلوب"),
+    displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5']),
+    visibility: z.enum(['public', 'pro']),
+    order: z.number().default(0),
+    isUnderMaintenance: z.boolean().default(false),
+    fileTypes: z.string().optional(),
+});
+
+type CategoryFormValues = z.infer<typeof categorySchema>;
+
 export default function AdminDashboard() {
   const { isAdmin, isEditor, user } = useUserProfile();
   const firestore = useFirestore();
@@ -64,6 +81,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('items');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   // Queries
   const categoriesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories'), orderBy('order', 'asc')) : null, [firestore]);
@@ -84,12 +102,13 @@ export default function AdminDashboard() {
   const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
 
-  // Form
+  // Forms
   const itemForm = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
     defaultValues: {
       title: '',
       imageUrl: '',
+      displayStyle: 'style1',
       downloadUrl: '',
       prompt: '',
       instructions: '',
@@ -98,6 +117,28 @@ export default function AdminDashboard() {
       order: 0
     }
   });
+
+  const catForm = useForm<CategoryFormValues>({
+      resolver: zodResolver(categorySchema),
+      defaultValues: {
+          name: '',
+          displayStyle: 'style1',
+          visibility: 'public',
+          order: 0,
+          isUnderMaintenance: false,
+          fileTypes: ''
+      }
+  });
+
+  // Dynamic fields logic
+  const selectedCatObj = useMemo(() => categories?.find(c => c.id === selectedCategoryId), [categories, selectedCategoryId]);
+  const currentItemStyle = itemForm.watch('displayStyle');
+
+  useEffect(() => {
+      if (selectedCatObj) {
+          itemForm.setValue('displayStyle', selectedCatObj.displayStyle);
+      }
+  }, [selectedCatObj, itemForm]);
 
   useEffect(() => {
     async function fetchPendingItems() {
@@ -133,10 +174,42 @@ export default function AdminDashboard() {
       await addDocumentNonBlocking(itemsRef, itemData);
       
       toast({ title: isAdmin ? "تمت إضافة المحتوى بنجاح" : "تم إرسال المحتوى للمراجعة" });
-      itemForm.reset();
+      itemForm.reset({
+          ...itemForm.getValues(),
+          title: '',
+          imageUrl: '',
+          downloadUrl: '',
+          prompt: '',
+          instructions: '',
+          videoUrl: ''
+      });
     } catch (e) {
       toast({ title: "فشل في إضافة المحتوى", variant: "destructive" });
     }
+  };
+
+  const handleEditCategory = (cat: Category) => {
+      setEditingCategory(cat);
+      catForm.reset({
+          name: cat.name,
+          displayStyle: cat.displayStyle,
+          visibility: cat.visibility,
+          order: cat.order || 0,
+          isUnderMaintenance: cat.isUnderMaintenance || false,
+          fileTypes: cat.fileTypes || ''
+      });
+  };
+
+  const onUpdateCategory = async (values: CategoryFormValues) => {
+      if (!firestore || !editingCategory) return;
+      try {
+          const catRef = doc(firestore, 'categories', editingCategory.id);
+          await setDoc(catRef, values, { merge: true });
+          toast({ title: "تم تحديث القسم بنجاح" });
+          setEditingCategory(null);
+      } catch (e) {
+          toast({ title: "فشل تحديث القسم", variant: "destructive" });
+      }
   };
 
   const handleApproveItem = async (item: any) => {
@@ -204,10 +277,9 @@ export default function AdminDashboard() {
       toast({ title: "تم حفظ إعدادات الإحالة والنقاط" });
   };
 
-  const handleEditCategory = (catId: string) => {
+  const goToManageItems = (catId: string) => {
       setSelectedCategoryId(catId);
       setActiveTab('items');
-      toast({ title: "تم تحديد القسم للتعديل" });
   };
 
   return (
@@ -253,12 +325,13 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      <main className="flex-1 p-4 md:p-8">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             
             <TabsContent value="categories" className="m-0 space-y-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold">إدارة الأقسام</h2>
+                    {isAdmin && <Button onClick={() => setEditingCategory({ id: '', name: '', displayStyle: 'style1', visibility: 'public', parentId: null } as any)}><Plus className="ml-2 h-4 w-4" /> إضافة قسم</Button>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categories?.map(cat => (
@@ -266,15 +339,20 @@ export default function AdminDashboard() {
                             <CardHeader className="p-4 bg-muted/30">
                                 <div className="flex justify-between items-start">
                                     <CardTitle className="text-lg">{cat.name}</CardTitle>
-                                    <Badge variant={cat.visibility === 'pro' ? 'default' : 'outline'}>{cat.visibility}</Badge>
+                                    <Badge variant={cat.visibility === 'pro' ? 'default' : 'outline'}>{cat.visibility === 'pro' ? 'برو' : 'عام'}</Badge>
                                 </div>
-                                <CardDescription className="text-xs">النمط: {cat.displayStyle}</CardDescription>
+                                <CardDescription className="text-xs">النمط: {cat.displayStyle} {cat.isUnderMaintenance && <span className="text-destructive font-bold">(صيانة)</span>}</CardDescription>
                             </CardHeader>
-                            <CardFooter className="p-2 border-t flex justify-end gap-2">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditCategory(cat.id)}>
-                                    <Edit2 className="h-4 w-4" />
+                            <CardFooter className="p-2 border-t flex justify-between gap-2">
+                                <Button variant="ghost" className="text-xs flex-1" onClick={() => goToManageItems(cat.id)}>
+                                    <FileText className="ml-1 h-3 w-3" /> إدارة المحتوى
                                 </Button>
-                                {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>}
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditCategory(cat)}>
+                                        <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore, 'categories', cat.id))}><Trash2 className="h-4 w-4" /></Button>}
+                                </div>
                             </CardFooter>
                         </Card>
                     ))}
@@ -287,90 +365,127 @@ export default function AdminDashboard() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>إضافة محتوى جديد</CardTitle>
-                                <CardDescription>اختر القسم ثم املأ بيانات المحتوى</CardDescription>
+                                <CardDescription>اختر القسم والنمط ثم املأ البيانات</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold">اختر القسم المستهدف:</label>
-                                    <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="اختر القسم..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {categories?.map(cat => (
-                                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-muted-foreground">القسم المستهدف:</label>
+                                        <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+                                            <SelectTrigger className="h-12 rounded-xl">
+                                                <SelectValue placeholder="اختر القسم..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {categories?.map(cat => (
+                                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-muted-foreground">نمط العرض:</label>
+                                        <Select 
+                                            value={itemForm.watch('displayStyle')} 
+                                            onValueChange={(val: any) => itemForm.setValue('displayStyle', val)}
+                                        >
+                                            <SelectTrigger className="h-12 rounded-xl bg-muted/20">
+                                                <SelectValue placeholder="اختر النمط..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="style1">النمط الأفقي (تحميل)</SelectItem>
+                                                <SelectItem value="style3">نمط البرومبت (نسخ)</SelectItem>
+                                                <SelectItem value="style4">نمط الفيديو (مشاهدة)</SelectItem>
+                                                <SelectItem value="style5">نمط المعرض (سكرين شوت)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
 
                                 {selectedCategoryId && (
                                     <Form {...itemForm}>
-                                        <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-4">
-                                            <FormField control={itemForm.control} name="title" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>العنوان</FormLabel>
-                                                    <FormControl><Input {...field} placeholder="عنوان المنشور" /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            <FormField control={itemForm.control} name="imageUrl" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>رابط الصورة</FormLabel>
-                                                    <FormControl><Input {...field} placeholder="https://..." /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (
+                                        <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-4 pt-4 border-t">
+                                                <FormField control={itemForm.control} name="title" render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>رابط التحميل (اختياري)</FormLabel>
-                                                        <FormControl><Input {...field} placeholder="https://..." /></FormControl>
+                                                        <FormLabel>العنوان</FormLabel>
+                                                        <FormControl><Input {...field} placeholder="عنوان المنشور" className="h-11" /></FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )} />
-                                                <FormField control={itemForm.control} name="videoUrl" render={({ field }) => (
+                                                
+                                                <FormField control={itemForm.control} name="imageUrl" render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>رابط فيديو (اختياري)</FormLabel>
-                                                        <FormControl><Input {...field} placeholder="https://..." /></FormControl>
+                                                        <FormLabel>رابط الصورة الرئيسية</FormLabel>
+                                                        <FormControl><Input {...field} placeholder="https://..." className="h-11" /></FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )} />
+                                                
+                                                {/* Conditional Fields based on Style */}
+                                                {(currentItemStyle === 'style1' || currentItemStyle === 'style2') && (
+                                                    <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>رابط التحميل المباشر</FormLabel>
+                                                            <FormControl><Input {...field} placeholder="https://..." className="h-11" /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                )}
+
+                                                {currentItemStyle === 'style3' && (
+                                                    <div className="space-y-4">
+                                                        <FormField control={itemForm.control} name="prompt" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>نص البرومبت</FormLabel>
+                                                                <FormControl><Textarea {...field} placeholder="انسخ النص هنا..." className="min-h-[100px] resize-none" /></FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )} />
+                                                        <FormField control={itemForm.control} name="instructions" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>التعليمات (اختياري)</FormLabel>
+                                                                <FormControl><Input {...field} placeholder="كيفية استخدام هذا البرومبت" /></FormControl>
+                                                            </FormItem>
+                                                        )} />
+                                                    </div>
+                                                )}
+
+                                                {currentItemStyle === 'style4' && (
+                                                    <FormField control={itemForm.control} name="videoUrl" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>رابط الفيديو (YouTube/Direct)</FormLabel>
+                                                            <FormControl><Input {...field} placeholder="https://..." className="h-11" /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                )}
+
+                                                <div className="flex gap-4 items-end">
+                                                    <FormField control={itemForm.control} name="visibility" render={({ field }) => (
+                                                        <FormItem className="flex-1">
+                                                            <FormLabel>الخصوصية</FormLabel>
+                                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                                <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
+                                                                <SelectContent>
+                                                                    <SelectItem value="public">عام (للجميع)</SelectItem>
+                                                                    <SelectItem value="pro">برو (المشتركين فقط)</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </FormItem>
+                                                    )} />
+                                                    <FormField control={itemForm.control} name="order" render={({ field }) => (
+                                                        <FormItem className="w-24">
+                                                            <FormLabel>الترتيب</FormLabel>
+                                                            <FormControl><Input type="number" {...field} className="h-11" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
+                                                        </FormItem>
+                                                    )} />
+                                                </div>
                                             </div>
 
-                                            <FormField control={itemForm.control} name="prompt" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>البرومبت (لنمط 3)</FormLabel>
-                                                    <FormControl><Textarea {...field} placeholder="نص البرومبت هنا..." /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-
-                                            <div className="flex gap-4">
-                                                <FormField control={itemForm.control} name="visibility" render={({ field }) => (
-                                                    <FormItem className="flex-1">
-                                                        <FormLabel>الظهور</FormLabel>
-                                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="public">عام (للجميع)</SelectItem>
-                                                                <SelectItem value="pro">برو فقط</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </FormItem>
-                                                )} />
-                                                <FormField control={itemForm.control} name="order" render={({ field }) => (
-                                                    <FormItem className="w-24">
-                                                        <FormLabel>الترتيب</FormLabel>
-                                                        <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                    </FormItem>
-                                                )} />
-                                            </div>
-
-                                            <Button type="submit" className="w-full h-12" disabled={itemForm.formState.isSubmitting}>
-                                                {itemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : <Plus className="ml-2 h-4 w-4" />}
-                                                {isAdmin ? "إضافة ونشر" : "إرسال للمراجعة"}
+                                            <Button type="submit" className="w-full h-14 text-lg font-bold rounded-2xl shadow-lg" disabled={itemForm.formState.isSubmitting}>
+                                                {itemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : <Plus className="ml-2 h-5 w-5" />}
+                                                {isAdmin ? "نشر المحتوى فوراً" : "إرسال للمراجعة"}
                                             </Button>
                                         </form>
                                     </Form>
@@ -380,9 +495,12 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="w-full md:w-80">
-                        <Card className="h-full">
-                            <CardHeader>
-                                <CardTitle className="text-lg">المحتوى الحالي</CardTitle>
+                        <Card className="h-full border-none shadow-none md:border md:shadow-sm">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Layers className="h-4 w-4 text-primary" />
+                                    المحتوى الحالي
+                                </CardTitle>
                                 <CardDescription>في القسم المختار</CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -392,26 +510,37 @@ export default function AdminDashboard() {
                                     ) : currentItems && currentItems.length > 0 ? (
                                         <div className="space-y-3">
                                             {currentItems.map(item => (
-                                                <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg group">
-                                                    <div className="h-10 w-10 bg-muted rounded relative overflow-hidden shrink-0">
+                                                <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/50 hover:bg-muted rounded-xl transition-colors group">
+                                                    <div className="h-12 w-12 bg-muted rounded-lg relative overflow-hidden shrink-0 shadow-inner">
                                                         {item.imageUrl && <img src={item.imageUrl} className="object-cover w-full h-full" alt="" />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-xs font-bold truncate">{item.title}</p>
-                                                        <Badge variant={item.status === 'pending' ? 'outline' : 'secondary'} className="text-[8px] h-4">
-                                                            {item.status === 'pending' ? 'قيد المراجعة' : 'منشور'}
-                                                        </Badge>
+                                                        <p className="text-[11px] font-bold truncate leading-tight">{item.title}</p>
+                                                        <div className="flex items-center gap-1.5 mt-1">
+                                                            <Badge variant={item.status === 'pending' ? 'outline' : 'secondary'} className="text-[8px] h-4 px-1">
+                                                                {item.status === 'pending' ? 'قيد المراجعة' : 'منشور'}
+                                                            </Badge>
+                                                            {item.visibility === 'pro' && <Badge className="bg-yellow-500 text-white text-[8px] h-4 px-1">برو</Badge>}
+                                                        </div>
                                                     </div>
                                                     {isAdmin && (
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => deleteDocumentNonBlocking(doc(firestore, 'categories', selectedCategoryId, 'items', item.id))}>
-                                                            <Trash2 className="h-3 w-3" />
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
+                                                            onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore, 'categories', selectedCategoryId, 'items', item.id))}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     )}
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-center text-muted-foreground py-8 text-sm">لا يوجد محتوى بعد.</p>
+                                        <div className="text-center py-12 space-y-2 opacity-40">
+                                            <FileText className="h-10 w-10 mx-auto" />
+                                            <p className="text-xs font-bold">لا يوجد محتوى بعد.</p>
+                                        </div>
                                     )}
                                 </ScrollArea>
                             </CardContent>
@@ -508,11 +637,10 @@ export default function AdminDashboard() {
                 </TabsContent>
             )}
 
-            {isAdmin && (
+            {isAdmin && ( activeTab === 'settings' &&
                 <TabsContent value="settings" className="m-0 space-y-6">
                     <h2 className="text-2xl font-bold">إعدادات النظام العامة</h2>
                     <Accordion type="single" collapsible className="w-full space-y-4">
-                        
                         <AccordionItem value="referral" className="border-none">
                             <Card>
                                 <AccordionTrigger className="p-6 font-bold text-lg hover:no-underline">
@@ -562,6 +690,65 @@ export default function AdminDashboard() {
 
         </Tabs>
       </main>
+
+      {/* Edit Category Dialog */}
+      <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
+          <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
+              <DialogHeader>
+                  <DialogTitle>{editingCategory?.id ? "تعديل بيانات القسم" : "إضافة قسم جديد"}</DialogTitle>
+                  <DialogDescription>أدخل البيانات الأساسية للقسم وكيفية عرض المحتوى بداخله.</DialogDescription>
+              </DialogHeader>
+              <Form {...catForm}>
+                  <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-4">
+                      <FormField control={catForm.control} name="name" render={({ field }) => (
+                          <FormItem><FormLabel>اسم القسم</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={catForm.control} name="displayStyle" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>نمط العرض الافتراضي</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                      <SelectItem value="style1">نمط 1 (تحميل)</SelectItem>
+                                      <SelectItem value="style3">نمط 3 (برومبت)</SelectItem>
+                                      <SelectItem value="style4">نمط 4 (فيديو)</SelectItem>
+                                      <SelectItem value="style5">نمط 5 (معرض)</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </FormItem>
+                      )} />
+                      <div className="grid grid-cols-2 gap-4">
+                          <FormField control={catForm.control} name="visibility" render={({ field }) => (
+                              <FormItem>
+                                  <FormLabel>الظهور</FormLabel>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                      <SelectContent><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent>
+                                  </Select>
+                              </FormItem>
+                          )} />
+                          <FormField control={catForm.control} name="order" render={({ field }) => (
+                              <FormItem><FormLabel>الترتيب</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>
+                          )} />
+                      </div>
+                      <FormField control={catForm.control} name="isUnderMaintenance" render={({ field }) => (
+                          <FormItem className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
+                              <div className="space-y-0.5">
+                                  <FormLabel>وضع الصيانة</FormLabel>
+                                  <FormDescription className="text-[10px]">إظهار صفحة "نعمل على التحسين" للزوار.</FormDescription>
+                              </div>
+                              <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                          </FormItem>
+                      )} />
+                      <DialogFooter className="pt-4">
+                          <Button type="submit" className="w-full h-12" disabled={catForm.formState.isSubmitting}>
+                              {catForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}
+                          </Button>
+                      </DialogFooter>
+                  </form>
+              </Form>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { doc, onSnapshot, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import type { UserProfile, WhitelistEntry } from '@/lib/definitions';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 
 export function useUserProfile() {
@@ -12,6 +13,7 @@ export function useUserProfile() {
     const firestore = useFirestore();
     const auth = useAuth();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [tempReferralCode, setTempReferralCode] = useState<string | null>(null);
 
     // Auto sign-in anonymously if no user session exists
     useEffect(() => {
@@ -33,7 +35,8 @@ export function useUserProfile() {
             const createOrUpdateProfile = async () => {
                 try {
                     const fingerprint = await getDeviceFingerprint();
-                    const myReferralCode = fingerprint.substring(0, 6).toUpperCase();
+                    const code = fingerprint.substring(0, 6).toUpperCase();
+                    setTempReferralCode(code);
 
                     if (!userProfile) {
                         await setDoc(doc(firestore, 'users', user.uid), {
@@ -41,17 +44,16 @@ export function useUserProfile() {
                             displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
                             subscriptionTier: 'free',
                             createdAt: serverTimestamp(),
-                            points: 1,
-                            referralCode: myReferralCode,
+                            points: 1, // Welcome point
+                            referralCode: code,
                             referralCount: 0,
                             unlockedProCodes: [],
                             referredBy: null,
                             deviceFingerprint: fingerprint
                         });
                     } else if (!userProfile.referralCode) {
-                        // Fix for existing profiles without codes
                         await updateDoc(doc(firestore, 'users', user.uid), {
-                            referralCode: myReferralCode,
+                            referralCode: code,
                             deviceFingerprint: fingerprint
                         });
                     }
@@ -97,23 +99,20 @@ export function useUserProfile() {
     const isAdmin = whitelistEntry?.role === 'admin';
     const isEditor = whitelistEntry?.role === 'editor';
 
-    let isPro = false;
-    if (isAdmin || isEditor) {
-        isPro = true;
-    } else if (userProfile?.subscriptionTier === 'pro') {
-        if (userProfile.subscriptionEndDate) {
-            const endDate = userProfile.subscriptionEndDate.toDate();
-            if (endDate > new Date()) {
-                isPro = true;
+    const isPro = useMemo(() => {
+        if (isAdmin || isEditor) return true;
+        if (userProfile?.subscriptionTier === 'pro') {
+            if (userProfile.subscriptionEndDate) {
+                return userProfile.subscriptionEndDate.toDate() > new Date();
             }
-        } else {
-            isPro = true;
+            return true;
         }
-    }
+        return false;
+    }, [isAdmin, isEditor, userProfile]);
     
     return { 
         user, 
-        userProfile, 
+        userProfile: userProfile ? { ...userProfile, referralCode: userProfile.referralCode || tempReferralCode } : null, 
         isPro, 
         isAdmin, 
         isEditor,
