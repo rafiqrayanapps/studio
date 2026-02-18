@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import type { UserProfile, WhitelistEntry } from '@/lib/definitions';
 import { useEffect, useState } from 'react';
@@ -31,22 +31,26 @@ export function useUserProfile() {
     useEffect(() => {
         if (firestore && user && !isProfileLoading && !userProfile) {
             const createProfile = async () => {
-                const fingerprint = await getDeviceFingerprint();
-                const myReferralCode = fingerprint.substring(0, 6).toUpperCase();
+                try {
+                    const fingerprint = await getDeviceFingerprint();
+                    const myReferralCode = fingerprint.substring(0, 6).toUpperCase();
 
-                // Point 1: Give 1 point on creation. merge: true prevents overwriting if points were already added.
-                setDoc(doc(firestore, 'users', user.uid), {
-                    email: user.email || '',
-                    displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
-                    subscriptionTier: 'free',
-                    createdAt: serverTimestamp(),
-                    points: 1, // Welcome point for first visit
-                    referralCode: myReferralCode,
-                    referralCount: 0,
-                    unlockedProCodes: [],
-                    referredBy: null,
-                    deviceFingerprint: fingerprint
-                }, { merge: true });
+                    // Point 1: Give 1 point on creation. merge: true prevents overwriting if points were already added.
+                    await setDoc(doc(firestore, 'users', user.uid), {
+                        email: user.email || '',
+                        displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
+                        subscriptionTier: 'free',
+                        createdAt: serverTimestamp(),
+                        points: 1, // Welcome point for first visit
+                        referralCode: myReferralCode,
+                        referralCount: 0,
+                        unlockedProCodes: [],
+                        referredBy: null,
+                        deviceFingerprint: fingerprint
+                    }, { merge: true });
+                } catch (err) {
+                    console.error("Failed to create user profile:", err);
+                }
             };
             createProfile();
         }

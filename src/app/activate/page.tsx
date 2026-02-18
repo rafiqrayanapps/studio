@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
@@ -10,7 +9,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, getDocs, query, where, writeBatch, collection, serverTimestamp, increment, arrayUnion } from 'firebase/firestore';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Key, CheckCircle, EyeOff, User, Mail, ShieldCheck, UserPlus, ShieldAlert } from 'lucide-react';
+import { Loader2, Key, CheckCircle, EyeOff, User, Mail, ShieldCheck, UserPlus, ShieldAlert, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
@@ -203,8 +202,14 @@ function ActivationForm() {
       setTimeout(() => router.push('/home'), 3000);
 
     } catch (e: any) {
-      if (e instanceof FirebaseError && e.code === 'auth/email-already-in-use') {
-        setError('هذا البريد الإلكتروني مستخدم بالفعل.');
+      if (e instanceof FirebaseError) {
+        if (e.code === 'auth/email-already-in-use') {
+          setError('هذا البريد الإلكتروني مستخدم بالفعل.');
+        } else if (e.code === 'auth/admin-restricted-operation') {
+          setError("خطأ أمان: يرجى تفعيل 'Email/Password' وإضافة هذا النطاق لـ 'Authorized Domains' في Firebase Console.");
+        } else {
+          setError(e.message || "فشل إنشاء الحساب.");
+        }
       } else {
         setError(e.message || "فشل إنشاء الحساب.");
       }
@@ -232,12 +237,12 @@ function ActivationForm() {
         );
       case 'contract':
         return (
-          <Card className="w-full max-w-lg">
+          <Card className="w-full max-lg">
             <CardHeader className="text-center">
               <CardTitle>إنشاء الحساب</CardTitle>
               <CardDescription>أكمل بياناتك لتفعيل اشتراكك.</CardDescription>
             </CardHeader>
-            <Form {...contractSchema}>
+            <Form {...contractForm}>
               <form onSubmit={contractForm.handleSubmit(onContractSubmit)}>
                 <CardContent className="space-y-4">
                   <FormField control={contractForm.control} name="fullName" render={({ field }) => (
@@ -306,8 +311,8 @@ function ActivationForm() {
                   </div>
                 </CardContent>
                 {error && (
-                    <div className="bg-destructive/10 p-3 rounded-lg flex items-center gap-2 mx-6 mb-4 text-destructive text-sm font-bold">
-                        <ShieldAlert className="h-5 w-5" />
+                    <div className="bg-destructive/10 p-3 rounded-lg flex items-start gap-2 mx-6 mb-4 text-destructive text-xs font-bold border border-destructive/20 leading-tight">
+                        <AlertCircle className="h-5 w-5 shrink-0" />
                         <p>{error}</p>
                     </div>
                 )}
