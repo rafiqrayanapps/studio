@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useFirestore, useCollection, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, increment } from 'firebase/firestore';
 import type { Category, ContentItem, ReferralConfig } from '@/lib/definitions';
 import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat, Settings2, Coins } from 'lucide-react';
@@ -96,7 +96,6 @@ export default function CategoryPage() {
 
       toast({ title: "تم فتح المحتوى بنجاح! تم خصم النقاط." });
       setShowUnlockDialog(null);
-      // In a real app, you'd record the unlock in Firestore. For MVP, we allow immediate access.
   };
 
   const isLoading = areAllCategoriesLoading || areItemsLoading || isUserLoading;
@@ -114,19 +113,32 @@ export default function CategoryPage() {
   const renderContent = () => {
     if (category?.isUnderMaintenance && !isAdmin) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[2.5rem] mt-8 shadow-lg border border-primary/10 overflow-hidden relative min-h-[400px]">
-            <div className="relative z-10 space-y-6">
+         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[2.5rem] mt-8 shadow-lg border border-primary/10 overflow-hidden relative min-h-[450px]">
+            {/* Background Ripples */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0s' }}></div>
+                <div className="absolute w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.4s' }}></div>
+                <div className="absolute w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.8s' }}></div>
+            </div>
+
+            <div className="relative z-10 space-y-8">
                 <div className="relative inline-block">
-                    <div className="bg-primary/10 p-6 rounded-full animate-pulse">
-                        <Settings2 className="h-16 w-16 text-primary animate-spin" style={{ animationDuration: '8s' }} />
+                    <div className="relative z-10 bg-primary text-primary-foreground p-8 rounded-3xl shadow-2xl">
+                        <Settings2 className="h-16 w-16 animate-spin" style={{ animationDuration: '4s' }} />
                     </div>
-                    <HardHat className="absolute -bottom-2 -right-2 h-10 w-10 text-yellow-500 animate-bounce" />
+                    <div className="absolute -bottom-4 -right-4 bg-yellow-400 p-3 rounded-2xl shadow-lg border-4 border-card animate-bounce">
+                        <HardHat className="h-8 w-8 text-yellow-900" />
+                    </div>
                 </div>
-                <div className="space-y-2">
+                
+                <div className="space-y-3">
                     <h3 className="font-bold text-3xl text-foreground tracking-tight">نعمل على تحسين القسم</h3>
-                    <p className="text-muted-foreground text-lg max-w-xs mx-auto">عفواً، يخضع هذا القسم لصيانة دورية لضمان أفضل تجربة لك. سنعود قريباً!</p>
+                    <p className="text-muted-foreground text-lg max-w-xs mx-auto leading-relaxed">
+                        عفواً، يخضع هذا القسم لصيانة دورية لضمان أفضل تجربة لك. سنعود قريباً!
+                    </p>
                 </div>
-                <Button variant="secondary" onClick={() => router.back()} className="rounded-full px-8 h-12 text-base font-semibold">
+
+                <Button variant="outline" onClick={() => router.back()} className="rounded-2xl px-10 h-14 text-base font-bold border-2 hover:bg-primary hover:text-primary-foreground transition-all">
                     <ArrowLeft className="ml-2 h-5 w-5" /> العودة للخلف
                 </Button>
             </div>
