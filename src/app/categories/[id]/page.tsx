@@ -17,7 +17,6 @@ import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { cn } from '@/lib/utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
-import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
@@ -38,7 +37,6 @@ export default function CategoryPage() {
 
   const { subCategories: allSubCategories, categoryMap, isLoadingCategories: areAllCategoriesLoading } = useCategories();
   const category = useMemo(() => categoryMap.get(id), [categoryMap, id]);
-  const subCategories = useMemo(() => allSubCategories.get(id) || [], [allSubCategories, id]);
 
   const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
   const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
@@ -89,7 +87,6 @@ export default function CategoryPage() {
       const { cost } = showUnlockDialog;
       const userRef = doc(firestore, 'users', user.uid);
       
-      // Atomic deduction
       updateDocumentNonBlocking(userRef, {
           points: increment(-cost)
       });
@@ -113,40 +110,44 @@ export default function CategoryPage() {
   const renderContent = () => {
     if (category?.isUnderMaintenance && !isAdmin) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[2.5rem] mt-8 shadow-lg border border-primary/10 overflow-hidden relative min-h-[450px]">
-            {/* Background Ripples */}
+         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-8 shadow-2xl border border-primary/10 overflow-hidden relative min-h-[500px]">
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="absolute w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0s' }}></div>
-                <div className="absolute w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.4s' }}></div>
-                <div className="absolute w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.8s' }}></div>
+                <div className="absolute w-80 h-80 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.4s' }}></div>
+                <div className="absolute w-96 h-96 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.8s' }}></div>
             </div>
 
-            <div className="relative z-10 space-y-8">
+            <div className="relative z-10 space-y-10">
                 <div className="relative inline-block">
-                    <div className="relative z-10 bg-primary text-primary-foreground p-8 rounded-3xl shadow-2xl">
-                        <Settings2 className="h-16 w-16 animate-spin" style={{ animationDuration: '4s' }} />
+                    <div className="relative z-10 bg-primary text-primary-foreground p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)]">
+                        <Settings2 className="h-20 w-20 animate-spin" style={{ animationDuration: '6s' }} />
                     </div>
-                    <div className="absolute -bottom-4 -right-4 bg-yellow-400 p-3 rounded-2xl shadow-lg border-4 border-card animate-bounce">
-                        <HardHat className="h-8 w-8 text-yellow-900" />
+                    <div className="absolute -bottom-6 -right-6 bg-yellow-400 p-4 rounded-2xl shadow-xl border-4 border-card animate-bounce">
+                        <HardHat className="h-10 w-10 text-yellow-900" />
                     </div>
                 </div>
                 
-                <div className="space-y-3">
-                    <h3 className="font-bold text-3xl text-foreground tracking-tight">نعمل على تحسين القسم</h3>
-                    <p className="text-muted-foreground text-lg max-w-xs mx-auto leading-relaxed">
-                        عفواً، يخضع هذا القسم لصيانة دورية لضمان أفضل تجربة لك. سنعود قريباً!
+                <div className="space-y-4">
+                    <h3 className="font-bold text-4xl text-foreground tracking-tight">نعمل على التحسين</h3>
+                    <p className="text-muted-foreground text-xl max-w-sm mx-auto leading-relaxed">
+                        عفواً، يخضع هذا القسم لصيانة دورية لضمان أفضل تجربة لك. سنعود قريباً بكل جديد!
                     </p>
                 </div>
 
-                <Button variant="outline" onClick={() => router.back()} className="rounded-2xl px-10 h-14 text-base font-bold border-2 hover:bg-primary hover:text-primary-foreground transition-all">
-                    <ArrowLeft className="ml-2 h-5 w-5" /> العودة للخلف
+                <Button variant="outline" onClick={() => router.back()} className="rounded-2xl px-12 h-16 text-lg font-bold border-2 hover:bg-primary hover:text-primary-foreground transition-all shadow-lg active:scale-95">
+                    <ArrowLeft className="ml-2 h-6 w-6" /> العودة للخلف
                 </Button>
             </div>
         </div>
        )
     }
 
-    if (!filteredItems || filteredItems.length === 0) return null;
+    if (!filteredItems || filteredItems.length === 0) return (
+        <div className="text-center py-20 text-muted-foreground">
+            <Search className="h-12 w-12 mx-auto mb-4 opacity-20" />
+            <p className="text-lg">لا يوجد محتوى يطابق بحثك حالياً.</p>
+        </div>
+    );
     const typedItems = filteredItems as WithId<ContentItem>[];
 
     switch (category?.displayStyle) {
@@ -183,10 +184,10 @@ export default function CategoryPage() {
                 }
             };
             return (
-                <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group relative">
+                <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group relative border-none shadow-md">
                     <CardContent className="p-4 flex flex-col flex-1 gap-4">
                         <h3 className="font-bold text-xl text-center">{item.title}</h3>
-                        <div className="relative cursor-pointer w-full rounded-lg overflow-hidden aspect-video bg-muted">
+                        <div className="relative cursor-pointer w-full rounded-xl overflow-hidden aspect-video bg-muted">
                             {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
                             {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)} />}
                             <FavoriteButton item={item} />
@@ -194,19 +195,19 @@ export default function CategoryPage() {
                         <div className="space-y-2">
                             <h4 className="font-semibold text-foreground">البرومبت</h4>
                             {isLocked ? (
-                                <div className="h-28 bg-muted rounded-md flex flex-col items-center justify-center text-center p-4 gap-2">
+                                <div className="h-28 bg-muted/50 rounded-xl flex flex-col items-center justify-center text-center p-4 gap-2 border border-dashed">
                                     <Lock className="h-6 w-6 text-muted-foreground" />
                                     <p className="text-muted-foreground text-xs">محتوى حصري. {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? `افتحه بـ ${refConfig?.pointsPerUnlock} نقطة` : 'اشترك في برو للوصول.'}</p>
-                                    <Button size="sm" variant="secondary" onClick={() => handleAction(item, handleCopy)}>
+                                    <Button size="sm" variant="secondary" className="rounded-lg" onClick={() => handleAction(item, handleCopy)}>
                                         {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? 'فتح الآن' : 'الترقية الآن'}
                                     </Button>
                                 </div>
                             ) : (
-                                <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted border-transparent" dir="ltr" />
+                                <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted/50 border-transparent rounded-xl resize-none" dir="ltr" />
                             )}
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2 mt-auto">
-                            <Button variant="default" className="w-full h-12" onClick={() => handleAction(item, handleCopy)}>
+                            <Button variant="default" className="w-full h-12 rounded-xl font-bold" onClick={() => handleAction(item, handleCopy)}>
                                 {isLocked ? <Coins className="ml-2 h-4 w-4" /> : <Copy className="ml-2 h-4 w-4" />}
                                 {isLocked ? 'فتح بالنقاط' : 'نسخ البرومبت'}
                             </Button>
@@ -235,9 +236,9 @@ export default function CategoryPage() {
              </Header>
             <div className="relative z-10 -mt-10">
               <div className="pb-4 px-6">
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input placeholder="ابحث..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                    <Input placeholder="ابحث..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl focus-visible:ring-2 focus-visible:ring-primary/20" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -259,22 +260,26 @@ export default function CategoryPage() {
         )}
       </main>
 
-       {/* Unlock Dialog */}
        <Dialog open={!!showUnlockDialog} onOpenChange={(open) => !open && setShowUnlockDialog(null)}>
-           <DialogContent dir="rtl" className="max-w-sm rounded-2xl">
-               <DialogHeader className="text-center space-y-3">
-                   <div className="w-16 h-16 bg-primary/10 text-primary rounded-full mx-auto flex items-center justify-center">
-                       <Coins className="w-8 h-8" />
+           <DialogContent dir="rtl" className="max-w-sm rounded-[2rem] gap-0 p-0 overflow-hidden">
+               <div className="p-6 text-center space-y-4">
+                   <div className="w-20 h-20 bg-primary/10 text-primary rounded-3xl mx-auto flex items-center justify-center animate-pulse">
+                       <Coins className="w-10 h-10" />
                    </div>
-                   <DialogTitle>فتح محتوى برو</DialogTitle>
-                   <p className="text-sm text-muted-foreground">
-                       هل تريد استخدام <strong>{showUnlockDialog?.cost} نقطة</strong> من رصيدك لفتح هذا المحتوى؟
-                   </p>
-                   <div className="bg-muted p-2 rounded-lg text-xs">رصيدك الحالي: {userProfile?.points || 0} نقطة</div>
-               </DialogHeader>
-               <DialogFooter className="flex-row gap-2 mt-4">
-                   <Button variant="ghost" className="flex-1" onClick={() => setShowUnlockDialog(null)}>إلغاء</Button>
-                   <Button className="flex-1" onClick={confirmUnlock}>تأكيد الخصم</Button>
+                   <DialogHeader className="space-y-2">
+                       <DialogTitle className="text-2xl font-bold">فتح محتوى برو</DialogTitle>
+                       <p className="text-sm text-muted-foreground leading-relaxed">
+                           هل تريد استخدام <strong>{showUnlockDialog?.cost} نقطة</strong> من رصيدك لفتح هذا الملف بشكل دائم؟
+                       </p>
+                   </DialogHeader>
+                   <div className="bg-primary/5 py-2 px-4 rounded-full text-xs font-bold text-primary border border-primary/10 inline-block">
+                       رصيدك الحالي: {userProfile?.points || 0} نقطة
+                   </div>
+               </div>
+               <DialogFooter className="flex-row border-t p-0">
+                   <Button variant="ghost" className="flex-1 h-14 rounded-none text-muted-foreground" onClick={() => setShowUnlockDialog(null)}>إلغاء</Button>
+                   <div className="w-px bg-border h-14" />
+                   <Button className="flex-1 h-14 rounded-none font-bold text-lg" onClick={confirmUnlock}>تأكيد الخصم</Button>
                </DialogFooter>
            </DialogContent>
        </Dialog>

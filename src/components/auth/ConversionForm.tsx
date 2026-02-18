@@ -10,7 +10,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, getDocs, query, collection, where, writeBatch, serverTimestamp, getDoc, Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, ShieldAlert, CheckCircle2, Coins, AlertCircle } from 'lucide-react';
+import { Loader2, Mail, Lock, ShieldAlert, CheckCircle2, Coins, AlertCircle, ShieldQuestion } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
@@ -88,20 +88,16 @@ export default function ConversionForm() {
     if (!firestore || !guestData) return;
     setError(null);
     try {
-      // 1. Create Auth Account
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Set profile name
       await updateProfile(user, { displayName: 'مستخدم برو' });
 
-      // 3. Calculate 90 days expiry
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + 90);
 
       const batch = writeBatch(firestore);
       
-      // Update/Create User Profile with the new UID
       const userRef = doc(firestore, 'users', user.uid);
       batch.set(userRef, {
         ...guestData,
@@ -111,7 +107,6 @@ export default function ConversionForm() {
         updatedAt: serverTimestamp()
       });
 
-      // Delete the old guest profile document if UID changed
       if (guestData.id !== user.uid) {
         batch.delete(doc(firestore, 'users', guestData.id));
       }
@@ -123,14 +118,16 @@ export default function ConversionForm() {
 
     } catch (e: any) {
       console.error("Conversion error:", e);
-      const errorCode = e.code || (e as any).code;
-      
-      if (errorCode === 'auth/email-already-in-use') {
-          setError("هذا البريد الإلكتروني مسجل بالفعل.");
-      } else if (errorCode === 'auth/admin-restricted-operation') {
-          setError("تنبيه أمان: يرجى تفعيل 'Email/Password' وإضافة النطاق الحالي لـ 'Authorized Domains' في إعدادات Firebase Console.");
+      if (e instanceof FirebaseError) {
+          if (e.code === 'auth/email-already-in-use') {
+              setError("هذا البريد الإلكتروني مسجل بالفعل.");
+          } else if (e.code === 'auth/admin-restricted-operation') {
+              setError("تنبيه أمان: يرجى تفعيل 'Email/Password' وإضافة النطاق الحالي لـ 'Authorized Domains' في إعدادات Firebase Console.");
+          } else {
+              setError(e.message || "فشل تحويل الحساب. يرجى التأكد من إعدادات الموقع.");
+          }
       } else {
-          setError(e.message || "فشل تحويل الحساب. يرجى التأكد من إعدادات الموقع.");
+          setError("حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.");
       }
     }
   };
@@ -209,14 +206,14 @@ export default function ConversionForm() {
                 )} />
             </div>
             {error && (
-                <div className="bg-destructive/10 p-3 rounded-xl flex items-start gap-2 text-destructive text-[10px] leading-tight border border-destructive/20">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <p className="font-semibold">{error}</p>
+                <div className="bg-destructive/10 p-4 rounded-xl flex items-start gap-3 text-destructive text-[11px] leading-relaxed border border-destructive/20 font-bold">
+                    <ShieldQuestion className="h-5 w-5 shrink-0 mt-0.5" />
+                    <p>{error}</p>
                 </div>
             )}
           </CardContent>
           <CardFooter className="p-6 pt-0">
-            <Button type="submit" className="w-full h-12 rounded-xl text-sm font-bold" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full h-12 rounded-xl text-sm font-bold shadow-lg" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'تفعيل اشتراك برو الآن'}
             </Button>
           </CardFooter>
