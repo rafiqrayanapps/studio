@@ -91,7 +91,7 @@ export default function ConversionForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Set temporary profile name
+      // 2. Set profile name
       await updateProfile(user, { displayName: 'مستخدم برو' });
 
       // 3. Calculate 90 days expiry
@@ -110,7 +110,7 @@ export default function ConversionForm() {
         updatedAt: serverTimestamp()
       });
 
-      // Delete the old guest profile document
+      // Delete the old guest profile document if UID changed
       if (guestData.id !== user.uid) {
         batch.delete(doc(firestore, 'users', guestData.id));
       }
@@ -126,7 +126,7 @@ export default function ConversionForm() {
           if (e.code === 'auth/email-already-in-use') {
               setError("هذا البريد الإلكتروني مسجل بالفعل.");
           } else if (e.code === 'auth/admin-restricted-operation') {
-              setError("عذراً، يرجى التأكد من تفعيل موفر البريد الإلكتروني في Firebase.");
+              setError("عذراً، يرجى التأكد من تفعيل موفر البريد الإلكتروني في Firebase Console.");
           } else {
               setError(e.message);
           }
@@ -157,8 +157,8 @@ export default function ConversionForm() {
             تحتاج للوصول إلى الحد المطلوب من الإحالات ({guestData?.referralCount || 0} من أصل 5) لتحويل حسابك إلى برو مجاناً لمدة 90 يوم.
           </CardDescription>
         </div>
-        <Button asChild variant="outline" className="w-full h-12 rounded-xl">
-          <button onClick={() => router.push('/home')}>العودة لجمع النقاط</button>
+        <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => router.push('/home')}>
+          العودة لجمع النقاط
         </Button>
       </div>
     );

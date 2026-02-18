@@ -1,21 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Coins, Gift, Share2, Copy, Loader2, Info, Ticket } from 'lucide-react';
+import { Coins, Gift, Share2, Copy, Loader2, Info, Ticket, CheckCircle2 } from 'lucide-react';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, increment, getDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 import type { ReferralConfig, UserProfile } from '@/lib/definitions';
+import { useSearchParams } from 'next/navigation';
 
 export default function ReferralDialog() {
     const { points, user, userProfile, isAdmin } = useUserProfile();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const searchParams = useSearchParams();
     
     const [referralCode, setReferralCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,6 +25,16 @@ export default function ReferralDialog() {
 
     const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
     const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
+
+    // Auto-fill from URL when dialog opens
+    useEffect(() => {
+        if (isOpen) {
+            const refFromUrl = searchParams.get('ref');
+            if (refFromUrl && !userProfile?.referredBy) {
+                setReferralCode(refFromUrl.toUpperCase());
+            }
+        }
+    }, [isOpen, searchParams, userProfile]);
 
     const copyToClipboard = (text: string, title: string) => {
         if (navigator.clipboard) {
@@ -52,6 +64,7 @@ export default function ReferralDialog() {
         try {
             const fingerprint = await getDeviceFingerprint();
             
+            // Check if device already used an invitation
             const usedInvRef = doc(firestore, 'used_invitations', fingerprint);
             const usedInvSnap = await getDoc(usedInvRef);
             if (usedInvSnap.exists()) {
@@ -122,8 +135,6 @@ export default function ReferralDialog() {
         }
     };
 
-    const canShowRedeem = userProfile && !userProfile.referredBy && !isAdmin;
-
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
@@ -172,28 +183,37 @@ export default function ReferralDialog() {
                         </Button>
                     </div>
 
-                    {canShowRedeem && (
-                        <div className="space-y-3 px-1">
-                            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-                                <Gift className="h-4 w-4 text-green-500" />
-                                <span>هل لديك كود دعوة من صديق؟</span>
-                            </div>
-                            <div className="flex gap-2">
-                                <Input 
-                                    placeholder="أدخل الكود هنا" 
-                                    className="rounded-2xl h-12 bg-muted border-none text-center font-mono font-bold tracking-widest uppercase"
-                                    value={referralCode}
-                                    onChange={(e) => setReferralCode(e.target.value)}
-                                    disabled={isSubmitting}
-                                />
-                                <Button 
-                                    className="rounded-2xl h-12 px-6 font-bold" 
-                                    onClick={handleRedeemReferral}
-                                    disabled={isSubmitting || !referralCode}
-                                >
-                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تفعيل'}
-                                </Button>
-                            </div>
+                    {!isAdmin && (
+                        <div className="space-y-3 px-1 border-t pt-4">
+                            {userProfile?.referredBy ? (
+                                <div className="bg-green-50 p-3 rounded-2xl flex items-center gap-2 text-green-700 text-sm font-bold justify-center">
+                                    <CheckCircle2 className="h-5 w-5" />
+                                    <span>لقد قمت بتفعيل كود دعوة مسبقاً</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                                        <Gift className="h-4 w-4 text-green-500" />
+                                        <span>هل لديك كود دعوة من صديق؟</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Input 
+                                            placeholder="أدخل الكود هنا" 
+                                            className="rounded-2xl h-12 bg-muted border-none text-center font-mono font-bold tracking-widest uppercase"
+                                            value={referralCode}
+                                            onChange={(e) => setReferralCode(e.target.value)}
+                                            disabled={isSubmitting}
+                                        />
+                                        <Button 
+                                            className="rounded-2xl h-12 px-6 font-bold" 
+                                            onClick={handleRedeemReferral}
+                                            disabled={isSubmitting || !referralCode}
+                                        >
+                                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تفعيل'}
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
 
