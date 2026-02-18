@@ -18,6 +18,7 @@ import { getDeviceFingerprint } from '@/lib/fingerprint';
 import type { UserProfile, ReferralConfig } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const conversionSchema = z.object({
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
@@ -123,16 +124,14 @@ export default function ConversionForm() {
 
     } catch (e: any) {
       console.error("Conversion error:", e);
-      if (e instanceof FirebaseError) {
-          if (e.code === 'auth/email-already-in-use') {
-              setError("هذا البريد الإلكتروني مسجل بالفعل.");
-          } else if (e.code === 'auth/admin-restricted-operation') {
-              setError("تنبيه: يجب تفعيل موفر 'البريد الإلكتروني/كلمة المرور' في إعدادات Firebase Console (Authentication > Sign-in method) لإتمام هذه العملية.");
-          } else {
-              setError(e.message);
-          }
+      const errorCode = e.code || (e as any).code;
+      
+      if (errorCode === 'auth/email-already-in-use') {
+          setError("هذا البريد الإلكتروني مسجل بالفعل.");
+      } else if (errorCode === 'auth/admin-restricted-operation') {
+          setError("تنبيه أمان: يرجى تفعيل 'Email/Password' وإضافة النطاق الحالي لـ 'Authorized Domains' في إعدادات Firebase Console.");
       } else {
-          setError("فشل تحويل الحساب. يرجى التأكد من إعدادات الموقع أو المحاولة لاحقاً.");
+          setError(e.message || "فشل تحويل الحساب. يرجى التأكد من إعدادات الموقع.");
       }
     }
   };
@@ -176,7 +175,7 @@ export default function ConversionForm() {
   }
 
   return (
-    <>
+    <ScrollArea className="max-h-[70vh]">
       <CardHeader className="text-center p-6 pb-2">
         <div className="bg-green-100 text-green-700 w-fit mx-auto px-3 py-1 rounded-full text-[10px] font-bold mb-2 flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3" /> مؤهل للتحويل
@@ -211,7 +210,7 @@ export default function ConversionForm() {
                 )} />
             </div>
             {error && (
-                <div className="bg-destructive/10 p-3 rounded-xl flex items-start gap-2 text-destructive text-[10px] leading-tight">
+                <div className="bg-destructive/10 p-3 rounded-xl flex items-start gap-2 text-destructive text-[10px] leading-tight border border-destructive/20">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                     <p className="font-semibold">{error}</p>
                 </div>
@@ -224,6 +223,6 @@ export default function ConversionForm() {
           </CardFooter>
         </form>
       </Form>
-    </>
+    </ScrollArea>
   );
 }

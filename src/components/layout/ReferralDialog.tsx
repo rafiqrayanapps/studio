@@ -137,43 +137,43 @@ function ReferralDialogContent() {
                 </button>
             </DialogTrigger>
             <DialogContent className="max-w-[92vw] sm:max-w-sm rounded-[2rem] gap-0 p-0 overflow-hidden" dir="rtl">
-                <ScrollArea className="max-h-[85vh] w-full">
-                    <div className="p-6 space-y-6">
-                        <DialogHeader className="space-y-3">
-                            <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl mx-auto flex items-center justify-center">
-                                <Coins className="w-8 h-8" />
+                <ScrollArea className="max-h-[82vh] w-full">
+                    <div className="p-5 space-y-5">
+                        <DialogHeader className="space-y-2">
+                            <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl mx-auto flex items-center justify-center">
+                                <Coins className="w-7 h-7" />
                             </div>
-                            <DialogTitle className="text-center text-xl font-bold">محفظة النقاط والمكافآت</DialogTitle>
-                            <DialogDescription className="text-center text-sm">
-                                رصيدك الحالي: <strong className="text-primary text-lg">{points} نقطة</strong>
+                            <DialogTitle className="text-center text-lg font-bold">محفظة النقاط والمكافآت</DialogTitle>
+                            <DialogDescription className="text-center text-xs">
+                                رصيدك الحالي: <strong className="text-primary text-base">{points} نقطة</strong>
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="space-y-6">
+                        <div className="space-y-5">
                             <div className="bg-muted p-4 rounded-3xl space-y-2 text-center border-2 border-dashed border-primary/20">
-                                <p className="text-[10px] font-bold text-muted-foreground flex items-center justify-center gap-1">
+                                <p className="text-[10px] font-bold text-muted-foreground flex items-center justify-center gap-1 uppercase tracking-wider">
                                     <Ticket className="h-3 w-3" /> كود الإحالة الخاص بك
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex-1 bg-background rounded-2xl py-2 px-4 font-mono text-2xl font-black tracking-[0.2em] text-primary">
+                                    <div className="flex-1 bg-background rounded-2xl py-2 px-3 font-mono text-xl font-black tracking-[0.15em] text-primary">
                                         {userProfile?.referralCode}
                                     </div>
-                                    <Button size="icon" variant="secondary" className="rounded-xl h-11 w-11 shrink-0" onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود!")}>
-                                        <Copy className="h-5 w-5" />
+                                    <Button size="icon" variant="secondary" className="rounded-xl h-10 w-10 shrink-0" onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود!")}>
+                                        <Copy className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className="bg-primary/5 p-5 rounded-3xl border border-primary/10 space-y-4">
-                                <div className="flex items-center gap-2 text-xs font-bold text-primary">
-                                    <Share2 className="h-4 w-4" />
+                            <div className="bg-primary/5 p-4 rounded-3xl border border-primary/10 space-y-3">
+                                <div className="flex items-center gap-2 text-[11px] font-bold text-primary">
+                                    <Share2 className="h-3.5 w-3.5" />
                                     <span>شارك واربح نقاطاً ومميزات برو</span>
                                 </div>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    عن كل صديق يسجل من خلالك، ستحصل أنت وهو على <strong>{refConfig?.pointsPerReferral || 10} نقاط</strong>. عند وصولك لـ {refConfig?.requiredReferrals || 5} إحالة، سيتم ترقية حسابك لـ "برو" مجاناً!
+                                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                    عن كل صديق يسجل من خلالك، ستحصلان على <strong>{refConfig?.pointsPerReferral || 10} نقاط</strong>. عند وصولك لـ {refConfig?.requiredReferrals || 5} إحالة، سيتم ترقية حسابك لـ "برو" مجاناً!
                                 </p>
-                                <Button className="w-full rounded-2xl h-12 text-sm font-bold shadow-md" onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود بنجاح!")}>
-                                    <Copy className="ml-2 h-4 w-4" />
+                                <Button className="w-full rounded-2xl h-11 text-xs font-bold shadow-sm" onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود بنجاح!")}>
+                                    <Copy className="ml-2 h-3.5 w-3.5" />
                                     نسخ كود الإحالة
                                 </Button>
                             </div>
@@ -181,30 +181,30 @@ function ReferralDialogContent() {
                             {!isAdmin && (
                                 <div className="space-y-3 px-1 border-t pt-4">
                                     {userProfile?.referredBy ? (
-                                        <div className="bg-green-50 p-3 rounded-2xl flex items-center gap-2 text-green-700 text-xs font-bold justify-center">
-                                            <CheckCircle2 className="h-4 w-4" />
+                                        <div className="bg-green-50 p-3 rounded-2xl flex items-center gap-2 text-green-700 text-[10px] font-bold justify-center">
+                                            <CheckCircle2 className="h-3.5 w-3.5" />
                                             <span>لقد قمت بتفعيل كود دعوة مسبقاً</span>
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                                                <Gift className="h-4 w-4 text-green-500" />
+                                            <div className="flex items-center gap-2 text-[11px] font-bold text-foreground">
+                                                <Gift className="h-3.5 w-3.5 text-green-500" />
                                                 <span>هل لديك كود دعوة من صديق؟</span>
                                             </div>
                                             <div className="flex gap-2">
                                                 <Input 
                                                     placeholder="أدخل الكود هنا" 
-                                                    className="rounded-2xl h-12 bg-muted border-none text-center font-mono font-bold tracking-widest uppercase text-sm"
+                                                    className="rounded-2xl h-11 bg-muted border-none text-center font-mono font-bold tracking-widest uppercase text-xs"
                                                     value={referralCodeInput}
                                                     onChange={(e) => setReferralCodeInput(e.target.value)}
                                                     disabled={isSubmitting}
                                                 />
                                                 <Button 
-                                                    className="rounded-2xl h-12 px-5 font-bold text-xs shrink-0" 
+                                                    className="rounded-2xl h-11 px-4 font-bold text-[10px] shrink-0" 
                                                     onClick={handleRedeemReferral}
                                                     disabled={isSubmitting || !referralCodeInput}
                                                 >
-                                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تفعيل'}
+                                                    {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'تفعيل'}
                                                 </Button>
                                             </div>
                                         </>
@@ -212,10 +212,10 @@ function ReferralDialogContent() {
                                 </div>
                             )}
 
-                            <div className="bg-yellow-50 p-3 rounded-2xl border border-yellow-100 flex gap-3 items-start">
-                                <Info className="h-4 w-4 text-yellow-600 shrink-0 mt-0.5" />
+                            <div className="bg-yellow-50 p-3 rounded-2xl border border-yellow-100 flex gap-2.5 items-start">
+                                <Info className="h-3.5 w-3.5 text-yellow-600 shrink-0 mt-0.5" />
                                 <p className="text-[9px] text-yellow-800 leading-relaxed font-medium">
-                                    يتم استخدام بصمة الجهاز لضمان نزاهة نظام المكافآت. استخدام أجهزة وهمية أو محاولات التلاعب تؤدي لحظر الحساب نهائياً.
+                                    يتم استخدام بصمة الجهاز لضمان نزاهة نظام المكافآت. أي محاولات تلاعب تؤدي لحظر الحساب نهائياً من النظام.
                                 </p>
                             </div>
                         </div>
