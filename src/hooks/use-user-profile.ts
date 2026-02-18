@@ -90,9 +90,15 @@ export function useUserProfile() {
     if (isAdmin || isEditor) {
         isPro = true;
     } else if (userProfile?.subscriptionTier === 'pro') {
-        const endDate = userProfile.subscriptionEndDate?.toDate ? userProfile.subscriptionEndDate.toDate() : null;
-        if (!endDate || endDate > new Date()) {
-             isPro = true;
+        // Handle both permanent pro and timed pro
+        if (userProfile.subscriptionEndDate) {
+            const endDate = userProfile.subscriptionEndDate.toDate();
+            if (endDate > new Date()) {
+                isPro = true;
+            }
+        } else {
+            // No end date means permanent
+            isPro = true;
         }
     }
     
