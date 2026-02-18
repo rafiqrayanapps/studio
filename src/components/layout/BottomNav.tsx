@@ -5,33 +5,37 @@ import { usePathname } from 'next/navigation';
 import { Home, Heart, Bell, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasNewNotifications } from '@/hooks/use-has-new-notifications';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTheme } from 'next-themes';
 
-const NavLink = ({ href, icon: Icon, id }: { href: string; icon: React.ElementType; id: string; }) => {
-    const pathname = usePathname();
-    const hasNewNotifications = useHasNewNotifications();
-    
-    const getIsActive = () => {
-        if (id === 'home') {
-            return pathname === '/home' || pathname.startsWith('/categories');
-        }
-        return pathname.startsWith(href);
-    };
-    
-    const isActive = getIsActive();
-    const isNotificationItem = id === 'notifications';
-    
-    // The dot is shown if the item is active, or if it's the notification icon with new notifications.
-    const showDot = isActive || (isNotificationItem && hasNewNotifications);
-
+const NavLink = ({ 
+    href, 
+    icon: Icon, 
+    id, 
+    isActive, 
+    hasNewNotifications 
+}: { 
+    href: string; 
+    icon: React.ElementType; 
+    id: string; 
+    isActive: boolean;
+    hasNewNotifications: boolean;
+}) => {
     return (
-        <Link href={href} className="relative flex-1 group flex flex-col items-center justify-center p-3 h-full" aria-label={id}>
-             <Icon className={cn("h-6 w-6 sm:h-7 sm:w-7 transition-colors", isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-primary/90")} />
-             <div className={cn(
-                "absolute top-2 h-[5px] w-[5px] rounded-full bg-primary transition-all duration-300",
-                showDot ? "opacity-100 scale-100" : "opacity-0 scale-0"
+        <Link 
+            href={href} 
+            className="relative flex-1 group flex flex-col items-center justify-center h-full transition-all duration-300" 
+            aria-label={id}
+        >
+             <Icon className={cn(
+                "h-6 w-6 sm:h-7 sm:w-7 transition-all duration-500 ease-out", 
+                isActive ? "text-primary scale-110" : "text-muted-foreground/50 group-hover:text-primary/70"
              )} />
+             
+             {/* Red dot for new notifications only */}
+             {id === 'notifications' && hasNewNotifications && (
+                <div className="absolute top-3 right-1/2 translate-x-4 h-2 w-2 rounded-full bg-destructive border-2 border-card animate-pulse" />
+             )}
         </Link>
     );
 };
@@ -51,15 +55,18 @@ const ThemeToggleButton = () => {
     };
     
     if (!mounted) {
-      // return a placeholder to avoid layout shift and hydration mismatch
       return <div className="flex-1" />;
     }
     
     return (
-        <button onClick={toggleTheme} className="relative flex-1 group flex flex-col items-center justify-center p-3 h-full" aria-label="Toggle theme">
+        <button 
+            onClick={toggleTheme} 
+            className="relative flex-1 group flex flex-col items-center justify-center h-full transition-all" 
+            aria-label="Toggle theme"
+        >
             {currentTheme === 'dark' ? 
-                <Sun className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground/70 group-hover:text-primary/90 transition-colors" /> : 
-                <Moon className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground/70 group-hover:text-primary/90 transition-colors" />
+                <Sun className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground/50 group-hover:text-yellow-500 transition-colors" /> : 
+                <Moon className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground/50 group-hover:text-primary/70 transition-colors" />
             }
         </button>
     );
@@ -67,11 +74,25 @@ const ThemeToggleButton = () => {
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const hasNewNotifications = useHasNewNotifications();
   const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const navItems = useMemo(() => [
+    { id: 'home', href: '/home', icon: Home },
+    { id: 'favorites', href: '/favorites', icon: Heart },
+    { id: 'notifications', href: '/notifications', icon: Bell },
+  ], []);
+
+  const activeIndex = useMemo(() => {
+    if (pathname === '/home' || pathname.startsWith('/categories')) return 0;
+    if (pathname.startsWith('/favorites')) return 1;
+    if (pathname.startsWith('/notifications')) return 2;
+    return -1; // No active dot for other pages or theme toggle
+  }, [pathname]);
 
   const hideOnPaths = ['/login', '/signup', '/activate', '/payment', '/pricing', '/admin'];
   const shouldHide = pathname === '/' || hideOnPaths.some(p => pathname.startsWith(p));
@@ -79,20 +100,33 @@ export default function BottomNav() {
   if (!mounted || shouldHide) {
     return null;
   }
-  
-  const navItems = [
-    { id: 'home', href: '/home', icon: Home },
-    { id: 'favorites', href: '/favorites', icon: Heart },
-    { id: 'notifications', href: '/notifications', icon: Bell },
-  ];
 
   return (
-    <div className="fixed bottom-4 inset-x-0 z-50 flex justify-center items-center pointer-events-none">
-        <nav className="flex items-stretch h-16 bg-card/95 backdrop-blur-sm border shadow-lg rounded-full pointer-events-auto gap-x-2 px-3">
-            {/* The order is visual, from right-to-left for RTL layout. Home -> Favorites -> Notifications -> Theme */ }
-            {navItems.map((item) => (
-              <NavLink key={item.id} {...item} />
+    <div className="fixed bottom-6 inset-x-0 z-50 flex justify-center items-center pointer-events-none px-6">
+        <nav className="relative flex items-stretch h-16 w-full max-w-md bg-card/90 backdrop-blur-xl border border-primary/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-[2rem] pointer-events-auto px-2">
+            
+            {/* Sliding Fluid Indicator Dot */}
+            {activeIndex !== -1 && (
+                <div 
+                    className="absolute top-0 h-1 w-12 flex justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                    style={{ 
+                        left: `calc(${(activeIndex / 4) * 100}% + 2px)`,
+                        width: '25%'
+                    }}
+                >
+                    <div className="h-1.5 w-1.5 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
+                </div>
+            )}
+
+            {navItems.map((item, idx) => (
+              <NavLink 
+                key={item.id} 
+                {...item} 
+                isActive={activeIndex === idx}
+                hasNewNotifications={hasNewNotifications}
+              />
             ))}
+            
             <ThemeToggleButton />
         </nav>
     </div>
