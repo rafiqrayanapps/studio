@@ -32,9 +32,8 @@ export function useUserProfile() {
         if (firestore && user && !isProfileLoading && !userProfile) {
             const createProfile = async () => {
                 const fingerprint = await getDeviceFingerprint();
-                const prefix = (user.email?.split('@')[0] || 'USER').substring(0, 4).toUpperCase();
-                const random = Math.floor(1000 + Math.random() * 9000);
-                const myReferralCode = `${prefix}${random}`;
+                // Requirement: Use first 6 chars of fingerprint as the stable referral code
+                const myReferralCode = fingerprint.substring(0, 6).toUpperCase();
 
                 setDoc(doc(firestore, 'users', user.uid), {
                     email: user.email || '',

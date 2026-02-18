@@ -1,14 +1,14 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import Header from '@/components/layout/Header';
 import { WithId } from '@/firebase';
 import type { Category as CategoryType, ReferralConfig, UserProfile } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
-import { Search, Crown, Gift, Loader2 } from 'lucide-react';
+import { Search, Crown, Gift, Loader2, Share2, Copy } from 'lucide-react';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { Button } from '@/components/ui/button';
@@ -18,10 +18,11 @@ import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, in
 import { useToast } from '@/hooks/use-toast';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 
-export default function HomePage() {
+function HomeContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const { isPro, isAdmin, user, userProfile, isLoading: isUserLoading } = useUserProfile();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -33,6 +34,14 @@ export default function HomePage() {
 
   const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
   const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
+
+  // Auto-fill referral from URL
+  useEffect(() => {
+      const refFromUrl = searchParams.get('ref');
+      if (refFromUrl && !userProfile?.referredBy) {
+          setReferralCode(refFromUrl.toUpperCase());
+      }
+  }, [searchParams, userProfile]);
 
   const mainCategories = useMemo(() => {
     if (!allMainCategories) return [];
@@ -47,6 +56,17 @@ export default function HomePage() {
     } else {
       router.push(`/categories/${category.id}`);
     }
+  };
+
+  const copyReferralLink = () => {
+      if (!userProfile?.referralCode) return;
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const referralLink = `${baseUrl}/home?ref=${userProfile.referralCode}`;
+      navigator.clipboard.writeText(referralLink);
+      toast({
+          title: "تم نسخ رابط الإحالة!",
+          description: "شارك هذا الرابط مع أصدقائك لتربح نقاطاً ومميزات برو."
+      });
   };
 
   const handleRedeemReferral = async () => {
@@ -145,6 +165,34 @@ export default function HomePage() {
       </div>
       
       <main className="flex-1 px-6 pb-24 pt-4 space-y-6">
+        {/* Visitor Referral Link Card */}
+        {userProfile?.referralCode && (
+            <Card className="bg-primary text-primary-foreground border-none shadow-xl overflow-hidden relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all duration-500" />
+                <div className="p-5 relative z-10 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                            <Share2 className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-lg">شارك موقعنا واربح مميزات برو!</CardTitle>
+                            <CardDescription className="text-white/70 text-xs">كلما زادت الإحالات، زادت فرصتك لتصبح "برو" مجاناً.</CardDescription>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-black/10 p-3 rounded-xl flex items-center justify-between gap-3 border border-white/10">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-60">رابط الإحالة الخاص بك:</p>
+                            <p className="text-sm font-mono truncate opacity-90">{typeof window !== 'undefined' ? `${window.location.origin}/?ref=${userProfile.referralCode}` : '...'}</p>
+                        </div>
+                        <Button size="icon" variant="ghost" className="shrink-0 hover:bg-white/20 rounded-lg h-10 w-10" onClick={copyReferralLink}>
+                            <Copy className="h-5 w-5" />
+                        </Button>
+                    </div>
+                </div>
+            </Card>
+        )}
+
         {/* Referral Entry for Guests / Users who haven't used one */}
         {canShowReferralEntry && (
             <Card className="border-2 border-primary/20 shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
@@ -205,4 +253,12 @@ export default function HomePage() {
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
     </div>
   );
+}
+
+export default function HomePage() {
+    return (
+        <Suspense fallback={<div className="p-8"><Loader2 className="animate-spin mx-auto" /></div>}>
+            <HomeContent />
+        </Suspense>
+    )
 }
