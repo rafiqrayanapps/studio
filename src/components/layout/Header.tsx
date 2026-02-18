@@ -17,19 +17,21 @@ import {
   ChevronLeft,
   Share2,
   Brush,
+  Coins,
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig, RequestDesignConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import UserProfileButton from './UserProfileButton';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
   const firestore = useFirestore();
+  const { points } = useUserProfile();
   const [canShare, setCanShare] = React.useState(false);
 
   React.useEffect(() => {
-    // This check ensures navigator is accessed only on the client side.
     if (typeof navigator !== 'undefined' && navigator.share) {
       setCanShare(true);
     }
@@ -66,10 +68,11 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
   return (
     <header className={cn(
         "w-full text-primary-foreground pt-4 pb-20 rounded-b-[2.5rem]",
-        "bg-primary"
+        "bg-primary relative"
         )}>
       <div className="container mx-auto max-w-4xl px-4">
         <div className="flex h-16 items-center">
+          {/* Right Side: Menu */}
           <div className="flex-1 flex items-center justify-start">
              {showMenu ? <Sheet>
               <SheetTrigger asChild>
@@ -80,12 +83,9 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
               <SheetContent side="right" className="p-0 w-[85vw] max-w-sm bg-transparent border-0">
                  <SheetHeader className="sr-only">
                     <SheetTitle>القائمة الرئيسية</SheetTitle>
-                    <SheetDescription>
-                      روابط التنقل الرئيسية في التطبيق
-                    </SheetDescription>
+                    <SheetDescription>روابط التنقل الرئيسية في التطبيق</SheetDescription>
                   </SheetHeader>
                  <div className="flex flex-col h-full bg-primary">
-                  {/* Header part */}
                   <div className="flex items-center justify-center h-40">
                     <div className="text-center">
                         <div className="font-bold text-4xl flex flex-col items-center gap-2 leading-tight">
@@ -95,18 +95,16 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                     </div>
                   </div>
                   
-                  {/* Main content part */}
                   <div className="flex-1 bg-card text-card-foreground rounded-t-[2.5rem] p-6 flex flex-col">
                     <nav className="flex-1">
                       <ul className="space-y-2">
-                        
                         {navItems.map((item) => (
                           <li key={item.label}>
                             <Link href={item.href} className="block group">
                                 <SheetClose asChild>
                                     <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
-                                    <span className={cn("font-semibold text-lg", item.icon && "text-primary")}>{item.label}</span>
-                                    {item.icon ? <item.icon className="h-5 w-5 text-primary" /> : <ChevronLeft className="h-5 w-5 text-muted-foreground" />}
+                                    <span className="font-semibold text-lg">{item.label}</span>
+                                    <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                                     </div>
                                 </SheetClose>
                             </Link>
@@ -141,7 +139,6 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
                       </ul>
                     </nav>
                     
-                    {/* Footer part */}
                     <div>
                        <SheetClose asChild>
                           <div className="block group cursor-pointer">
@@ -157,11 +154,19 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
               </SheetContent>
           </Sheet> : <div className="w-10"/>}
           </div>
+
+          {/* Center: Title */}
           <div className="flex flex-col text-center">
             { title && <h1 className="text-2xl font-bold">{title}</h1> }
             {subtitle && <p className="text-sm opacity-80">{subtitle}</p>}
           </div>
+
+          {/* Left Side: Points Counter */}
            <div className="flex-1 flex items-center justify-end">
+            <div className="flex items-center gap-1.5 bg-primary-foreground/10 px-3 py-1.5 rounded-full border border-primary-foreground/20">
+                <span className="font-bold text-sm leading-none">{points}</span>
+                <Coins className="h-4 w-4 text-yellow-400" />
+            </div>
             {children}
           </div>
         </div>

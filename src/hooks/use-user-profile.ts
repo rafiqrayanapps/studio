@@ -1,7 +1,8 @@
 'use client';
 
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
 import type { UserProfile, WhitelistEntry } from '@/lib/definitions';
 import { useEffect, useState } from 'react';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
@@ -12,12 +13,45 @@ export function useUserProfile() {
     const auth = useAuth();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+    // Auto sign-in anonymously if no user session exists
+    useEffect(() => {
+        if (!isAuthLoading && !user && !isLoggingOut && auth) {
+            signInAnonymously(auth).catch(err => console.error("Anonymous auth failed:", err));
+        }
+    }, [user, isAuthLoading, auth, isLoggingOut]);
+
     const userProfileRef = useMemoFirebase(
         () => (firestore && user ? doc(firestore, 'users', user.uid) : null),
         [firestore, user]
     );
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+
+    // If a user exists but has no profile document, create one (especially for anonymous/new users)
+    useEffect(() => {
+        if (firestore && user && !isProfileLoading && !userProfile) {
+            const createProfile = async () => {
+                const fingerprint = await getDeviceFingerprint();
+                const prefix = (user.email?.split('@')[0] || 'USER').substring(0, 4).toUpperCase();
+                const random = Math.floor(1000 + Math.random() * 9000);
+                const myReferralCode = `${prefix}${random}`;
+
+                setDoc(doc(firestore, 'users', user.uid), {
+                    email: user.email || '',
+                    displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
+                    subscriptionTier: 'free',
+                    createdAt: serverTimestamp(),
+                    points: 0,
+                    referralCode: myReferralCode,
+                    referralCount: 0,
+                    unlockedProCodes: [],
+                    referredBy: null,
+                    deviceFingerprint: fingerprint
+                }, { merge: true });
+            };
+            createProfile();
+        }
+    }, [firestore, user, isProfileLoading, userProfile]);
 
     const whitelistRef = useMemoFirebase(
         () => (firestore && user?.email ? doc(firestore, 'whitelist', user.email.toLowerCase()) : null),
@@ -26,6 +60,7 @@ export function useUserProfile() {
 
     const { data: whitelistEntry, isLoading: isWhitelistLoading } = useDoc<WhitelistEntry>(whitelistRef);
     
+    // Security: Single Device Enforcement
     useEffect(() => {
         if (!firestore || !user || !whitelistEntry || isLoggingOut) return;
 
@@ -56,7 +91,7 @@ export function useUserProfile() {
     if (isAdmin || isEditor) {
         isPro = true;
     } else if (userProfile?.subscriptionTier === 'pro') {
-        const endDate = userProfile.subscriptionEndDate?.toDate();
+        const endDate = userProfile.subscriptionEndDate?.toDate ? userProfile.subscriptionEndDate.toDate() : null;
         if (!endDate || endDate > new Date()) {
              isPro = true;
         }
@@ -69,6 +104,6 @@ export function useUserProfile() {
         isAdmin, 
         isEditor,
         points: userProfile?.points || 0,
-        isLoading: isAuthLoading || isProfileLoading || isWhitelistLoading 
+        isLoading: isAuthLoading || isProfileLoading || (user?.email ? isWhitelistLoading : false)
     };
 }
