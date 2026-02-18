@@ -25,7 +25,21 @@ import { cn } from '@/lib/utils';
 import UserProfileButton from './UserProfileButton';
 import ReferralDialog from './ReferralDialog';
 
-const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
+interface HeaderProps {
+  title?: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+  showMenu?: boolean;
+  showPoints?: boolean;
+}
+
+const HeaderComponent = ({ 
+  title, 
+  subtitle, 
+  children, 
+  showMenu = true,
+  showPoints = false 
+}: HeaderProps) => {
   const firestore = useFirestore();
   const [canShare, setCanShare] = React.useState(false);
 
@@ -161,7 +175,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
 
           {/* Left Side: Points & Referral Dialog Trigger */}
            <div className="flex-1 flex items-center justify-end">
-            <ReferralDialog />
+            {showPoints && <ReferralDialog />}
             {children}
           </div>
         </div>

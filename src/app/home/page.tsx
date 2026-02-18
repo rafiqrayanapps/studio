@@ -58,7 +58,7 @@ function HomeContent() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
       <div className="sticky top-0 z-20">
-          <Header title="رفيق المصمم" />
+          <Header title="رفيق المصمم" showPoints={true} />
           <div className="relative z-10 -mt-10">
               <div className="pb-4 px-6">
                 <div className="relative">
