@@ -1,5 +1,3 @@
-
-
 export type DisplayStyle = 'style1' | 'style2' | 'style3' | 'style4' | 'style5';
 
 export interface Category {
@@ -53,6 +51,11 @@ export interface ThemeConfig {
   primaryColorDark?: string;
 }
 
+export interface ReferralConfig {
+  requiredReferrals: number;
+  rewardInterval: number; // e.g., every 5
+}
+
 export interface Notification {
   id: string;
   title: string;
@@ -69,6 +72,10 @@ export interface UserProfile {
   subscriptionTier: 'free' | 'pro';
   subscriptionEndDate?: any; // Firebase Timestamp
   contractPdfUrl?: string | null;
+  referralCode: string;
+  referralCount: number;
+  unlockedProCodes: string[];
+  referredBy?: string | null;
 }
 
 export interface WhitelistEntry {
