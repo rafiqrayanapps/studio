@@ -157,7 +157,7 @@ function ReferralDialogContent() {
                                 </div>
                                 <div className="flex items-center gap-3 pt-2">
                                     <div className="flex-1 bg-background rounded-2xl py-3 px-4 font-mono text-2xl font-black tracking-[0.2em] text-primary shadow-sm min-h-[3.5rem] flex items-center justify-center">
-                                        {isLoading ? (
+                                        {isLoading && !userProfile?.referralCode ? (
                                             <Loader2 className="h-6 w-6 animate-spin opacity-20" />
                                         ) : (
                                             userProfile?.referralCode || "------"
@@ -165,7 +165,7 @@ function ReferralDialogContent() {
                                     </div>
                                     <Button 
                                         size="icon" 
-                                        disabled={isLoading || !userProfile?.referralCode}
+                                        disabled={!userProfile?.referralCode}
                                         className="rounded-2xl h-12 w-12 shrink-0 shadow-lg active:scale-90" 
                                         onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود!")}
                                     >
@@ -185,7 +185,7 @@ function ReferralDialogContent() {
                                 <Button 
                                     className="w-full rounded-2xl h-12 text-sm font-black shadow-md transition-all hover:shadow-primary/20" 
                                     onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود بنجاح!")}
-                                    disabled={isLoading || !userProfile?.referralCode}
+                                    disabled={!userProfile?.referralCode}
                                 >
                                     <Copy className="ml-2 h-4 w-4" />
                                     نسخ الكود للمشاركة
