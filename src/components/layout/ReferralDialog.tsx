@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { getDeviceFingerprint } from '@/lib/fingerprint';
 import type { ReferralConfig, UserProfile } from '@/lib/definitions';
 import { useSearchParams } from 'next/navigation';
 
-export default function ReferralDialog() {
+function ReferralDialogContent() {
     const { points, user, userProfile, isAdmin } = useUserProfile();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -53,7 +53,6 @@ export default function ReferralDialog() {
     const handleRedeemReferral = async () => {
         if (!firestore || !user || !referralCode) return;
         
-        // Anti-Cheat: Check if user already used a code
         if (userProfile?.referredBy) {
             toast({ variant: "destructive", title: "تنبيه", description: "لقد استخدمت كوداً سابقاً، لا يمكنك استخدام أكثر من كود." });
             return;
@@ -64,7 +63,6 @@ export default function ReferralDialog() {
         try {
             const fingerprint = await getDeviceFingerprint();
             
-            // Check if device already used an invitation
             const usedInvRef = doc(firestore, 'used_invitations', fingerprint);
             const usedInvSnap = await getDoc(usedInvRef);
             if (usedInvSnap.exists()) {
@@ -226,5 +224,18 @@ export default function ReferralDialog() {
                 </div>
             </DialogContent>
         </Dialog>
+    );
+}
+
+export default function ReferralDialog() {
+    return (
+        <Suspense fallback={
+            <button className="flex items-center gap-1.5 bg-primary-foreground/10 px-3 py-1.5 rounded-full border border-primary-foreground/20 opacity-50">
+                <span className="font-bold text-sm leading-none">...</span>
+                <Coins className="h-4 w-4 text-yellow-400" />
+            </button>
+        }>
+            <ReferralDialogContent />
+        </Suspense>
     );
 }

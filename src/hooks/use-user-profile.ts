@@ -34,8 +34,7 @@ export function useUserProfile() {
                 const fingerprint = await getDeviceFingerprint();
                 const myReferralCode = fingerprint.substring(0, 6).toUpperCase();
 
-                // Check if a profile with this fingerprint already exists (to handle cross-account data linking)
-                // For simplicity here, we just create a new one if none found for current UID
+                // Point 1: Give 1 point on creation. merge: true prevents overwriting if points were already added.
                 setDoc(doc(firestore, 'users', user.uid), {
                     email: user.email || '',
                     displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
