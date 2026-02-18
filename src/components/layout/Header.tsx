@@ -17,18 +17,16 @@ import {
   ChevronLeft,
   Share2,
   Brush,
-  Coins,
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { ShareLinkConfig, RequestDesignConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import UserProfileButton from './UserProfileButton';
-import { useUserProfile } from '@/hooks/use-user-profile';
+import ReferralDialog from './ReferralDialog';
 
 const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title?: string; subtitle?: string; children?: React.ReactNode, showMenu?: boolean }) => {
   const firestore = useFirestore();
-  const { points } = useUserProfile();
   const [canShare, setCanShare] = React.useState(false);
 
   React.useEffect(() => {
@@ -161,12 +159,9 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
             {subtitle && <p className="text-sm opacity-80">{subtitle}</p>}
           </div>
 
-          {/* Left Side: Points Counter */}
+          {/* Left Side: Points Counter & Referral Logic */}
            <div className="flex-1 flex items-center justify-end">
-            <div className="flex items-center gap-1.5 bg-primary-foreground/10 px-3 py-1.5 rounded-full border border-primary-foreground/20">
-                <span className="font-bold text-sm leading-none">{points}</span>
-                <Coins className="h-4 w-4 text-yellow-400" />
-            </div>
+            <ReferralDialog />
             {children}
           </div>
         </div>
