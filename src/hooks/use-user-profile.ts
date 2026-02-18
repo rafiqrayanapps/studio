@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import type { UserProfile, WhitelistEntry } from '@/lib/definitions';
 import { useEffect, useState } from 'react';
@@ -27,32 +27,39 @@ export function useUserProfile() {
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-    // If a user exists but has no profile document, create one
+    // If a user exists but has no profile document or missing referralCode, create/update one
     useEffect(() => {
-        if (firestore && user && !isProfileLoading && !userProfile) {
-            const createProfile = async () => {
+        if (firestore && user && !isProfileLoading) {
+            const createOrUpdateProfile = async () => {
                 try {
                     const fingerprint = await getDeviceFingerprint();
                     const myReferralCode = fingerprint.substring(0, 6).toUpperCase();
 
-                    // Point 1: Give 1 point on creation. merge: true prevents overwriting if points were already added.
-                    await setDoc(doc(firestore, 'users', user.uid), {
-                        email: user.email || '',
-                        displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
-                        subscriptionTier: 'free',
-                        createdAt: serverTimestamp(),
-                        points: 1, // Welcome point for first visit
-                        referralCode: myReferralCode,
-                        referralCount: 0,
-                        unlockedProCodes: [],
-                        referredBy: null,
-                        deviceFingerprint: fingerprint
-                    }, { merge: true });
+                    if (!userProfile) {
+                        await setDoc(doc(firestore, 'users', user.uid), {
+                            email: user.email || '',
+                            displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
+                            subscriptionTier: 'free',
+                            createdAt: serverTimestamp(),
+                            points: 1,
+                            referralCode: myReferralCode,
+                            referralCount: 0,
+                            unlockedProCodes: [],
+                            referredBy: null,
+                            deviceFingerprint: fingerprint
+                        });
+                    } else if (!userProfile.referralCode) {
+                        // Fix for existing profiles without codes
+                        await updateDoc(doc(firestore, 'users', user.uid), {
+                            referralCode: myReferralCode,
+                            deviceFingerprint: fingerprint
+                        });
+                    }
                 } catch (err) {
-                    console.error("Failed to create user profile:", err);
+                    console.error("Failed to manage user profile:", err);
                 }
             };
-            createProfile();
+            createOrUpdateProfile();
         }
     }, [firestore, user, isProfileLoading, userProfile]);
 

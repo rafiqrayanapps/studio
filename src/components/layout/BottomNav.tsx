@@ -24,7 +24,7 @@ const NavLink = ({
     return (
         <Link 
             href={href} 
-            className="relative flex-1 group flex flex-col items-center justify-center h-full transition-all duration-300" 
+            className="relative flex-1 group flex flex-col items-center justify-center h-full z-10" 
             aria-label={id}
         >
              <Icon className={cn(
@@ -61,7 +61,7 @@ const ThemeToggleButton = () => {
     return (
         <button 
             onClick={toggleTheme} 
-            className="relative flex-1 group flex flex-col items-center justify-center h-full transition-all" 
+            className="relative flex-1 group flex flex-col items-center justify-center h-full transition-all z-10" 
             aria-label="Toggle theme"
         >
             {currentTheme === 'dark' ? 
@@ -91,7 +91,7 @@ export default function BottomNav() {
     if (pathname === '/home' || pathname.startsWith('/categories')) return 0;
     if (pathname.startsWith('/favorites')) return 1;
     if (pathname.startsWith('/notifications')) return 2;
-    return -1; // No active dot for other pages or theme toggle
+    return -1;
   }, [pathname]);
 
   const hideOnPaths = ['/login', '/signup', '/activate', '/payment', '/pricing', '/admin'];
@@ -108,13 +108,14 @@ export default function BottomNav() {
             {/* Sliding Fluid Indicator Dot */}
             {activeIndex !== -1 && (
                 <div 
-                    className="absolute top-0 h-1 w-12 flex justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                    className="absolute top-0 h-full flex justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none"
                     style={{ 
-                        left: `calc(${(activeIndex / 4) * 100}% + 2px)`,
-                        width: '25%'
+                        width: '25%',
+                        transform: `translateX(-${activeIndex * 100}%)`,
+                        right: '8px' // Offset for padding/border
                     }}
                 >
-                    <div className="h-1.5 w-1.5 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
+                    <div className="absolute top-0 h-1.5 w-1.5 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.8)]" />
                 </div>
             )}
 
