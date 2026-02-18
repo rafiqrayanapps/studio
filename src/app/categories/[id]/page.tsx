@@ -152,7 +152,7 @@ export default function CategoryPage() {
                 
                 <div className="space-y-4">
                     <div className="space-y-1">
-                        <h3 className="font-black text-3xl text-foreground tracking-tight">نظام القيد التطوير</h3>
+                        <h3 className="font-black text-3xl text-foreground tracking-tight">القسم حالياً قيد الصيانة</h3>
                         <div className="h-1 w-20 bg-primary/20 rounded-full mx-auto overflow-hidden">
                             <div className="h-full bg-primary w-1/2 animate-[shimmer_1.5s_infinite]" />
                         </div>
