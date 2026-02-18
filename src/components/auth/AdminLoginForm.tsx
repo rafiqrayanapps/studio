@@ -13,7 +13,7 @@ import { Loader2, Mail, Lock, ShieldAlert, Eye, EyeOff, ShieldCheck } from 'luci
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { WhitelistEntry } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 
@@ -65,13 +65,17 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
             const currentFingerprint = await getDeviceFingerprint();
 
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
+                // Security: Update fingerprint for admin to prevent kicks
+                await updateDoc(whitelistRef, { 
+                    deviceFingerprints: arrayUnion(currentFingerprint) 
+                });
                 router.push('/admin/dashboard');
                 return;
             }
             
             if (whitelistData.role === 'pro') {
                 await updateDoc(whitelistRef, { 
-                    deviceFingerprints: [currentFingerprint] 
+                    deviceFingerprints: arrayUnion(currentFingerprint) 
                 });
                 router.push('/home');
                 return;

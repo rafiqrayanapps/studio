@@ -82,7 +82,7 @@ export function useUserProfile() {
     
     // Security: Single Device Enforcement
     useEffect(() => {
-        if (!firestore || !user || !whitelistEntry || isLoggingOut) return;
+        if (!firestore || !user || !whitelistEntry || isLoggingOut || !whitelistRef) return;
 
         const unsubscribe = onSnapshot(whitelistRef as any, async (snapshot) => {
             if (snapshot.exists()) {
@@ -129,6 +129,7 @@ export function useUserProfile() {
         isAdmin, 
         isEditor,
         points: userProfile?.points ?? (user ? 1 : 0),
-        isLoading: isAuthLoading || (user && isProfileLoading && !tempReferralCode)
+        // Important: Wait for whitelist loading to prevent premature redirects in admin layout
+        isLoading: isAuthLoading || (user && isProfileLoading && !tempReferralCode) || (user?.email ? isWhitelistLoading : false)
     };
 }
