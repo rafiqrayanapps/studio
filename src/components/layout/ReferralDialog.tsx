@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 import type { ReferralConfig, UserProfile } from '@/lib/definitions';
 import { useSearchParams } from 'next/navigation';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function ReferralDialogContent() {
     const { points, user, userProfile, isAdmin } = useUserProfile();
@@ -42,13 +43,6 @@ function ReferralDialogContent() {
             navigator.clipboard.writeText(text);
             toast({ title });
         }
-    };
-
-    const copyReferralLink = () => {
-        if (!userProfile?.referralCode) return;
-        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-        const referralLink = `${baseUrl}/home?ref=${userProfile.referralCode}`;
-        copyToClipboard(referralLink, "تم نسخ رابط الإحالة بنجاح!");
     };
 
     const handleRedeemReferral = async () => {
@@ -142,87 +136,91 @@ function ReferralDialogContent() {
                     <Coins className="h-4 w-4 text-yellow-400 group-hover:rotate-12 transition-transform" />
                 </button>
             </DialogTrigger>
-            <DialogContent className="max-w-sm rounded-[2rem] gap-6 overflow-hidden" dir="rtl">
-                <DialogHeader className="space-y-3">
-                    <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl mx-auto flex items-center justify-center">
-                        <Coins className="w-8 h-8" />
-                    </div>
-                    <DialogTitle className="text-center text-2xl font-bold">محفظة النقاط والمكافآت</DialogTitle>
-                    <DialogDescription className="text-center text-base">
-                        رصيدك الحالي: <strong className="text-primary text-xl">{points} نقطة</strong>
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-6">
-                    <div className="bg-muted p-4 rounded-3xl space-y-2 text-center border-2 border-dashed border-primary/20">
-                        <p className="text-xs font-bold text-muted-foreground flex items-center justify-center gap-1">
-                            <Ticket className="h-3 w-3" /> كود الإحالة الخاص بك
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-background rounded-2xl py-2 px-4 font-mono text-2xl font-black tracking-[0.2em] text-primary">
-                                {userProfile?.referralCode}
+            <DialogContent className="max-w-[92vw] sm:max-w-sm rounded-[2rem] gap-0 p-0 overflow-hidden" dir="rtl">
+                <ScrollArea className="max-h-[85vh] w-full">
+                    <div className="p-6 space-y-6">
+                        <DialogHeader className="space-y-3">
+                            <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl mx-auto flex items-center justify-center">
+                                <Coins className="w-8 h-8" />
                             </div>
-                            <Button size="icon" variant="secondary" className="rounded-xl h-11 w-11" onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود!")}>
-                                <Copy className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    </div>
+                            <DialogTitle className="text-center text-xl font-bold">محفظة النقاط والمكافآت</DialogTitle>
+                            <DialogDescription className="text-center text-sm">
+                                رصيدك الحالي: <strong className="text-primary text-lg">{points} نقطة</strong>
+                            </DialogDescription>
+                        </DialogHeader>
 
-                    <div className="bg-primary/5 p-5 rounded-3xl border border-primary/10 space-y-4">
-                        <div className="flex items-center gap-2 text-sm font-bold text-primary">
-                            <Share2 className="h-4 w-4" />
-                            <span>شارك واربح نقاطاً ومميزات برو</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                            عن كل صديق يسجل من خلالك، ستحصل أنت وهو على <strong>{refConfig?.pointsPerReferral || 10} نقاط</strong>. عند وصولك لـ {refConfig?.requiredReferrals || 5} إحالة، سيتم ترقية حسابك لـ "برو" مجاناً!
-                        </p>
-                        <Button className="w-full rounded-2xl h-12 text-base font-bold shadow-md" onClick={copyReferralLink}>
-                            <Share2 className="ml-2 h-4 w-4" />
-                            نسخ رابط الدعوة المباشر
-                        </Button>
-                    </div>
-
-                    {!isAdmin && (
-                        <div className="space-y-3 px-1 border-t pt-4">
-                            {userProfile?.referredBy ? (
-                                <div className="bg-green-50 p-3 rounded-2xl flex items-center gap-2 text-green-700 text-sm font-bold justify-center">
-                                    <CheckCircle2 className="h-5 w-5" />
-                                    <span>لقد قمت بتفعيل كود دعوة مسبقاً</span>
+                        <div className="space-y-6">
+                            <div className="bg-muted p-4 rounded-3xl space-y-2 text-center border-2 border-dashed border-primary/20">
+                                <p className="text-[10px] font-bold text-muted-foreground flex items-center justify-center gap-1">
+                                    <Ticket className="h-3 w-3" /> كود الإحالة الخاص بك
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-background rounded-2xl py-2 px-4 font-mono text-2xl font-black tracking-[0.2em] text-primary">
+                                        {userProfile?.referralCode}
+                                    </div>
+                                    <Button size="icon" variant="secondary" className="rounded-xl h-11 w-11 shrink-0" onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود!")}>
+                                        <Copy className="h-5 w-5" />
+                                    </Button>
                                 </div>
-                            ) : (
-                                <>
-                                    <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-                                        <Gift className="h-4 w-4 text-green-500" />
-                                        <span>هل لديك كود دعوة من صديق؟</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Input 
-                                            placeholder="أدخل الكود هنا" 
-                                            className="rounded-2xl h-12 bg-muted border-none text-center font-mono font-bold tracking-widest uppercase"
-                                            value={referralCodeInput}
-                                            onChange={(e) => setReferralCodeInput(e.target.value)}
-                                            disabled={isSubmitting}
-                                        />
-                                        <Button 
-                                            className="rounded-2xl h-12 px-6 font-bold" 
-                                            onClick={handleRedeemReferral}
-                                            disabled={isSubmitting || !referralCodeInput}
-                                        >
-                                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تفعيل'}
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
+                            </div>
 
-                    <div className="bg-yellow-50 p-3 rounded-2xl border border-yellow-100 flex gap-3 items-start">
-                        <Info className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-                        <p className="text-[10px] text-yellow-800 leading-relaxed font-medium">
-                            يتم استخدام بصمة الجهاز لضمان نزاهة نظام المكافآت. استخدام أجهزة وهمية أو محاولات التلاعب تؤدي لحظر الحساب نهائياً.
-                        </p>
+                            <div className="bg-primary/5 p-5 rounded-3xl border border-primary/10 space-y-4">
+                                <div className="flex items-center gap-2 text-xs font-bold text-primary">
+                                    <Share2 className="h-4 w-4" />
+                                    <span>شارك واربح نقاطاً ومميزات برو</span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    عن كل صديق يسجل من خلالك، ستحصل أنت وهو على <strong>{refConfig?.pointsPerReferral || 10} نقاط</strong>. عند وصولك لـ {refConfig?.requiredReferrals || 5} إحالة، سيتم ترقية حسابك لـ "برو" مجاناً!
+                                </p>
+                                <Button className="w-full rounded-2xl h-12 text-sm font-bold shadow-md" onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود بنجاح!")}>
+                                    <Copy className="ml-2 h-4 w-4" />
+                                    نسخ كود الإحالة
+                                </Button>
+                            </div>
+
+                            {!isAdmin && (
+                                <div className="space-y-3 px-1 border-t pt-4">
+                                    {userProfile?.referredBy ? (
+                                        <div className="bg-green-50 p-3 rounded-2xl flex items-center gap-2 text-green-700 text-xs font-bold justify-center">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            <span>لقد قمت بتفعيل كود دعوة مسبقاً</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                                                <Gift className="h-4 w-4 text-green-500" />
+                                                <span>هل لديك كود دعوة من صديق؟</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Input 
+                                                    placeholder="أدخل الكود هنا" 
+                                                    className="rounded-2xl h-12 bg-muted border-none text-center font-mono font-bold tracking-widest uppercase text-sm"
+                                                    value={referralCodeInput}
+                                                    onChange={(e) => setReferralCodeInput(e.target.value)}
+                                                    disabled={isSubmitting}
+                                                />
+                                                <Button 
+                                                    className="rounded-2xl h-12 px-5 font-bold text-xs shrink-0" 
+                                                    onClick={handleRedeemReferral}
+                                                    disabled={isSubmitting || !referralCodeInput}
+                                                >
+                                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تفعيل'}
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="bg-yellow-50 p-3 rounded-2xl border border-yellow-100 flex gap-3 items-start">
+                                <Info className="h-4 w-4 text-yellow-600 shrink-0 mt-0.5" />
+                                <p className="text-[9px] text-yellow-800 leading-relaxed font-medium">
+                                    يتم استخدام بصمة الجهاز لضمان نزاهة نظام المكافآت. استخدام أجهزة وهمية أو محاولات التلاعب تؤدي لحظر الحساب نهائياً.
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </ScrollArea>
             </DialogContent>
         </Dialog>
     );
