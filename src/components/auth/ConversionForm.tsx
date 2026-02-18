@@ -127,12 +127,12 @@ export default function ConversionForm() {
           if (e.code === 'auth/email-already-in-use') {
               setError("هذا البريد الإلكتروني مسجل بالفعل.");
           } else if (e.code === 'auth/admin-restricted-operation') {
-              setError("تنبيه: يجب تفعيل موفر 'البريد الإلكتروني/كلمة المرور' في Firebase Console لإتمام هذه العملية.");
+              setError("تنبيه: يجب تفعيل موفر 'البريد الإلكتروني/كلمة المرور' في إعدادات Firebase Console (Authentication > Sign-in method) لإتمام هذه العملية.");
           } else {
               setError(e.message);
           }
       } else {
-          setError("فشل تحويل الحساب. يرجى المحاولة لاحقاً.");
+          setError("فشل تحويل الحساب. يرجى التأكد من إعدادات الموقع أو المحاولة لاحقاً.");
       }
     }
   };
@@ -148,13 +148,13 @@ export default function ConversionForm() {
 
   if (!eligible && !success) {
     return (
-      <div className="p-8 text-center space-y-6">
+      <div className="p-6 text-center space-y-6">
         <div className="w-16 h-16 bg-muted rounded-full mx-auto flex items-center justify-center">
           <Coins className="h-8 w-8 text-muted-foreground" />
         </div>
-        <div className="space-y-2">
-          <CardTitle>غير مؤهل حالياً</CardTitle>
-          <CardDescription>
+        <div className="space-y-2 px-2">
+          <CardTitle className="text-lg">غير مؤهل حالياً</CardTitle>
+          <CardDescription className="text-sm leading-relaxed">
             تحتاج للوصول إلى الحد المطلوب من الإحالات ({guestData?.referralCount || 0} من أصل 5) لتحويل حسابك إلى برو مجاناً لمدة 90 يوم.
           </CardDescription>
         </div>
@@ -177,46 +177,48 @@ export default function ConversionForm() {
 
   return (
     <>
-      <CardHeader className="text-center">
-        <div className="bg-green-100 text-green-700 w-fit mx-auto px-3 py-1 rounded-full text-xs font-bold mb-2 flex items-center gap-1">
+      <CardHeader className="text-center p-6 pb-2">
+        <div className="bg-green-100 text-green-700 w-fit mx-auto px-3 py-1 rounded-full text-[10px] font-bold mb-2 flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3" /> مؤهل للتحويل
         </div>
-        <CardTitle>تفعيل اشتراك 90 يوم</CardTitle>
-        <CardDescription>لقد حققت الهدف! أنشئ حسابك الآن لتفعيل ميزات برو.</CardDescription>
+        <CardTitle className="text-xl">تفعيل اشتراك 90 يوم</CardTitle>
+        <CardDescription className="text-xs">لقد حققت الهدف! أنشئ حسابك الآن لتفعيل ميزات برو.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-6 pt-2">
             <FormField control={form.control} name="email" render={({ field }) => (
               <FormItem>
-                <FormLabel>البريد الإلكتروني الجديد</FormLabel>
-                <FormControl><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl>
-                <FormMessage />
+                <FormLabel className="text-xs">البريد الإلكتروني الجديد</FormLabel>
+                <FormControl><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input {...field} className="pl-9 h-11 text-sm text-left" dir="ltr" /></div></FormControl>
+                <FormMessage className="text-[10px]" />
               </FormItem>
             )} />
-            <FormField control={form.control} name="password" render={({ field }) => (
-              <FormItem>
-                <FormLabel>كلمة المرور</FormLabel>
-                <FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-              <FormItem>
-                <FormLabel>تأكيد كلمة المرور</FormLabel>
-                <FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <div className="grid grid-cols-1 gap-4">
+                <FormField control={form.control} name="password" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-xs">كلمة المرور</FormLabel>
+                    <FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="password" {...field} className="pl-9 h-11 text-sm text-left" dir="ltr" /></div></FormControl>
+                    <FormMessage className="text-[10px]" />
+                </FormItem>
+                )} />
+                <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-xs">تأكيد كلمة المرور</FormLabel>
+                    <FormControl><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="password" {...field} className="pl-9 h-11 text-sm text-left" dir="ltr" /></div></FormControl>
+                    <FormMessage className="text-[10px]" />
+                </FormItem>
+                )} />
+            </div>
             {error && (
-                <div className="bg-destructive/10 p-4 rounded-xl flex items-start gap-3 text-destructive text-sm leading-relaxed">
-                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <div className="bg-destructive/10 p-3 rounded-xl flex items-start gap-2 text-destructive text-[10px] leading-tight">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                     <p className="font-semibold">{error}</p>
                 </div>
             )}
           </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full h-12 rounded-xl" disabled={form.formState.isSubmitting}>
+          <CardFooter className="p-6 pt-0">
+            <Button type="submit" className="w-full h-12 rounded-xl text-sm font-bold" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'تفعيل اشتراك برو الآن'}
             </Button>
           </CardFooter>
