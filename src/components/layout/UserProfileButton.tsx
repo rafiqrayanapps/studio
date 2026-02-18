@@ -3,14 +3,14 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { Button } from '@/components/ui/button';
 import { SheetClose } from '@/components/ui/sheet';
 import Link from 'next/link';
-import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, ChevronLeft } from 'lucide-react';
+import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, ChevronLeft, LayoutDashboard } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 
 export default function UserProfileButton() {
-    const { user, userProfile, isPro, isAdmin, isLoading } = useUserProfile();
+    const { user, userProfile, isPro, isAdmin, isEditor, isLoading } = useUserProfile();
     const auth = useAuth();
 
     if (isLoading) {
@@ -23,13 +23,15 @@ export default function UserProfileButton() {
         );
     }
 
-    if (isAdmin) {
+    // Handle Admin and Editor roles
+    if (isAdmin || isEditor) {
+        const roleLabel = isAdmin ? "حساب المدير" : "حساب المحرر";
         return (
              <li>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="w-full justify-between h-auto p-3 hover:bg-secondary">
-                            <span className="font-semibold text-lg">حساب المدير</span>
+                            <span className="font-semibold text-lg">{roleLabel}</span>
                              <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -37,11 +39,12 @@ export default function UserProfileButton() {
                         <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                          <Link href="/admin/dashboard">
-                            <DropdownMenuItem>
-                                لوحة التحكم
+                            <DropdownMenuItem className="cursor-pointer">
+                                <LayoutDashboard className="ml-2 h-4 w-4" />
+                                <span>لوحة التحكم</span>
                             </DropdownMenuItem>
                         </Link>
-                        <DropdownMenuItem onClick={() => auth.signOut()}>
+                        <DropdownMenuItem onClick={() => auth.signOut()} className="cursor-pointer text-destructive focus:text-destructive">
                             <LogOut className="ml-2 h-4 w-4" />
                             <span>تسجيل الخروج</span>
                         </DropdownMenuItem>
@@ -51,6 +54,7 @@ export default function UserProfileButton() {
         )
     }
 
+    // Handle regular Pro users
     if (isPro) {
         const subscriptionEndDate = userProfile?.subscriptionEndDate
             ? safeFormatFirebaseTimestamp(userProfile.subscriptionEndDate)
