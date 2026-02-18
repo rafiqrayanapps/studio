@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -222,6 +223,12 @@ export default function AdminDashboard() {
       toast({ title: "تم حفظ إعدادات الإحالة والنقاط" });
   };
 
+  const handleEditCategory = (catId: string) => {
+      setSelectedCategoryId(catId);
+      setActiveTab('items');
+      toast({ title: "تم تحديد القسم للتعديل" });
+  };
+
   return (
     <div className="flex min-h-screen bg-secondary/30">
       <aside className="hidden md:flex w-64 flex-col bg-card border-l sticky top-0 h-screen">
@@ -235,7 +242,7 @@ export default function AdminDashboard() {
         <nav className="flex-1 p-4 space-y-2">
             {[
                 { id: 'categories', label: 'الأقسام', icon: Layers },
-                { id: 'items', label: 'إضافة محتوى', icon: FileText },
+                { id: 'items', label: 'إدارة المحتوى', icon: FileText },
                 ...(isAdmin ? [
                     { id: 'review', label: 'مراجعة المحتوى', icon: ShieldCheck, badge: reviewItems.length },
                     { id: 'users', label: 'المستخدمين', icon: Users },
@@ -283,7 +290,7 @@ export default function AdminDashboard() {
                                 <CardDescription className="text-xs">النمط: {cat.displayStyle}</CardDescription>
                             </CardHeader>
                             <CardFooter className="p-2 border-t flex justify-end gap-2">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary"><Edit2 className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditCategory(cat.id)}><Edit2 className="h-4 w-4" /></Button>
                                 {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>}
                             </CardFooter>
                         </Card>

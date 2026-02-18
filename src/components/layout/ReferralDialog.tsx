@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Coins, Gift, Share2, Copy, Loader2, Info, CheckCircle2 } from 'lucide-react';
+import { Coins, Gift, Share2, Copy, Loader2, Info, CheckCircle2, Ticket } from 'lucide-react';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, increment, getDoc, arrayUnion } from 'firebase/firestore';
@@ -24,18 +25,18 @@ export default function ReferralDialog() {
     const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
     const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
 
+    const copyToClipboard = (text: string, title: string) => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text);
+            toast({ title });
+        }
+    };
+
     const copyReferralLink = () => {
         if (!userProfile?.referralCode) return;
         const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
         const referralLink = `${baseUrl}/home?ref=${userProfile.referralCode}`;
-        
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(referralLink);
-            toast({
-                title: "تم نسخ رابط الإحالة!",
-                description: "شارك هذا الرابط مع أصدقائك لتربح نقاطاً ومميزات برو."
-            });
-        }
+        copyToClipboard(referralLink, "تم نسخ رابط الإحالة بنجاح!");
     };
 
     const handleRedeemReferral = async () => {
@@ -45,14 +46,12 @@ export default function ReferralDialog() {
         try {
             const fingerprint = await getDeviceFingerprint();
             
-            // 1. Check if device already used a referral
             const usedInvRef = doc(firestore, 'used_invitations', fingerprint);
             const usedInvSnap = await getDoc(usedInvRef);
             if (usedInvSnap.exists()) {
                 throw new Error("عذراً، هذا الجهاز استخدم كود دعوة مسبقاً ولا يمكنه الاستفادة من كود آخر.");
             }
 
-            // 2. Find the referrer
             const codeToFind = referralCode.trim().toUpperCase();
             const refQuery = query(collection(firestore, 'users'), where("referralCode", "==", codeToFind));
             const refSnap = await getDocs(refQuery);
@@ -64,7 +63,6 @@ export default function ReferralDialog() {
             const referrerDoc = refSnap.docs[0];
             const referrerData = referrerDoc.data() as UserProfile;
             
-            // 3. Prevent self-referral
             if (referrerDoc.id === user.uid || referrerData.email.toLowerCase() === user.email?.toLowerCase()) {
                 throw new Error("لا يمكنك استخدام كود الدعوة الخاص بك.");
             }
@@ -81,27 +79,22 @@ export default function ReferralDialog() {
                 points: increment(pointsToAdd)
             };
 
-            // Auto-upgrade referrer to Pro if threshold reached
             if (newReferralCount >= requiredForPro && referrerData.subscriptionTier !== 'pro') {
                 inviterUpdates.subscriptionTier = 'pro';
             }
 
-            // Bonus logic: reward with extra codes every X referrals
             if (newReferralCount % rewardInterval === 0) {
                 const extraCode = `PRO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
                 inviterUpdates.unlockedProCodes = arrayUnion(extraCode);
             }
 
-            // Update Referrer
             batch.update(referrerDoc.ref, inviterUpdates);
 
-            // Update Current User
             batch.update(doc(firestore, 'users', user.uid), {
                 referredBy: referrerDoc.id,
                 points: increment(pointsToAdd)
             });
 
-            // Register Fingerprint to prevent fraud
             batch.set(usedInvRef, {
                 userId: user.uid,
                 referrerId: referrerDoc.id,
@@ -123,7 +116,6 @@ export default function ReferralDialog() {
         }
     };
 
-    // Show redeem section only if user hasn't been referred yet
     const canShowRedeem = userProfile && !userProfile.referredBy && !isAdmin;
 
     return (
@@ -146,6 +138,21 @@ export default function ReferralDialog() {
                 </DialogHeader>
 
                 <div className="space-y-6">
+                    {/* Your Code Section */}
+                    <div className="bg-muted p-4 rounded-3xl space-y-2 text-center border-2 border-dashed border-primary/20">
+                        <p className="text-xs font-bold text-muted-foreground flex items-center justify-center gap-1">
+                            <Ticket className="h-3 w-3" /> كود الإحالة الخاص بك
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-background rounded-2xl py-2 px-4 font-mono text-2xl font-black tracking-[0.2em] text-primary">
+                                {userProfile?.referralCode}
+                            </div>
+                            <Button size="icon" variant="secondary" className="rounded-xl h-11 w-11" onClick={() => copyToClipboard(userProfile?.referralCode || '', "تم نسخ الكود!")}>
+                                <Copy className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    </div>
+
                     {/* Share & Earn Section */}
                     <div className="bg-primary/5 p-5 rounded-3xl border border-primary/10 space-y-4">
                         <div className="flex items-center gap-2 text-sm font-bold text-primary">
@@ -156,8 +163,8 @@ export default function ReferralDialog() {
                             عن كل صديق يسجل من خلالك، ستحصل أنت وهو على <strong>{refConfig?.pointsPerReferral || 10} نقاط</strong>. عند وصولك لـ {refConfig?.requiredReferrals || 5} إحالات، سيتم ترقية حسابك لـ "برو" مجاناً!
                         </p>
                         <Button className="w-full rounded-2xl h-12 text-base font-bold shadow-md" onClick={copyReferralLink}>
-                            <Copy className="ml-2 h-4 w-4" />
-                            نسخ رابط الإحالة الخاص بك
+                            <Share2 className="ml-2 h-4 w-4" />
+                            نسخ رابط الدعوة المباشر
                         </Button>
                     </div>
 

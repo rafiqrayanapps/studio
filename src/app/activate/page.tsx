@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
@@ -87,10 +88,9 @@ function ActivationForm() {
     }
   };
 
-  const generateReferralCode = (email: string) => {
-      const prefix = email.split('@')[0].substring(0, 4).toUpperCase();
-      const random = Math.floor(1000 + Math.random() * 9000);
-      return `${prefix}${random}`;
+  const generateReferralCode = async () => {
+      const fingerprint = await getDeviceFingerprint();
+      return fingerprint.substring(0, 6).toUpperCase();
   };
 
   const onContractSubmit = async (data: ContractValues) => {
@@ -101,14 +101,12 @@ function ActivationForm() {
       if (!firestore || !activationData) throw new Error("فقدت بيانات التفعيل. يرجى المحاولة مرة أخرى.");
       const currentFingerprint = activationData.fingerprint;
 
-      // 1. Anti-Fraud & Referral Checks
       let referrerId: string | null = null;
       let referrerDocRef: any = null;
       let pointsToAdd = 10;
       let requiredForPro = 5;
       let rewardInterval = 5;
 
-      // Fetch Global Config
       const configRef = doc(firestore, 'appConfig', 'referral');
       const configSnap = await getDoc(configRef);
       if (configSnap.exists()) {
@@ -119,14 +117,12 @@ function ActivationForm() {
       }
 
       if (data.referralCode) {
-          // Rule: Device can only use referral once
           const usedInvRef = doc(firestore, 'used_invitations', currentFingerprint);
           const usedInvSnap = await getDoc(usedInvRef);
           if (usedInvSnap.exists()) {
               throw new Error("عذراً، هذا الجهاز استخدم كود دعوة مسبقاً ولا يمكنه الاستفادة من كود آخر.");
           }
 
-          // Find referrer
           const refQuery = query(collection(firestore, 'users'), where("referralCode", "==", data.referralCode.trim().toUpperCase()));
           const refSnap = await getDocs(refQuery);
           if (refSnap.empty) {
@@ -143,13 +139,11 @@ function ActivationForm() {
           }
       }
 
-      // 2. Atomic Creation & Update
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
       const batch = writeBatch(firestore);
       
-      // Update Whitelist
       const whitelistRef = doc(firestore, 'whitelist', activationData.whitelistEntry.id);
       batch.update(whitelistRef, {
         isActivated: true,
@@ -157,16 +151,15 @@ function ActivationForm() {
         deviceFingerprints: [currentFingerprint],
       });
 
-      // Create new user profile
       const userProfileRef = doc(firestore, 'users', user.uid);
-      const myReferralCode = generateReferralCode(data.email);
+      const myReferralCode = await generateReferralCode();
       
       batch.set(userProfileRef, {
         email: data.email,
         displayName: data.fullName,
-        subscriptionTier: 'pro', // Users activated via code are Pro by default
+        subscriptionTier: 'pro',
         createdAt: serverTimestamp(),
-        points: pointsToAdd, // Give them starting points if they used a code
+        points: pointsToAdd,
         referralCode: myReferralCode,
         referralCount: 0,
         unlockedProCodes: [],
@@ -174,7 +167,6 @@ function ActivationForm() {
         deviceFingerprint: currentFingerprint
       });
 
-      // 3. Process Referrer Reward (Atomic)
       if (referrerId && referrerDocRef) {
           const rSnap = await getDoc(referrerDocRef);
           const rData = rSnap.data() as UserProfile;
@@ -185,12 +177,10 @@ function ActivationForm() {
               points: increment(pointsToAdd)
           };
 
-          // Auto-upgrade to Pro if limit reached
           if (newCount >= requiredForPro && rData.subscriptionTier !== 'pro') {
               updates.subscriptionTier = 'pro';
           }
 
-          // Accumulative Reward Logic
           if (newCount % rewardInterval === 0) {
               const extraCode = `PRO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
               updates.unlockedProCodes = arrayUnion(extraCode);
@@ -198,7 +188,6 @@ function ActivationForm() {
 
           batch.update(referrerDocRef, updates);
 
-          // Record device usage to prevent fraud
           const usedInvRef = doc(firestore, 'used_invitations', currentFingerprint);
           batch.set(usedInvRef, {
               userId: user.uid,
@@ -248,15 +237,59 @@ function ActivationForm() {
               <CardTitle>إنشاء الحساب</CardTitle>
               <CardDescription>أكمل بياناتك لتفعيل اشتراكك.</CardDescription>
             </CardHeader>
-            <Form {...contractForm}>
+            <Form {...contractSchema}>
               <form onSubmit={contractForm.handleSubmit(onContractSubmit)}>
                 <CardContent className="space-y-4">
-                  <FormField control={contractForm.control} name="fullName" render={({ field }) => (<FormItem><FormLabel>الاسم الكامل</FormLabel><FormControl><div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input {...field} className="pl-10" /></div></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={contractForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>بريد التسجيل</FormLabel><FormControl><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input {...field} className="pl-10 text-left" dir="ltr" readOnly disabled /></div></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={contractForm.control} name="fullName" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>الاسم الكامل</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input {...field} className="pl-10" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={contractForm.control} name="email" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>بريد التسجيل</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input {...field} className="pl-10 text-left" dir="ltr" readOnly disabled />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={contractForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>كلمة المرور</FormLabel><FormControl><div className="relative"><EyeOff className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={contractForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>تأكيد كلمة المرور</FormLabel><FormControl><div className="relative"><ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="password" {...field} className="pl-10 text-left" dir="ltr" /></div></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={contractForm.control} name="password" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>كلمة المرور</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input type="password" {...field} className="pl-10 text-left" dir="ltr" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={contractForm.control} name="confirmPassword" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>تأكيد كلمة المرور</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input type="password" {...field} className="pl-10 text-left" dir="ltr" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
 
                   <div className="pt-4 border-t">
