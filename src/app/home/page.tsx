@@ -4,7 +4,7 @@ import Header from '@/components/layout/Header';
 import { WithId } from '@/firebase';
 import type { Category as CategoryType, ReferralConfig, UserProfile } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
-import { Search, Crown, Loader2 } from 'lucide-react';
+import { Search, Crown, Loader2, Sparkles } from 'lucide-react';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -12,30 +12,28 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, query, collection, where, getDocs, getDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 function HomeContent() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { isPro, isAdmin, user, userProfile, isLoading: isUserLoading } = useUserProfile();
+  const { isPro, isAdmin, userProfile, isLoading: isUserLoading } = useUserProfile();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const firestore = useFirestore();
   const { toast } = useToast();
   
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   const { mainCategories: allMainCategories, isLoadingCategories } = useCategories();
 
-  // Capturing referral code from URL if present
+  // Handling direct referral from URL
   useEffect(() => {
       const refFromUrl = searchParams.get('ref');
       if (refFromUrl && !userProfile?.referredBy) {
-          // The code is handled when the user opens the ReferralDialog or registers
-          // For now, we can just toast a welcome message
           toast({
-              title: "أهلاً بك!",
-              description: "لقد وصلت عبر رابط دعوة. اضغط على عداد النقاط لتفعيل المكافأة."
+              title: "أهلاً بك في رفيق المصمم!",
+              description: "لقد وصلت عبر رابط دعوة. اضغط على عداد النقاط في الأعلى لتفعيل مكافأتك.",
+              duration: 6000,
           });
       }
   }, [searchParams, userProfile, toast]);
@@ -78,16 +76,26 @@ function HomeContent() {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-muted-foreground text-sm">{mainCategories.length} قسم</p>
+            <div className="flex justify-between items-center px-1">
+                <p className="text-muted-foreground text-sm font-medium">{mainCategories.length} قسم متوفر</p>
+                {isPro && <div className="flex items-center gap-1 text-xs text-yellow-600 font-bold bg-yellow-50 px-2 py-1 rounded-full border border-yellow-100">
+                    <Sparkles className="h-3 w-3" />
+                    عضوية برو نشطة
+                </div>}
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               {mainCategories.map((cat) => {
                 const isLocked = cat.visibility === 'pro' && !isPro && !isAdmin;
                 return (
                 <div key={cat.id} onClick={() => handleCategoryClick(cat)}>
-                  <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95">
-                    {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300" />}
-                    {cat.fileTypes && <div className="absolute top-3.5 right-3.5 bg-black/20 text-[10px] font-bold px-2 py-0.5 rounded-full text-white uppercase">{cat.fileTypes}</div>}
-                    <p className="font-bold text-lg">{cat.name}</p>
+                  <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95 group overflow-hidden">
+                    {/* Background Decorative Element */}
+                    <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
+                    
+                    {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md" />}
+                    {cat.fileTypes && <div className="absolute top-3.5 right-3.5 bg-black/20 text-[10px] font-bold px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm">{cat.fileTypes}</div>}
+                    <p className="font-bold text-lg relative z-10 leading-snug">{cat.name}</p>
                   </div>
                 </div>
               )})}

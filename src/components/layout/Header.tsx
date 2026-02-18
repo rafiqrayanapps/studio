@@ -70,7 +70,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
         )}>
       <div className="container mx-auto max-w-4xl px-4">
         <div className="flex h-16 items-center">
-          {/* Right Side: Menu */}
+          {/* Right Side: Menu (in RTL) */}
           <div className="flex-1 flex items-center justify-start">
              {showMenu ? <Sheet>
               <SheetTrigger asChild>
@@ -159,7 +159,7 @@ const HeaderComponent = ({ title, subtitle, children, showMenu = true }: { title
             {subtitle && <p className="text-sm opacity-80">{subtitle}</p>}
           </div>
 
-          {/* Left Side: Points Counter & Referral Logic */}
+          {/* Left Side: Points & Referral Dialog Trigger */}
            <div className="flex-1 flex items-center justify-end">
             <ReferralDialog />
             {children}
