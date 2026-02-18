@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, increment } from 'firebase/firestore';
 import type { Category, ContentItem, ReferralConfig } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat, Settings2, Coins } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat, Settings2, Coins, Sparkles, Cpu, Hammer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -110,36 +110,76 @@ export default function CategoryPage() {
   const renderContent = () => {
     if (category?.isUnderMaintenance && !isAdmin) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-6 bg-card rounded-[2.5rem] mt-4 shadow-xl border border-primary/5 overflow-hidden relative min-h-[450px]">
-            {/* Background Animations */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
-                <div className="absolute w-48 h-48 bg-primary/10 rounded-full animate-ripple" style={{ animationDelay: '0s' }}></div>
-                <div className="absolute w-64 h-64 bg-primary/10 rounded-full animate-ripple" style={{ animationDelay: '0.4s' }}></div>
+         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-4 shadow-2xl border border-primary/10 overflow-hidden relative min-h-[500px]">
+            {/* Orbiting Particles Background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                {[...Array(6)].map((_, i) => (
+                    <div 
+                        key={i}
+                        className="absolute w-2 h-2 bg-primary rounded-full animate-pulse"
+                        style={{
+                            top: `${Math.random() * 100}%`,
+                            left: `${Math.random() * 100}%`,
+                            animationDelay: `${i * 0.5}s`,
+                            animationDuration: `${2 + Math.random() * 2}s`
+                        }}
+                    />
+                ))}
             </div>
 
-            <div className="relative z-10 space-y-8">
-                <div className="relative inline-block">
-                    {/* Centered Gear Icon */}
-                    <div className="relative z-10 bg-primary text-primary-foreground p-8 rounded-[2rem] shadow-2xl">
-                        <Settings2 className="h-14 w-14 animate-spin" style={{ animationDuration: '8s' }} />
+            <div className="relative z-10 space-y-10 w-full max-w-sm">
+                <div className="relative inline-block mx-auto">
+                    {/* Pulsing Background Rings */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/10 rounded-full animate-ping" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-primary/5 rounded-full animate-pulse duration-3000" />
+                    
+                    {/* Main Icon Container with Glass Effect */}
+                    <div className="relative z-10 bg-primary/90 text-primary-foreground p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(var(--primary),0.3)] backdrop-blur-md border border-white/20">
+                        <Cpu className="h-16 w-16 animate-pulse" />
+                        
+                        {/* The Scanning Laser Line */}
+                        <div className="absolute top-0 left-4 right-4 h-[2px] bg-white/60 shadow-[0_0_15px_rgba(255,255,255,0.8)] animate-[scan_2s_ease-in-out_infinite]" />
                     </div>
-                    {/* Offset Helmet Icon */}
-                    <div className="absolute -bottom-4 -right-4 bg-yellow-400 p-3 rounded-xl shadow-lg border-4 border-card animate-bounce">
-                        <HardHat className="h-7 w-7 text-yellow-900" />
+
+                    {/* Floating Tool Icons */}
+                    <div className="absolute -top-4 -right-4 bg-background p-3 rounded-2xl shadow-xl border border-border animate-bounce">
+                        <Hammer className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="absolute -bottom-2 -left-6 bg-background p-2.5 rounded-xl shadow-lg border border-border animate-pulse" style={{ animationDelay: '0.7s' }}>
+                        <Settings2 className="h-5 w-5 text-muted-foreground animate-spin" style={{ animationDuration: '4s' }} />
                     </div>
                 </div>
                 
-                <div className="space-y-3">
-                    <h3 className="font-bold text-3xl text-foreground">نعمل على التحسين</h3>
-                    <p className="text-muted-foreground text-base max-w-xs mx-auto leading-relaxed">
-                        عفواً، يخضع هذا القسم لصيانة دورية لضمان أفضل تجربة لك. سنعود قريباً بكل جديد!
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <h3 className="font-black text-3xl text-foreground tracking-tight">نظام القيد التطوير</h3>
+                        <div className="h-1 w-20 bg-primary/20 rounded-full mx-auto overflow-hidden">
+                            <div className="h-full bg-primary w-1/2 animate-[shimmer_1.5s_infinite]" />
+                        </div>
+                    </div>
+                    <p className="text-muted-foreground text-sm leading-relaxed font-medium px-4">
+                        نحن نقوم الآن بضبط بعض اللمسات الفنية لضمان حصولك على تجربة مستخدم مثالية. سنعود إليكم خلال دقائق!
                     </p>
                 </div>
 
-                <Button variant="outline" onClick={() => router.back()} className="rounded-2xl px-10 h-14 text-base font-bold border-2 hover:bg-primary hover:text-primary-foreground transition-all shadow-md active:scale-95">
-                    <ArrowLeft className="ml-2 h-5 w-5" /> العودة للخلف
-                </Button>
+                <div className="pt-2">
+                    <Button variant="outline" onClick={() => router.back()} className="group rounded-2xl px-12 h-14 text-base font-black border-2 hover:bg-primary hover:text-primary-foreground transition-all duration-300 shadow-xl active:scale-95">
+                        <ArrowLeft className="ml-2 h-5 w-5 group-hover:-translate-x-1 transition-transform" /> العودة للخلف
+                    </Button>
+                </div>
             </div>
+
+            <style jsx global>{`
+                @keyframes scan {
+                    0% { top: 10%; opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { top: 90%; opacity: 0; }
+                }
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(200%); }
+                }
+            `}</style>
         </div>
        )
     }
