@@ -10,7 +10,7 @@ import { collection, serverTimestamp, doc, query, orderBy, where } from 'firebas
 import { Loader2, User, Phone, Mail, Package, Copy, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CardContent } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { PaymentLinksConfig, PaymentMethod } from '@/lib/definitions';
 import PhoneInput, { isValidPhoneNumber, type Country } from 'react-phone-number-input';
 import { useMemo, useState } from 'react';

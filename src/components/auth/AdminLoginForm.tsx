@@ -11,7 +11,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, ShieldAlert, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { WhitelistEntry } from '@/lib/definitions';
@@ -64,15 +64,12 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
             const whitelistData = whitelistSnap.data() as WhitelistEntry;
             const currentFingerprint = await getDeviceFingerprint();
 
-            // Handle admin/editor login
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
                 router.push('/admin/dashboard');
                 return;
             }
             
-            // Handle 'pro' user session management (Last one wins)
             if (whitelistData.role === 'pro') {
-                // Update Firestore with the current device as the ONLY active fingerprint
                 await updateDoc(whitelistRef, { 
                     deviceFingerprints: [currentFingerprint] 
                 });

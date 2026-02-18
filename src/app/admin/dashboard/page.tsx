@@ -42,7 +42,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -82,8 +82,6 @@ export default function AdminDashboard() {
       setIsLoadingReview(true);
       const allPending: any[] = [];
       
-      // We need to check items subcollection for each category
-      // This is a bit heavy but necessary for the review feature
       if (categories) {
         for (const cat of categories) {
           const q = query(collection(firestore, 'categories', cat.id, 'items'), where('status', '==', 'pending'));
@@ -121,13 +119,11 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- User Deletion Logic (Admin Only) ---
   const handleDeleteUser = async (entry: WhitelistEntry) => {
     if (!firestore || !isAdmin) return;
     if (!confirm(`هل أنت متأكد من حذف ${entry.email}؟ سيتم حذفه من القائمة البيضاء والمصادقة.`)) return;
 
     try {
-        // 1. Delete from Auth and Users collection if activated
         if (entry.activatedByUid) {
             const result = await deleteUserAccount(entry.activatedByUid);
             if (!result.success) {
@@ -136,7 +132,6 @@ export default function AdminDashboard() {
             }
         }
 
-        // 2. Delete from Whitelist
         const whitelistRef = doc(firestore, 'whitelist', entry.email.toLowerCase());
         await deleteDocumentNonBlocking(whitelistRef);
         
@@ -146,7 +141,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- Referral Config Form ---
   const referralForm = useForm<ReferralConfig>({
       defaultValues: { requiredReferrals: 5, rewardInterval: 5 }
   });
@@ -163,7 +157,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex min-h-screen bg-secondary/30">
-      {/* Sidebar for Admin */}
       <aside className="hidden md:flex w-64 flex-col bg-card border-l sticky top-0 h-screen">
         <div className="p-6 border-b flex flex-col items-center gap-2">
             <div className="bg-primary text-primary-foreground p-3 rounded-2xl shadow-lg">
@@ -208,7 +201,6 @@ export default function AdminDashboard() {
       <main className="flex-1 p-4 md:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             
-            {/* 1. Categories Management */}
             <TabsContent value="categories" className="m-0 space-y-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold">إدارة الأقسام</h2>
@@ -237,7 +229,6 @@ export default function AdminDashboard() {
                 </div>
             </TabsContent>
 
-            {/* 2. Content Review Tab (Admin Only) */}
             {isAdmin && (
                 <TabsContent value="review" className="m-0 space-y-6">
                     <div className="flex items-center gap-3">
@@ -295,7 +286,6 @@ export default function AdminDashboard() {
                 </TabsContent>
             )}
 
-            {/* 3. Users Management (Admin Only) */}
             {isAdmin && (
                 <TabsContent value="users" className="m-0 space-y-6">
                     <div className="flex justify-between items-center">
@@ -341,13 +331,11 @@ export default function AdminDashboard() {
                 </TabsContent>
             )}
 
-            {/* 4. Global Settings (Admin Only) */}
             {isAdmin && (
                 <TabsContent value="settings" className="m-0 space-y-6">
                     <h2 className="text-2xl font-bold">إعدادات النظام العامة</h2>
                     <Accordion type="single" collapsible className="w-full space-y-4">
                         
-                        {/* Referral Config */}
                         <AccordionItem value="referral" className="border-none">
                             <Card>
                                 <AccordionTrigger className="p-6 font-bold text-lg hover:no-underline">
@@ -382,7 +370,6 @@ export default function AdminDashboard() {
                             </Card>
                         </AccordionItem>
 
-                        {/* Additional Configs (Theme, Request Design, etc.) */}
                         <AccordionItem value="design-request" className="border-none">
                             <Card>
                                 <AccordionTrigger className="p-6 font-bold text-lg hover:no-underline">
@@ -393,7 +380,6 @@ export default function AdminDashboard() {
                                 </AccordionTrigger>
                                 <AccordionContent className="px-6 pb-6 border-t pt-6">
                                     <p className="text-sm text-muted-foreground mb-4">تحكم في ظهور رابط طلب التصميم في القائمة الجانبية ورابط التواصل المخصص له.</p>
-                                    {/* Link config form would go here */}
                                     <Button variant="outline">تعديل الإعدادات</Button>
                                 </AccordionContent>
                             </Card>
