@@ -53,14 +53,16 @@ export interface ThemeConfig {
 
 export interface ReferralConfig {
   requiredReferrals: number;
-  rewardInterval: number; // e.g., every 5
+  rewardInterval: number; 
+  pointsPerReferral: number;
+  pointsPerUnlock: number;
 }
 
 export interface Notification {
   id: string;
   title: string;
   description: string;
-  createdAt: any; // Using any for Firebase Timestamp
+  createdAt: any; 
 }
 
 export interface UserProfile {
@@ -68,12 +70,12 @@ export interface UserProfile {
   displayName: string;
   email: string;
   photoURL?: string;
-  createdAt: any; // Firebase Timestamp
+  createdAt: any;
   subscriptionTier: 'free' | 'pro';
-  subscriptionEndDate?: any; // Firebase Timestamp
-  contractPdfUrl?: string | null;
+  subscriptionEndDate?: any;
   referralCode: string;
   referralCount: number;
+  points: number;
   unlockedProCodes: string[];
   referredBy?: string | null;
 }
@@ -89,7 +91,6 @@ export interface WhitelistEntry {
   isActivated?: boolean;
   activatedByUid?: string | null;
   deviceFingerprints?: string[] | null;
-  deviceLimit?: number;
 }
 
 export interface PricingPlan {
@@ -119,7 +120,7 @@ export interface SubscriptionRequest {
   phoneNumber: string;
   planName: string;
   email: string;
-  createdAt: any; // Firebase Timestamp
+  createdAt: any;
 }
 
 export interface PaymentMethod {

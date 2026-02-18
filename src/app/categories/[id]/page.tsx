@@ -2,16 +2,16 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
-import type { Category, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat, Settings2 } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
+import { collection, query, orderBy, doc, increment } from 'firebase/firestore';
+import type { Category, ContentItem, ReferralConfig } from '@/lib/definitions';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat, Settings2, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
@@ -32,17 +32,16 @@ export default function CategoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const { toast } = useToast();
-  const { isPro, isAdmin, isLoading: isUserLoading } = useUserProfile();
+  const { isPro, isAdmin, userProfile, user, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [showUnlockDialog, setShowUnlockDialog] = useState<{item: WithId<ContentItem>, cost: number} | null>(null);
 
-  // Get categories data from the global provider
   const { subCategories: allSubCategories, categoryMap, isLoadingCategories: areAllCategoriesLoading } = useCategories();
-  
-  // The category for the current page, derived from the global map
   const category = useMemo(() => categoryMap.get(id), [categoryMap, id]);
-  
-  // The sub-categories for the current page, derived from the global map
   const subCategories = useMemo(() => allSubCategories.get(id) || [], [allSubCategories, id]);
+
+  const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
+  const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
@@ -63,35 +62,44 @@ export default function CategoryPage() {
     }
   };
 
-  const filteredSubCategories = useMemo(() => {
-    if (!subCategories) return [];
-    return subCategories.filter((cat) => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [subCategories, searchTerm]);
-
   const filteredItems = useMemo(() => {
     if (!items) return [];
-    
-    // Admins see everything. Others see only approved items (or legacy items without a status).
-    const viewableItems = isAdmin
-      ? items
-      : items.filter(item => item.status === 'approved' || !item.status);
-    
+    const viewableItems = isAdmin ? items : items.filter(item => item.status === 'approved' || !item.status);
     return viewableItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [items, searchTerm, isAdmin]);
 
-  const handleSubCategoryClick = (category: WithId<Category>) => {
-    const isLocked = category.visibility === 'pro' && !isPro && !isAdmin;
-    if (isLocked) {
-      setShowUpgradeDialog(true);
-    } else {
-      router.push(`/categories/${category.id}`);
-    }
+  const handleAction = (item: WithId<ContentItem>, action: () => void) => {
+      const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
+      
+      if (isLocked) {
+          const cost = refConfig?.pointsPerUnlock || 5;
+          if (userProfile && userProfile.points >= cost) {
+              setShowUnlockDialog({ item, cost });
+          } else {
+              setShowUpgradeDialog(true);
+          }
+      } else {
+          action();
+      }
   };
 
-  // The page is loading if any of the required data is still being fetched.
+  const confirmUnlock = () => {
+      if (!showUnlockDialog || !user || !firestore) return;
+      
+      const { cost } = showUnlockDialog;
+      const userRef = doc(firestore, 'users', user.uid);
+      
+      // Atomic deduction
+      updateDocumentNonBlocking(userRef, {
+          points: increment(-cost)
+      });
+
+      toast({ title: "تم فتح المحتوى بنجاح! تم خصم النقاط." });
+      setShowUnlockDialog(null);
+      // In a real app, you'd record the unlock in Firestore. For MVP, we allow immediate access.
+  };
+
   const isLoading = areAllCategoriesLoading || areItemsLoading || isUserLoading;
-  
-  // Error state is determined by checking if category exists after loading is complete
   const categoryError = !isLoading && !category;
 
   const FavoriteButton = ({ item }: { item: WithId<ContentItem> }) => (
@@ -107,12 +115,6 @@ export default function CategoryPage() {
     if (category?.isUnderMaintenance && !isAdmin) {
        return (
          <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[2.5rem] mt-8 shadow-lg border border-primary/10 overflow-hidden relative min-h-[400px]">
-            {/* Pulsing Background Decorations */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0s' }}></div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.6s' }}></div>
-            </div>
-
             <div className="relative z-10 space-y-6">
                 <div className="relative inline-block">
                     <div className="bg-primary/10 p-6 rounded-full animate-pulse">
@@ -120,15 +122,12 @@ export default function CategoryPage() {
                     </div>
                     <HardHat className="absolute -bottom-2 -right-2 h-10 w-10 text-yellow-500 animate-bounce" />
                 </div>
-                
                 <div className="space-y-2">
                     <h3 className="font-bold text-3xl text-foreground tracking-tight">نعمل على تحسين القسم</h3>
                     <p className="text-muted-foreground text-lg max-w-xs mx-auto">عفواً، يخضع هذا القسم لصيانة دورية لضمان أفضل تجربة لك. سنعود قريباً!</p>
                 </div>
-
                 <Button variant="secondary" onClick={() => router.back()} className="rounded-full px-8 h-12 text-base font-semibold">
-                    <ArrowLeft className="ml-2 h-5 w-5" />
-                    العودة للخلف
+                    <ArrowLeft className="ml-2 h-5 w-5" /> العودة للخلف
                 </Button>
             </div>
         </div>
@@ -136,62 +135,26 @@ export default function CategoryPage() {
     }
 
     if (!filteredItems || filteredItems.length === 0) return null;
-
     const typedItems = filteredItems as WithId<ContentItem>[];
 
     switch (category?.displayStyle) {
       case 'style1':
         return (
           <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-            {typedItems.map((item, index) => {
+            {typedItems.map((item) => {
               const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
               return (
-              <div
-                key={item.id}
-                className="flex flex-col text-center group relative gap-y-3"
-              >
+              <div key={item.id} className="flex flex-col text-center group relative gap-y-3">
                 <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
                 <div className="relative cursor-pointer aspect-square w-full" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
+                    {isLocked && <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 z-10"><Crown className="h-3 w-3" /> برو</div>}
                     {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover rounded-lg shadow-md" />}
                     <FavoriteButton item={item} />
                 </div>
                 <div className="w-full mt-auto">
-                     <Button className="w-full" disabled={isLocked} onClick={() => isLocked && setShowUpgradeDialog(true)}>
-                        {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
-                        {isLocked ? 'الترقية للتحميل' : 'تحميل'}
-                    </Button>
-                </div>
-              </div>
-            )})}
-          </div>
-        );
-      case 'style2':
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {typedItems.map((item, index) => {
-              const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
-              return (
-              <div
-                key={item.id}
-                className="flex flex-col text-center group gap-y-3"
-              >
-                 <h3 className="font-bold text-base">{item.title}</h3>
-                <div className="relative w-full cursor-pointer" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
-                    {item.imageUrl && <Image 
-                      src={item.imageUrl} 
-                      alt={item.title}
-                      width={500} 
-                      height={300}
-                      className="w-full h-auto object-cover rounded-lg shadow-md"
-                    />}
-                    <FavoriteButton item={item} />
-                </div>
-                <div className="w-full">
-                    <Button className="w-full" disabled={isLocked} onClick={() => isLocked && setShowUpgradeDialog(true)}>
-                        {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
-                        {isLocked ? 'الترقية للتحميل' : 'تحميل'}
+                     <Button className="w-full h-11" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                        {isLocked ? (userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? <Coins className="ml-2 h-4 w-4" /> : <Lock className="ml-2 h-4 w-4" />) : <Download className="ml-2 h-4 w-4" />}
+                        {isLocked ? (userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? 'فتح بالنقاط' : 'ترقية للتحميل') : 'تحميل'}
                     </Button>
                 </div>
               </div>
@@ -200,9 +163,7 @@ export default function CategoryPage() {
         );
       case 'style3':
         const Style3Item = ({ item }: { item: WithId<ContentItem> }) => {
-            const { toast } = useToast();
             const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
-
             const handleCopy = () => {
                 if (item.prompt) {
                     navigator.clipboard.writeText(item.prompt);
@@ -213,53 +174,30 @@ export default function CategoryPage() {
                 <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group relative">
                     <CardContent className="p-4 flex flex-col flex-1 gap-4">
                         <h3 className="font-bold text-xl text-center">{item.title}</h3>
-
-                        <div className="relative cursor-pointer w-full rounded-lg overflow-hidden">
+                        <div className="relative cursor-pointer w-full rounded-lg overflow-hidden aspect-video bg-muted">
                             {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
-                            {item.imageUrl && <Image 
-                              src={item.imageUrl} 
-                              alt={item.title}
-                              width={500} 
-                              height={300}
-                              className="w-full h-auto object-cover"
-                              onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}
-                            />}
+                            {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)} />}
                             <FavoriteButton item={item} />
                         </div>
-
-                        {item.instructions && (
-                            <div className="space-y-2">
-                                <h4 className="font-semibold text-foreground">التعليمات</h4>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 bg-muted rounded-md">{item.instructions}</p>
-                            </div>
-                        )}
-
                         <div className="space-y-2">
                             <h4 className="font-semibold text-foreground">البرومبت</h4>
                             {isLocked ? (
                                 <div className="h-28 bg-muted rounded-md flex flex-col items-center justify-center text-center p-4 gap-2">
                                     <Lock className="h-6 w-6 text-muted-foreground" />
-                                    <p className="text-muted-foreground font-semibold">محتوى حصري للمشتركين</p>
-                                    <Button size="sm" variant="secondary" onClick={() => setShowUpgradeDialog(true)}>الترقية الآن</Button>
+                                    <p className="text-muted-foreground text-xs">محتوى حصري. {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? `افتحه بـ ${refConfig?.pointsPerUnlock} نقطة` : 'اشترك في برو للوصول.'}</p>
+                                    <Button size="sm" variant="secondary" onClick={() => handleAction(item, handleCopy)}>
+                                        {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? 'فتح الآن' : 'الترقية الآن'}
+                                    </Button>
                                 </div>
                             ) : (
                                 <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted border-transparent" dir="ltr" />
                             )}
                         </div>
-                        
                         <div className="flex flex-col sm:flex-row gap-2 mt-auto">
-                            <Button variant="default" className="w-full h-12" onClick={handleCopy} disabled={isLocked}>
-                                {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Copy className="ml-2 h-4 w-4" />}
-                                {isLocked ? 'الترقية للنسخ' : 'نسخ البرومبت'}
+                            <Button variant="default" className="w-full h-12" onClick={() => handleAction(item, handleCopy)}>
+                                {isLocked ? <Coins className="ml-2 h-4 w-4" /> : <Copy className="ml-2 h-4 w-4" />}
+                                {isLocked ? 'فتح بالنقاط' : 'نسخ البرومبت'}
                             </Button>
-                            {item.downloadUrl && (
-                                <Button asChild variant="secondary" className="w-full h-12" disabled={isLocked}>
-                                    <a href={!isLocked ? item.downloadUrl : undefined} target="_blank" rel="noopener noreferrer" onClick={(e) => { if(isLocked) { e.preventDefault(); setShowUpgradeDialog(true); } }}>
-                                        {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
-                                        {isLocked ? 'الترقية للتحميل' : 'تحميل'}
-                                    </a>
-                                </Button>
-                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -267,120 +205,13 @@ export default function CategoryPage() {
         };
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {typedItems.map((item, index) => (
-                <div key={item.id} className="h-full">
-                    <Style3Item item={item} />
-                </div>
+            {typedItems.map((item) => (
+                <div key={item.id} className="h-full"><Style3Item item={item} /></div>
             ))}
           </div>
         );
-       case 'style4':
-        return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {typedItems.map((item, index) => {
-                    const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
-                     return (
-                     <div
-                        key={item.id}
-                        className="h-full"
-                    >
-                        <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-2xl">
-                             {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-300 z-10" />}
-                            <div className="pb-2">
-                                <h3 className="font-bold text-lg text-center">{item.title}</h3>
-                            </div>
-                            
-                            <a href={!isLocked ? item.videoUrl || '#' : undefined} target="_blank" rel="noopener noreferrer" className={cn("relative block", isLocked && "cursor-default")} onClick={(e) => { if(isLocked) { e.preventDefault(); setShowUpgradeDialog(true); } }}>
-                                <div className="aspect-video relative w-full cursor-pointer rounded-lg overflow-hidden shadow-lg" >
-                                    <FavoriteButton item={item} />
-                                    {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
-                                </div>
-                            </a>
-                            
-                            <div className="pt-4 mt-auto">
-                               <Button variant="secondary" className="w-full h-12" disabled={isLocked} onClick={() => { if(isLocked) { setShowUpgradeDialog(true); } else if (item.videoUrl) { window.open(item.videoUrl, '_blank'); } }}>
-                                    {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <PlayCircle className="ml-2 h-4 w-4" />}
-                                    {isLocked ? 'الترقية للمشاهدة' : 'مشاهدة الفيديو'}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )})}
-            </div>
-        );
-        case 'style5':
-            const Style5Item = ({ item }: { item: WithId<ContentItem> }) => {
-                const [emblaApi, setEmblaApi] = useState<CarouselApi>()
-                const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
-                
-                const handleImageClick = (imageUrl: string) => {
-                    if (isLocked) return;
-                    setSelectedImage(imageUrl);
-                };
-
-                return (
-                    <Card className="p-4 flex flex-col gap-4 bg-card text-card-foreground shadow-md rounded-2xl border">
-                        <div className="flex gap-4 items-start">
-                            {item.imageUrl && (
-                                <Image src={item.imageUrl} alt={item.title} width={64} height={64} className="rounded-xl border p-1 shadow-sm bg-background" />
-                            )}
-                            <div className="flex-1">
-                                <h3 className="font-bold text-xl flex items-center gap-2">{item.title} {isLocked && <Crown className="h-5 w-5 text-yellow-500" />}</h3>
-                                {item.appVersion && <p className="text-primary font-semibold text-sm">الإصدار {item.appVersion}</p>}
-                                <p className="text-muted-foreground text-sm mt-1">{item.instructions}</p>
-                            </div>
-                        </div>
-                        {item.screenshots && item.screenshots.length > 0 && (
-                            <div className="relative">
-                                <Carousel 
-                                    setApi={setEmblaApi}
-                                    className="w-full" 
-                                    opts={{ 
-                                        align: 'start', 
-                                        dragFree: true,
-                                        direction: 'rtl',
-                                    }}>
-                                    <CarouselContent className="-ml-1">
-                                        {item.screenshots.map((ss, i) => (
-                                            <CarouselItem key={i} className="basis-4/5 pl-1">
-                                                <Image
-                                                    src={ss}
-                                                    alt={`لقطة شاشة ${i + 1} لـ ${item.title}`}
-                                                    width={1080}
-                                                    height={1920}
-                                                    sizes="(max-width: 768px) 80vw, 40vw"
-                                                    priority={i === 0}
-                                                    className={cn("w-full h-auto rounded-lg bg-muted", !isLocked && "cursor-pointer")}
-                                                    onClick={() => handleImageClick(ss)}
-                                                />
-                                            </CarouselItem>
-                                        ))}
-                                    </CarouselContent>
-                                </Carousel>
-                            </div>
-                        )}
-                        <div className="w-full mt-2">
-                            <Button className="w-full h-12" disabled={isLocked} asChild>
-                                <a href={!isLocked ? item.downloadUrl : undefined} target="_blank" rel="noopener noreferrer" onClick={(e) => { if(isLocked) { e.preventDefault(); setShowUpgradeDialog(true); } }}>
-                                    {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
-                                    {isLocked ? 'الترقية للتحميل' : 'تحميل'}
-                                </a>
-                            </Button>
-                        </div>
-                    </Card>
-                );
-            }
-            return (
-                <div className="space-y-6">
-                    {typedItems.map((item, index) => (
-                        <div key={item.id}>
-                            <Style5Item item={item} />
-                        </div>
-                    ))}
-                </div>
-            );
       default:
-        return null;
+        return <div className="text-center p-12 text-muted-foreground">هذا النمط قيد التطوير...</div>;
     }
   };
   
@@ -404,50 +235,38 @@ export default function CategoryPage() {
         {categoryError ? (
             <div className="text-center text-destructive p-12 bg-destructive/10 rounded-2xl mt-4 space-y-2">
                 <AlertTriangle className="mx-auto h-8 w-8" /><h3 className="font-bold text-lg">خطأ في تحميل القسم</h3>
-                <p className="text-sm">لم نتمكن من العثور على هذا القسم أو ليس لديك إذن لعرضه.</p>
             </div>
         ) : isLoading ? (
           <div className="space-y-8 mt-6">
              <div className="grid grid-cols-2 gap-4">{[...Array(2)].map((_, i) => <CategorySkeleton key={i} className="h-36" />)}</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><Skeleton className="aspect-video w-full rounded-lg" /><Skeleton className="aspect-video w-full rounded-lg" /></div>
           </div>
         ) : (
           <div className="space-y-8 mt-4">
-            {filteredSubCategories && filteredSubCategories.length > 0 && (
-               <div className="grid grid-cols-2 gap-4">
-                {filteredSubCategories.map((cat, index) => {
-                  const isLocked = cat.visibility === 'pro' && !isPro && !isAdmin;
-                  return (
-                  <div
-                    key={cat.id}
-                    className="relative group"
-                    onClick={() => handleSubCategoryClick(cat)}
-                  >
-                       <div className="relative bg-primary p-4 text-primary-foreground rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow-sm h-full min-h-36">
-                        {isLocked && <Crown className="absolute top-2 left-2 h-5 w-5 text-yellow-300 z-10" />}
-                        {cat.fileTypes && <div className="absolute top-2.5 right-2.5 bg-black/20 text-xs font-semibold px-2 py-0.5 rounded-full text-white">{cat.fileTypes}</div>}
-                        <p className="font-bold text-lg text-center">{cat.name}</p>
-                      </div>
-                  </div>
-                )})}
-              </div>
-            )}
             {renderContent()}
-            {(!filteredSubCategories || filteredSubCategories.length === 0) && (!filteredItems || filteredItems.length === 0) && !isLoading && !category?.isUnderMaintenance && (
-                 <div className="text-center text-muted-foreground p-12"><p>لا يوجد محتوى في هذا القسم بعد.</p></div>
-            )}
           </div>
         )}
       </main>
 
-       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
-          <DialogHeader>
-            <DialogTitle className="sr-only">معاينة الصورة</DialogTitle>
-          </DialogHeader>
-          {selectedImage && <Image src={selectedImage} alt="Preview" width={1200} height={800} className="w-full h-auto max-h-[90vh] object-contain rounded-lg" />}
-        </DialogContent>
-      </Dialog>
+       {/* Unlock Dialog */}
+       <Dialog open={!!showUnlockDialog} onOpenChange={(open) => !open && setShowUnlockDialog(null)}>
+           <DialogContent dir="rtl" className="max-w-sm rounded-2xl">
+               <DialogHeader className="text-center space-y-3">
+                   <div className="w-16 h-16 bg-primary/10 text-primary rounded-full mx-auto flex items-center justify-center">
+                       <Coins className="w-8 h-8" />
+                   </div>
+                   <DialogTitle>فتح محتوى برو</DialogTitle>
+                   <p className="text-sm text-muted-foreground">
+                       هل تريد استخدام <strong>{showUnlockDialog?.cost} نقطة</strong> من رصيدك لفتح هذا المحتوى؟
+                   </p>
+                   <div className="bg-muted p-2 rounded-lg text-xs">رصيدك الحالي: {userProfile?.points || 0} نقطة</div>
+               </DialogHeader>
+               <DialogFooter className="flex-row gap-2 mt-4">
+                   <Button variant="ghost" className="flex-1" onClick={() => setShowUnlockDialog(null)}>إلغاء</Button>
+                   <Button className="flex-1" onClick={confirmUnlock}>تأكيد الخصم</Button>
+               </DialogFooter>
+           </DialogContent>
+       </Dialog>
+
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
     </div>
   );

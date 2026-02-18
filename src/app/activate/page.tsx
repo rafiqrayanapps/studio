@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,15 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, getDocs, query, where, writeBatch, collection, serverTimestamp, increment, setDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, where, writeBatch, collection, serverTimestamp, increment } from 'firebase/firestore';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Key, CheckCircle, ShieldAlert, Eye, EyeOff, User, Mail, ShieldCheck, UserPlus } from 'lucide-react';
+import { Loader2, Key, CheckCircle, EyeOff, User, Mail, ShieldCheck, UserPlus, ShieldAlert } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
 import type { WhitelistEntry, ReferralConfig, UserProfile } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
-import { Suspense } from 'react';
 
 // Schemas
 const codeSchema = z.object({ code: z.string().min(1, 'الرجاء إدخال كود التفعيل.') });
@@ -75,12 +74,7 @@ function ActivationForm() {
       const entry = whitelistDoc.data() as WhitelistEntry;
 
       if (entry.isActivated) {
-          const fingerprints = entry.deviceFingerprints || [];
-          if(fingerprints.includes(currentFingerprint)) {
-              throw new Error("هذا الكود تم استخدامه وتفعيله بالفعل على هذا الجهاز.");
-          } else {
-              throw new Error("عذراً، هذا الكود مستخدم على جهاز آخر.");
-          }
+          throw new Error("عذراً، هذا الكود تم استخدامه مسبقاً.");
       }
       
       setActivationData({ whitelistEntry: { ...entry, id: whitelistDoc.id }, fingerprint: currentFingerprint, code: data.code });
@@ -105,28 +99,29 @@ function ActivationForm() {
 
     try {
       if (!firestore || !activationData) throw new Error("فقدت بيانات التفعيل. يرجى المحاولة مرة أخرى.");
-      if (data.email !== activationData.whitelistEntry.id) throw new Error("البريد الإلكتروني لا يتطابق مع البريد المرتبط بالكود.");
-
       const currentFingerprint = activationData.fingerprint;
 
-      // 1. Referral System Logic
+      // 1. Anti-Fraud & Referral Checks
       let referrerId: string | null = null;
       let referrerDocRef: any = null;
-      let referralConfig: ReferralConfig = { requiredReferrals: 5, rewardInterval: 5 };
+      let pointsToAdd = 10;
+      let requiredForPro = 5;
 
-      // Fetch Referral Config
+      // Fetch Global Config
       const configRef = doc(firestore, 'appConfig', 'referral');
       const configSnap = await getDoc(configRef);
       if (configSnap.exists()) {
-          referralConfig = configSnap.data() as ReferralConfig;
+          const conf = configSnap.data() as ReferralConfig;
+          pointsToAdd = conf.pointsPerReferral || 10;
+          requiredForPro = conf.requiredReferrals || 5;
       }
 
       if (data.referralCode) {
-          // Check if device already used a referral
+          // Rule: Device can only use referral once
           const usedInvRef = doc(firestore, 'used_invitations', currentFingerprint);
           const usedInvSnap = await getDoc(usedInvRef);
           if (usedInvSnap.exists()) {
-              throw new Error("عذراً، هذا الجهاز استخدم كود دعوة مسبقاً.");
+              throw new Error("عذراً، هذا الجهاز استخدم كود دعوة مسبقاً ولا يمكنه الاستفادة من كود آخر.");
           }
 
           // Find referrer
@@ -140,12 +135,12 @@ function ActivationForm() {
           referrerId = refSnap.docs[0].id;
           referrerDocRef = refSnap.docs[0].ref;
 
-          if (referrerData.email === data.email) {
+          if (referrerData.email.toLowerCase() === data.email.toLowerCase()) {
               throw new Error("لا يمكنك استخدام كود الدعوة الخاص بك.");
           }
       }
 
-      // 2. Create user
+      // 2. Atomic Creation & Update
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
@@ -159,33 +154,42 @@ function ActivationForm() {
         deviceFingerprints: [currentFingerprint],
       });
 
-      // Create user profile
+      // Create new user profile
       const userProfileRef = doc(firestore, 'users', user.uid);
       const myReferralCode = generateReferralCode(data.email);
       
       batch.set(userProfileRef, {
         email: data.email,
         displayName: data.fullName,
-        subscriptionTier: 'pro',
+        subscriptionTier: 'pro', // Users activated via code are Pro by default in this flow
         createdAt: serverTimestamp(),
-        subscriptionEndDate: activationData.whitelistEntry.subscriptionEndDate || null,
+        points: 0,
         referralCode: myReferralCode,
         referralCount: 0,
         unlockedProCodes: [],
         referredBy: referrerId,
       });
 
-      // 3. Update Referrer if exists
+      // 3. Process Referrer Reward (Atomic)
       if (referrerId && referrerDocRef) {
-          batch.update(referrerDocRef, {
-              referralCount: increment(1)
-          });
-
-          // Handle automatic pro upgrade or unlocked codes for referrer
-          // Note: Full logic for checking thresholds is better handled in an edge case or here
-          // For simplicity, we increment. The UI will reflect the status.
+          // Fetch latest referrer data to check thresholds
+          const rSnap = await getDoc(referrerDocRef);
+          const rData = rSnap.data() as UserProfile;
+          const newCount = (rData.referralCount || 0) + 1;
           
-          // Record invitation usage for this device
+          const updates: any = {
+              referralCount: increment(1),
+              points: increment(pointsToAdd)
+          };
+
+          // Auto-upgrade to Pro if limit reached
+          if (newCount >= requiredForPro && rData.subscriptionTier !== 'pro') {
+              updates.subscriptionTier = 'pro';
+          }
+
+          batch.update(referrerDocRef, updates);
+
+          // Record device usage to prevent fraud
           const usedInvRef = doc(firestore, 'used_invitations', currentFingerprint);
           batch.set(usedInvRef, {
               userId: user.uid,
@@ -233,7 +237,7 @@ function ActivationForm() {
           <Card className="w-full max-w-lg">
             <CardHeader className="text-center">
               <CardTitle>إنشاء الحساب</CardTitle>
-              <CardDescription>أكمل بياناتك الشخصية لتفعيل اشتراكك.</CardDescription>
+              <CardDescription>أكمل بياناتك لتفعيل اشتراكك.</CardDescription>
             </CardHeader>
             <Form {...contractForm}>
               <form onSubmit={contractForm.handleSubmit(onContractSubmit)}>
@@ -249,17 +253,22 @@ function ActivationForm() {
                   <div className="pt-4 border-t">
                       <FormField control={contractForm.control} name="referralCode" render={({ field }) => (
                           <FormItem>
-                              <FormLabel className="text-primary flex items-center gap-2"><UserPlus className="h-4 w-4" /> كود الدعوة (اختياري)</FormLabel>
+                              <FormLabel className="text-primary flex items-center gap-2 font-bold"><UserPlus className="h-4 w-4" /> كود الدعوة (اختياري)</FormLabel>
                               <FormControl>
                                   <Input {...field} placeholder="أدخل كود صديقك هنا" className="text-left font-mono" dir="ltr" />
                               </FormControl>
-                              <FormDescription>إذا كان لديك كود دعوة من صديق، ضعه هنا لتعم الفائدة.</FormDescription>
+                              <FormDescription className="text-xs text-muted-foreground">باستخدام كود صديقك، ستمنحه نقاطاً إضافية وتقربه من تفعيل ميزات برو مجاناً.</FormDescription>
                               <FormMessage />
                           </FormItem>
                       )} />
                   </div>
                 </CardContent>
-                {error && <p className="text-destructive text-sm text-center px-6">{error}</p>}
+                {error && (
+                    <div className="bg-destructive/10 p-3 rounded-lg flex items-center gap-2 mx-6 mb-4 text-destructive text-sm font-bold">
+                        <ShieldAlert className="h-5 w-5" />
+                        <p>{error}</p>
+                    </div>
+                )}
                 <CardFooter><Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="animate-spin" /> : 'تفعيل الحساب'}</Button></CardFooter>
               </form>
             </Form>
@@ -278,6 +287,9 @@ function ActivationForm() {
 
   return (
     <div className="w-full max-w-md mx-auto">
+        <div className="mb-6 bg-blue-50 border border-blue-100 p-4 rounded-xl text-xs text-blue-700 leading-relaxed">
+            <strong>ملاحظة هامة:</strong> نظام المكافآت مخصص لمشاركة التطبيق مع مستخدمين حقيقيين. أي محاولة للتلاعب باستخدام أجهزة وهمية ستؤدي إلى حظر الجهاز نهائياً.
+        </div>
         {renderStep()}
     </div>
   );

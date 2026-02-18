@@ -28,10 +28,12 @@ import {
     Gift,
     ExternalLink,
     Brush,
-    Layers
+    Layers,
+    Coins,
+    Lock
 } from 'lucide-react';
 
-import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, setDoc, where, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
@@ -62,17 +64,15 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('categories');
 
-  // --- Data Fetching ---
   const categoriesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories'), orderBy('order', 'asc')) : null, [firestore]);
-  const { data: categories, isLoading: isLoadingCats } = useCollection<Category>(categoriesQuery);
+  const { data: categories } = useCollection<Category>(categoriesQuery);
 
   const whitelistQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'whitelist'), orderBy('createdAt', 'desc')) : null, [firestore]);
-  const { data: whitelist, isLoading: isLoadingWhitelist } = useCollection<WhitelistEntry>(whitelistQuery);
+  const { data: whitelist } = useCollection<WhitelistEntry>(whitelistQuery);
 
   const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
   const { data: referralConfig } = useDoc<ReferralConfig>(referralConfigRef);
 
-  // --- Content Review Logic (Admin Only) ---
   const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
 
@@ -142,7 +142,12 @@ export default function AdminDashboard() {
   };
 
   const referralForm = useForm<ReferralConfig>({
-      defaultValues: { requiredReferrals: 5, rewardInterval: 5 }
+      defaultValues: { 
+          requiredReferrals: 5, 
+          rewardInterval: 5,
+          pointsPerReferral: 10,
+          pointsPerUnlock: 5
+      }
   });
 
   useEffect(() => {
@@ -152,7 +157,7 @@ export default function AdminDashboard() {
   const onReferralSubmit = async (values: ReferralConfig) => {
       if (!firestore || !isAdmin) return;
       await setDoc(doc(firestore, 'appConfig', 'referral'), values, { merge: true });
-      toast({ title: "تم حفظ إعدادات الإحالة" });
+      toast({ title: "تم حفظ إعدادات الإحالة والنقاط" });
   };
 
   return (
@@ -204,11 +209,6 @@ export default function AdminDashboard() {
             <TabsContent value="categories" className="m-0 space-y-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold">إدارة الأقسام</h2>
-                    {isAdmin && (
-                         <Button onClick={() => {}} className="rounded-xl">
-                            <Plus className="ml-2 h-4 w-4" /> إضافة قسم
-                        </Button>
-                    )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categories?.map(cat => (
@@ -250,20 +250,6 @@ export default function AdminDashboard() {
                                                 <h3 className="text-xl font-bold">{item.title}</h3>
                                                 <Badge variant="secondary">قسم: {categories?.find(c => c.id === item.categoryId)?.name}</Badge>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                                                {item.prompt && (
-                                                    <div className="space-y-1">
-                                                        <span className="font-bold text-muted-foreground">البرومبت:</span>
-                                                        <p className="p-2 bg-muted rounded font-mono text-xs">{item.prompt}</p>
-                                                    </div>
-                                                )}
-                                                {item.videoUrl && (
-                                                    <div className="space-y-1">
-                                                        <span className="font-bold text-muted-foreground">رابط الفيديو:</span>
-                                                        <a href={item.videoUrl} target="_blank" className="text-primary underline flex items-center gap-1">المشاهدة <ExternalLink className="h-3 w-3" /></a>
-                                                    </div>
-                                                )}
-                                            </div>
                                             <div className="flex gap-3 pt-4 border-t">
                                                 <Button className="bg-green-600 hover:bg-green-700 flex-1" onClick={() => handleApproveItem(item)}>
                                                     <CheckCircle className="ml-2 h-4 w-4" /> قبول ونشر
@@ -289,8 +275,7 @@ export default function AdminDashboard() {
             {isAdmin && (
                 <TabsContent value="users" className="m-0 space-y-6">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold">إدارة المستخدمين والصلاحيات</h2>
-                        <Button className="rounded-xl">إضافة مستخدم جديد</Button>
+                        <h2 className="text-2xl font-bold">إدارة المستخدمين</h2>
                     </div>
                     <Card>
                         <Table>
@@ -299,7 +284,6 @@ export default function AdminDashboard() {
                                     <TableHead>البريد الإلكتروني</TableHead>
                                     <TableHead>الدور</TableHead>
                                     <TableHead>الحالة</TableHead>
-                                    <TableHead>الأجهزة</TableHead>
                                     <TableHead className="text-left">إجراءات</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -307,17 +291,8 @@ export default function AdminDashboard() {
                                 {whitelist?.map(entry => (
                                     <TableRow key={entry.email}>
                                         <TableCell className="font-medium">{entry.email}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={entry.role === 'admin' ? 'destructive' : entry.role === 'editor' ? 'default' : 'secondary'}>
-                                                {entry.role}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            {entry.isActivated ? <Badge className="bg-green-500">نشط</Badge> : <Badge variant="outline">غير مفعل</Badge>}
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {entry.deviceFingerprints?.length || 0} جهاز
-                                        </TableCell>
+                                        <TableCell><Badge variant="secondary">{entry.role}</Badge></TableCell>
+                                        <TableCell>{entry.isActivated ? <Badge className="bg-green-500">نشط</Badge> : <Badge variant="outline">غير مفعل</Badge>}</TableCell>
                                         <TableCell className="text-left">
                                             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(entry)}>
                                                 <UserMinus className="h-4 w-4" />
@@ -341,46 +316,41 @@ export default function AdminDashboard() {
                                 <AccordionTrigger className="p-6 font-bold text-lg hover:no-underline">
                                     <div className="flex items-center gap-3">
                                         <Gift className="h-6 w-6 text-primary" />
-                                        إعدادات نظام الإحالة والمكافآت
+                                        إعدادات نظام الإحالة والمكافآت والنقاط
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="px-6 pb-6 border-t pt-6">
                                     <Form {...referralForm}>
                                         <form onSubmit={referralForm.handleSubmit(onReferralSubmit)} className="space-y-6 max-w-lg">
-                                            <FormField control={referralForm.control} name="requiredReferrals" render={({ field }) => (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                                <FormField control={referralForm.control} name="requiredReferrals" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>إحالات تفعيل "برو"</FormLabel>
+                                                        <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
+                                                        <FormDescription>العدد المطلوب للترقية التلقائية.</FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={referralForm.control} name="pointsPerReferral" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>النقاط لكل إحالة</FormLabel>
+                                                        <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
+                                                        <FormDescription>النقاط التي تضاف للرصيد.</FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                            <FormField control={referralForm.control} name="pointsPerUnlock" render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>عدد الإحالات المطلوب لفتح "برو"</FormLabel>
+                                                    <FormLabel>تكلفة فتح محتوى برو (بالنقاط)</FormLabel>
                                                     <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                    <FormDescription>عدد المستخدمين الجدد الذين يجب أن يسجلوا بكود المستخدم ليصبح "برو" تلقائياً.</FormDescription>
+                                                    <FormDescription>عدد النقاط التي سيتم خصمها من رصيد المستخدم عند فتح ملف مقفل.</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
-                                            <FormField control={referralForm.control} name="rewardInterval" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>معدل تراكم الأكواد الإضافية</FormLabel>
-                                                    <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                    <FormDescription>بعد تفعيل البرو، سيحصل المستخدم على كود جديد لكل X إحالات إضافية.</FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            <Button type="submit" className="w-full h-12 rounded-xl">حفظ إعدادات الإحالة</Button>
+                                            <Button type="submit" className="w-full h-12 rounded-xl">حفظ الإعدادات</Button>
                                         </form>
                                     </Form>
-                                </AccordionContent>
-                            </Card>
-                        </AccordionItem>
-
-                        <AccordionItem value="design-request" className="border-none">
-                            <Card>
-                                <AccordionTrigger className="p-6 font-bold text-lg hover:no-underline">
-                                    <div className="flex items-center gap-3">
-                                        <Brush className="h-6 w-6 text-primary" />
-                                        إدارة رابط "اطلب تصميمك"
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-6 pb-6 border-t pt-6">
-                                    <p className="text-sm text-muted-foreground mb-4">تحكم في ظهور رابط طلب التصميم في القائمة الجانبية ورابط التواصل المخصص له.</p>
-                                    <Button variant="outline">تعديل الإعدادات</Button>
                                 </AccordionContent>
                             </Card>
                         </AccordionItem>

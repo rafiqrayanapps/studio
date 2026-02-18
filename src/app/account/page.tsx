@@ -5,7 +5,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Crown, Loader2, Mail, Calendar, LogOut, User, Copy, Users, Gift, CheckCircle2 } from 'lucide-react';
+import { Crown, Loader2, Mail, Calendar, LogOut, User, Copy, Users, Gift, CheckCircle2, Coins, ShieldCheck } from 'lucide-react';
 import { useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { ReferralConfig } from '@/lib/definitions';
 
 export default function AccountPage() {
-  const { user, userProfile, isPro, isLoading } = useUserProfile();
+  const { user, userProfile, isPro, isLoading, points } = useUserProfile();
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
@@ -63,10 +63,6 @@ export default function AccountPage() {
     );
   }
 
-  const subscriptionEndDate = userProfile?.subscriptionEndDate
-    ? safeFormatFirebaseTimestamp(userProfile.subscriptionEndDate)
-    : 'دائمة';
-
   const required = refConfig?.requiredReferrals || 5;
   const progress = Math.min(((userProfile?.referralCount || 0) / required) * 100, 100);
 
@@ -92,20 +88,28 @@ export default function AccountPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-primary/5 p-3 rounded-xl border border-primary/10 text-center">
+                        <p className="text-[10px] text-muted-foreground mb-1">النقاط الحالية</p>
+                        <div className="flex items-center justify-center gap-1.5 text-primary font-bold">
+                            <Coins className="h-4 w-4" />
+                            <span className="text-xl">{points}</span>
+                        </div>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-xl border border-green-100 text-center">
+                        <p className="text-[10px] text-muted-foreground mb-1">الإحالات الناجحة</p>
+                        <div className="flex items-center justify-center gap-1.5 text-green-600 font-bold">
+                            <Users className="h-4 w-4" />
+                            <span className="text-xl">{userProfile?.referralCount || 0}</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">البريد الإلكتروني</p>
                     <div className="flex items-center gap-3 p-3 bg-muted rounded-lg text-sm">
                         <Mail className="h-5 w-5 text-primary" />
                         <span className="font-mono">{user?.email}</span>
-                    </div>
-                </div>
-                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">صلاحية الاشتراك</p>
-                    <div className="flex items-center gap-3 p-3 bg-muted rounded-lg text-sm">
-                        <Calendar className="h-5 w-5 text-primary" />
-                        <span>
-                            ينتهي في: <strong>{subscriptionEndDate}</strong>
-                        </span>
                     </div>
                 </div>
 
@@ -121,18 +125,17 @@ export default function AccountPage() {
             </CardContent>
           </Card>
 
-          {/* Referral System Section */}
           <Card className="overflow-hidden border-2 border-primary/20">
               <CardHeader className="bg-primary/5">
                   <CardTitle className="text-lg flex items-center gap-2">
-                      <Users className="h-5 w-5 text-primary" />
-                      نظام الإحالة والمكافآت
+                      <Gift className="h-5 w-5 text-primary" />
+                      كود الدعوة والمكافآت
                   </CardTitle>
-                  <CardDescription>ادعُ أصدقاءك واحصل على مميزات برو مجانية!</CardDescription>
+                  <CardDescription>شارك الكود واحصل على {refConfig?.pointsPerReferral || 10} نقاط عن كل مستخدم جديد!</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
                   <div className="bg-muted p-4 rounded-xl space-y-2">
-                      <p className="text-sm font-bold">كود الإحالة الخاص بك:</p>
+                      <p className="text-sm font-bold">كودك الخاص:</p>
                       <div className="flex gap-2">
                           <div className="flex-1 bg-background border rounded-lg p-3 text-center font-mono text-xl font-bold tracking-widest text-primary">
                               {userProfile?.referralCode}
@@ -145,7 +148,7 @@ export default function AccountPage() {
 
                   <div className="space-y-3">
                       <div className="flex justify-between items-end">
-                          <p className="text-sm font-medium">التقدم نحو المكافأة القادمة:</p>
+                          <p className="text-sm font-medium">التقدم نحو برو (مجاناً):</p>
                           <p className="text-xs text-primary font-bold">{userProfile?.referralCount || 0} / {required} إحالة</p>
                       </div>
                       <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
@@ -154,25 +157,15 @@ export default function AccountPage() {
                             style={{ width: `${progress}%` }}
                           />
                       </div>
-                      <p className="text-[10px] text-muted-foreground text-center">باقي {Math.max(required - (userProfile?.referralCount || 0), 0)} إحالة للحصول على ميزة برو أو كود جديد.</p>
+                      <p className="text-[10px] text-muted-foreground text-center">باقي {Math.max(required - (userProfile?.referralCount || 0), 0)} إحالة لتصبح "برو" مدى الحياة مجاناً.</p>
                   </div>
 
-                  {userProfile?.unlockedProCodes && userProfile.unlockedProCodes.length > 0 && (
-                      <div className="space-y-3 pt-2">
-                          <p className="text-sm font-bold flex items-center gap-2"><Gift className="h-4 w-4 text-green-500" /> الأكواد التي فتحتها:</p>
-                          <div className="grid grid-cols-1 gap-2">
-                              {userProfile.unlockedProCodes.map((code, idx) => (
-                                  <div key={idx} className="flex items-center justify-between p-2 bg-green-50 border border-green-100 rounded-lg text-sm">
-                                      <span className="font-mono font-bold text-green-700">{code}</span>
-                                      <Button variant="ghost" size="sm" className="h-8" onClick={() => {
-                                          navigator.clipboard.writeText(code);
-                                          toast({ title: "تم نسخ الكود" });
-                                      }}>نسخ</Button>
-                                  </div>
-                              ))}
-                          </div>
+                  <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 flex gap-3 items-start">
+                      <ShieldCheck className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                      <div className="text-[10px] text-yellow-800 leading-relaxed">
+                          <strong>سياسة الحماية:</strong> يتم استخدام بصمة الجهاز لمنع التلاعب. استخدام أجهزة وهمية يؤدي لحظر حسابك نهائياً من النظام.
                       </div>
-                  )}
+                  </div>
               </CardContent>
           </Card>
         </div>
