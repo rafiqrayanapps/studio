@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Category, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -95,22 +95,42 @@ export default function CategoryPage() {
   const categoryError = !isLoading && !category;
 
   const FavoriteButton = ({ item }: { item: WithId<ContentItem> }) => (
-     <Button 
-        size="icon" 
-        className="absolute top-2 left-2 z-10 h-8 w-8 bg-black/50 hover:bg-black/70"
+     <button 
+        className="absolute top-2 left-2 z-10 h-8 w-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-colors"
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFavorite(item); }}
     >
         <Heart className={cn("h-4 w-4 text-white", isFavorite(item.id) && "fill-white")} />
-    </Button>
+    </button>
   );
 
   const renderContent = () => {
     if (category?.isUnderMaintenance && !isAdmin) {
        return (
-         <div className="text-center text-muted-foreground p-12 bg-card rounded-2xl mt-4 space-y-4">
-            <HardHat className="mx-auto h-12 w-12 text-primary" />
-            <h3 className="font-bold text-xl text-foreground">قسم قيد الصيانة</h3>
-            <p>عفواً، هذا القسم يخضع للصيانة حاليًا. يرجى المحاولة مرة أخرى لاحقًا.</p>
+         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[2.5rem] mt-8 shadow-lg border border-primary/10 overflow-hidden relative min-h-[400px]">
+            {/* Pulsing Background Decorations */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0s' }}></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.6s' }}></div>
+            </div>
+
+            <div className="relative z-10 space-y-6">
+                <div className="relative inline-block">
+                    <div className="bg-primary/10 p-6 rounded-full animate-pulse">
+                        <Settings2 className="h-16 w-16 text-primary animate-spin" style={{ animationDuration: '8s' }} />
+                    </div>
+                    <HardHat className="absolute -bottom-2 -right-2 h-10 w-10 text-yellow-500 animate-bounce" />
+                </div>
+                
+                <div className="space-y-2">
+                    <h3 className="font-bold text-3xl text-foreground tracking-tight">نعمل على تحسين القسم</h3>
+                    <p className="text-muted-foreground text-lg max-w-xs mx-auto">عفواً، يخضع هذا القسم لصيانة دورية لضمان أفضل تجربة لك. سنعود قريباً!</p>
+                </div>
+
+                <Button variant="secondary" onClick={() => router.back()} className="rounded-full px-8 h-12 text-base font-semibold">
+                    <ArrowLeft className="ml-2 h-5 w-5" />
+                    العودة للخلف
+                </Button>
+            </div>
         </div>
        )
     }
@@ -118,14 +138,6 @@ export default function CategoryPage() {
     if (!filteredItems || filteredItems.length === 0) return null;
 
     const typedItems = filteredItems as WithId<ContentItem>[];
-
-    const ItemCard = ({ item, children }: {item: WithId<ContentItem>, children: React.ReactNode}) => (
-        <Card className="overflow-hidden bg-card border shadow-sm flex flex-col h-full group relative">
-            <CardContent className="p-0 flex flex-col flex-1">
-                {children}
-            </CardContent>
-        </Card>
-    );
 
     switch (category?.displayStyle) {
       case 'style1':
@@ -236,16 +248,16 @@ export default function CategoryPage() {
                         </div>
                         
                         <div className="flex flex-col sm:flex-row gap-2 mt-auto">
-                            <Button variant="default" className="w-full" onClick={handleCopy} disabled={isLocked}>
+                            <Button variant="default" className="w-full h-12" onClick={handleCopy} disabled={isLocked}>
                                 {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Copy className="ml-2 h-4 w-4" />}
                                 {isLocked ? 'الترقية للنسخ' : 'نسخ البرومبت'}
                             </Button>
                             {item.downloadUrl && (
-                                <Button asChild variant="secondary" className="w-full" disabled={isLocked} onClick={() => isLocked && setShowUpgradeDialog(true)}>
-                                    <span>
+                                <Button asChild variant="secondary" className="w-full h-12" disabled={isLocked}>
+                                    <a href={!isLocked ? item.downloadUrl : undefined} target="_blank" rel="noopener noreferrer" onClick={(e) => { if(isLocked) { e.preventDefault(); setShowUpgradeDialog(true); } }}>
                                         {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
                                         {isLocked ? 'الترقية للتحميل' : 'تحميل'}
-                                    </span>
+                                    </a>
                                 </Button>
                             )}
                         </div>
@@ -286,7 +298,7 @@ export default function CategoryPage() {
                             </a>
                             
                             <div className="pt-4 mt-auto">
-                               <Button variant="secondary" className="w-full" disabled={isLocked} onClick={() => { if(isLocked) { setShowUpgradeDialog(true); } else if (item.videoUrl) { window.open(item.videoUrl, '_blank'); } }}>
+                               <Button variant="secondary" className="w-full h-12" disabled={isLocked} onClick={() => { if(isLocked) { setShowUpgradeDialog(true); } else if (item.videoUrl) { window.open(item.videoUrl, '_blank'); } }}>
                                     {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <PlayCircle className="ml-2 h-4 w-4" />}
                                     {isLocked ? 'الترقية للمشاهدة' : 'مشاهدة الفيديو'}
                                 </Button>
@@ -348,9 +360,11 @@ export default function CategoryPage() {
                             </div>
                         )}
                         <div className="w-full mt-2">
-                            <Button className="w-full" disabled={isLocked} onClick={() => isLocked && setShowUpgradeDialog(true)}>
-                                {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
-                                {isLocked ? 'الترقية للتحميل' : 'تحميل'}
+                            <Button className="w-full h-12" disabled={isLocked} asChild>
+                                <a href={!isLocked ? item.downloadUrl : undefined} target="_blank" rel="noopener noreferrer" onClick={(e) => { if(isLocked) { e.preventDefault(); setShowUpgradeDialog(true); } }}>
+                                    {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
+                                    {isLocked ? 'الترقية للتحميل' : 'تحميل'}
+                                </a>
                             </Button>
                         </div>
                     </Card>

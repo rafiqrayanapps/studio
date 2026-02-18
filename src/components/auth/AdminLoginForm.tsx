@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, AnimationEvent, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,7 +11,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Loader2, Mail, Lock, ShieldAlert, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/form';
 import { FirebaseError } from 'firebase/app';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { WhitelistEntry } from '@/lib/definitions';
@@ -62,6 +62,7 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
 
         if (whitelistSnap.exists()) {
             const whitelistData = whitelistSnap.data() as WhitelistEntry;
+            const currentFingerprint = await getDeviceFingerprint();
 
             // Handle admin/editor login
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
@@ -69,31 +70,17 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
                 return;
             }
             
-            // Handle 'pro' user multi-device logic
+            // Handle 'pro' user session management (Last one wins)
             if (whitelistData.role === 'pro') {
-                const currentFingerprint = await getDeviceFingerprint();
-                const fingerprints = whitelistData.deviceFingerprints || [];
-                const limit = whitelistData.deviceLimit || 1;
-
-                if (fingerprints.includes(currentFingerprint)) {
-                    // Device already registered, allow login
-                    router.push('/home');
-                    return;
-                } else if (fingerprints.length < limit) {
-                    // New device and there's space, register it
-                    const newFingerprints = [...fingerprints, currentFingerprint];
-                    await updateDoc(whitelistRef, { deviceFingerprints: newFingerprints });
-                    router.push('/home');
-                    return;
-                } else {
-                    // Device limit reached
-                    await auth.signOut();
-                    throw new Error("لقد تجاوزت الحد الأقصى لعدد الأجهزة المسموح به لهذا الاشتراك.");
-                }
+                // Update Firestore with the current device as the ONLY active fingerprint
+                await updateDoc(whitelistRef, { 
+                    deviceFingerprints: [currentFingerprint] 
+                });
+                router.push('/home');
+                return;
             }
         }
 
-        // Default redirect for any other authenticated user
         router.push('/home');
 
     } catch (e: any) {
@@ -181,12 +168,12 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
             )}
           </CardContent>
           <CardFooter className="flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full h-12" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
             </Button>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground text-center">
                 <ShieldCheck className="h-4 w-4 text-green-500" />
-                <span>يتم ربط كل جهاز ببصمة فريدة للأمان.</span>
+                <span>يسمح بجلسة نشطة واحدة فقط لكل حساب.</span>
             </div>
           </CardFooter>
         </form>

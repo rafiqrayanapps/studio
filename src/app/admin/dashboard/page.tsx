@@ -3,10 +3,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useAuth } from '@/firebase';
-import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, serverTimestamp, writeBatch, orderBy, Timestamp, setDoc, deleteDoc, collectionGroup, getDocs } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, SubscriptionDialogConfig, ShareLinkConfig, ThemeConfig, Notification as NotificationType, WhitelistEntry, PricingPlan, PaymentLinksConfig, SubscriptionRequest, PaymentMethod, RequestDesignConfig } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle, HardHat } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, Loader2, ArrowUp, ArrowDown, LogOut, Bell, Crown, CheckCircle, HardHat, Eye, ExternalLink, ShieldCheck, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -33,7 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { deleteUserAccount } from '@/lib/user-actions';
 import { useRouter } from 'next/navigation';
-
+import Image from 'next/image';
 
 const colorRegex = /^\s*\d{1,3}(\.\d+)?\s+\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%\s*$/;
 
@@ -174,6 +174,10 @@ export default function AdminDashboardPage() {
   const [editingItem, setEditingItem] = useState<WithId<ContentItem> | null>(null);
   const [sortedItems, setSortedItems] = useState<WithId<ContentItem>[]>([]);
   
+  // Pending Items for Review
+  const [pendingItems, setPendingItems] = useState<(WithId<ContentItem> & { categoryId: string })[]>([]);
+  const [isLoadingPending, setIsLoadingPending] = useState(false);
+
   // Pricing plans state
   const [editingPlan, setEditingPlan] = useState<WithId<PricingPlan> | null>(null);
 
@@ -225,6 +229,35 @@ export default function AdminDashboardPage() {
         setSortedItems([]);
     }
   }, [items]);
+
+  // Fetch pending items for review
+  const fetchPendingItems = async () => {
+    if (!firestore || !isAdmin) return;
+    setIsLoadingPending(true);
+    try {
+        const q = query(collectionGroup(firestore, 'items'), where('status', '==', 'pending'));
+        const querySnapshot = await getDocs(q);
+        const results: (WithId<ContentItem> & { categoryId: string })[] = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data() as ContentItem;
+            // The categoryId is the parent document ID in the path categories/{catId}/items/{itemId}
+            const pathSegments = doc.ref.path.split('/');
+            const categoryId = pathSegments[1];
+            results.push({ ...data, id: doc.id, categoryId });
+        });
+        setPendingItems(results);
+    } catch (e) {
+        console.error("Error fetching pending items:", e);
+    } finally {
+        setIsLoadingPending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) {
+        fetchPendingItems();
+    }
+  }, [firestore, isAdmin]);
 
 
   // Forms
@@ -427,7 +460,8 @@ export default function AdminDashboardPage() {
       const status = isAdmin ? 'approved' : 'pending';
       const newOrder = sortedItems.length > 0 ? Math.max(...sortedItems.map(i => i.order ?? 0)) + 1 : 0;
       addDocumentNonBlocking(collection(firestore, 'categories', selectedContentCategory, 'items'), { ...itemData, status, order: newOrder, createdAt: serverTimestamp() });
-      toast({ title: "تم إضافة محتوى جديد" });
+      toast({ title: isAdmin ? "تم إضافة محتوى جديد" : "تم إرسال المحتوى للمراجعة" });
+      if (isAdmin) fetchPendingItems();
     }
     contentItemForm.reset({ title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', screenshots: '', appVersion: '', visibility: 'public' });
   };
@@ -571,7 +605,7 @@ export default function AdminDashboardPage() {
           createdAt: serverTimestamp(),
           isActivated: false,
           activatedByUid: null,
-          deviceFingerprint: null,
+          deviceFingerprints: null,
         };
 
         if (values.role === 'pro' && values.subscriptionDuration) {
@@ -605,9 +639,12 @@ export default function AdminDashboardPage() {
         if(type === 'category') {
           await deleteDoc(doc(firestore, 'categories', entity.id));
           toast({ title: "تم حذف القسم" });
-        } else if (type === 'item' && selectedContentCategory){
-           await deleteDoc(doc(firestore, 'categories', selectedContentCategory, 'items', entity.id));
+        } else if (type === 'item'){
+           const catId = entity.categoryId || selectedContentCategory;
+           if (!catId) return;
+           await deleteDoc(doc(firestore, 'categories', catId, 'items', entity.id));
            toast({ title: "تم حذف المحتوى" });
+           fetchPendingItems();
         } else if (type === 'notification') {
            await deleteDoc(doc(firestore, 'notifications', entity.id));
            toast({ title: "تم حذف الإشعار" });
@@ -663,11 +700,12 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleApprove = (itemId: string) => {
-    if (!firestore || !selectedContentCategory || !isAdmin) return;
-    const itemRef = doc(firestore, 'categories', selectedContentCategory, 'items', itemId);
-    updateDocumentNonBlocking(itemRef, { status: 'approved' });
-    toast({ title: "تمت الموافقة على المحتوى" });
+  const handleApprove = async (item: WithId<ContentItem> & { categoryId: string }) => {
+    if (!firestore || !isAdmin) return;
+    const itemRef = doc(firestore, 'categories', item.categoryId, 'items', item.id);
+    await updateDoc(itemRef, { status: 'approved' });
+    toast({ title: "تمت الموافقة على المحتوى ونشره" });
+    fetchPendingItems();
   };
 
   const handleLogout = async () => {
@@ -823,8 +861,9 @@ export default function AdminDashboardPage() {
         </Header>
         <main className="flex-1 container mx-auto max-w-5xl py-8 px-4">
             <Tabs defaultValue="categories" dir="rtl">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-6 mb-6 h-auto">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 md:grid-cols-7 mb-6 h-auto gap-2">
                     <TabsTrigger value="categories" className="py-2">الأقسام والمحتوى</TabsTrigger>
+                    {isAdmin && <TabsTrigger value="review" className="py-2 relative">مراجعة المحتوى {pendingItems.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-white font-bold">{pendingItems.length}</span>}</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="plans" className="py-2">خطط الأسعار</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="paymentMethods" className="py-2">طرق الدفع</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="requests" className="py-2">طلبات الاشتراك</TabsTrigger>}
@@ -913,12 +952,12 @@ export default function AdminDashboardPage() {
                                                 <div key={item.id} className="flex items-center gap-2 bg-secondary p-2 rounded-md">
                                                     <p className="flex-1 flex items-center gap-2">{item.title} {item.visibility === 'pro' && <Crown className="h-4 w-4 text-yellow-500" />}</p>
                                                     {item.status === 'pending' && <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">قيد المراجعة</Badge>}
-                                                    {isAdmin && item.status === 'pending' && <Button size="sm" onClick={() => handleApprove(item.id)}><CheckCircle className="ml-1 h-4 w-4"/> موافقة</Button>}
+                                                    {isAdmin && item.status === 'pending' && <Button size="sm" onClick={() => handleApprove({ ...item, categoryId: selectedContentCategory })}><CheckCircle className="ml-1 h-4 w-4"/> موافقة</Button>}
                                                     {isAdmin && <>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'up', `categories/${selectedContentCategory}/items`)} disabled={index === 0}><ArrowUp/></Button>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMove(sortedItems, index, 'down', `categories/${selectedContentCategory}/items`)} disabled={index === sortedItems.length - 1}><ArrowDown/></Button>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingItem(item)}><Edit/></Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'item', entity: item })}><Trash2/></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingEntity({ type: 'item', entity: { ...item, categoryId: selectedContentCategory } })}><Trash2/></Button>
                                                     </>}
                                                 </div>
                                             ))}
@@ -932,6 +971,80 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
                 </TabsContent>
+
+                {isAdmin && <TabsContent value="review">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>مراجعة المحتوى الجديد</CardTitle>
+                            <CardDescription>هنا تظهر الإضافات الجديدة من المحررين بانتظار موافقتك للنشر.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-6">
+                                {isLoadingPending ? (
+                                    <div className="space-y-4">
+                                        <Skeleton className="h-24 w-full" />
+                                        <Skeleton className="h-24 w-full" />
+                                    </div>
+                                ) : pendingItems.length > 0 ? pendingItems.map((item) => (
+                                    <Card key={item.id} className="overflow-hidden border-2 border-yellow-100">
+                                        <div className="flex flex-col md:flex-row">
+                                            {item.imageUrl && (
+                                                <div className="relative w-full md:w-48 h-48 bg-muted">
+                                                    <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 p-4 space-y-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold">{item.title}</h3>
+                                                        <p className="text-sm text-muted-foreground">القسم: <span className="font-semibold text-primary">{categoryMap.get(item.categoryId)?.name || 'غير معروف'}</span></p>
+                                                    </div>
+                                                    <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-200">بانتظار المراجعة</Badge>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                                    {item.downloadUrl && (
+                                                        <a href={item.downloadUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline">
+                                                            <ExternalLink className="h-4 w-4" /> رابط التحميل
+                                                        </a>
+                                                    )}
+                                                    {item.videoUrl && (
+                                                        <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-red-600 hover:underline">
+                                                            <Eye className="h-4 w-4" /> رابط الفيديو
+                                                        </a>
+                                                    )}
+                                                </div>
+
+                                                {item.prompt && (
+                                                    <div className="bg-muted p-2 rounded text-xs font-mono max-h-20 overflow-y-auto">
+                                                        {item.prompt}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex gap-2 pt-2 border-t">
+                                                    <Button size="sm" onClick={() => handleApprove(item)} className="bg-green-600 hover:bg-green-700">
+                                                        <CheckCircle className="ml-2 h-4 w-4" /> موافقة ونشر
+                                                    </Button>
+                                                    <Button size="sm" variant="outline" onClick={() => setEditingItem({ ...item, id: item.id })}>
+                                                        <Edit className="ml-2 h-4 w-4" /> تعديل
+                                                    </Button>
+                                                    <Button size="sm" variant="destructive" onClick={() => setDeletingEntity({ type: 'item', entity: item })}>
+                                                        <Trash2 className="ml-2 h-4 w-4" /> حذف
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                )) : (
+                                    <div className="text-center py-12 bg-muted rounded-xl">
+                                        <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                                        <p className="mt-4 text-muted-foreground">لا يوجد محتوى جديد للمراجعة حالياً.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>}
 
                 {isAdmin && <TabsContent value="plans">
                      <Card>
@@ -1172,7 +1285,7 @@ export default function AdminDashboardPage() {
                                                 <p>الصلاحية: <span className="font-semibold text-primary">{user.role}</span></p>
                                                 {user.activationCode && <p>الكود: <span className="font-mono text-foreground">{user.activationCode}</span></p>}
                                                 {user.subscriptionEndDate && <p>تاريخ الانتهاء: <span className="font-mono text-foreground rtl:ml-2">{safeFormatFirebaseTimestamp(user.subscriptionEndDate)}</span></p>}
-                                                {user.deviceFingerprint && <p>بصمة الجهاز: <span className="font-mono text-xs text-foreground">{user.deviceFingerprint}</span></p>}
+                                                {user.deviceFingerprints && user.deviceFingerprints.length > 0 && <p className="flex items-center gap-1"><ShieldCheck className="h-3 w-3 text-green-500" /> جلسة نشطة</p>}
                                                 <p>الحالة: {user.isActivated ? <span className="font-semibold text-green-500">مفعل</span> : <span className="font-semibold text-yellow-500">غير مفعل</span>}</p>
                                             </div>
                                         </div>

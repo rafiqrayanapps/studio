@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFirestore, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, serverTimestamp, doc, query, orderBy, where } from 'firebase/firestore';
-import { Loader2, User, Phone, Mail, Package, Copy } from 'lucide-react';
+import { Loader2, User, Phone, Mail, Package, Copy, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CardContent } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/form';
 import type { PaymentLinksConfig, PaymentMethod } from '@/lib/definitions';
 import PhoneInput, { isValidPhoneNumber, type Country } from 'react-phone-number-input';
 import { useMemo, useState } from 'react';
@@ -36,6 +36,7 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
   const firestore = useFirestore();
   const { toast } = useToast();
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>('SA');
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const paymentLinksRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'paymentLinks') : null, [firestore]);
   const { data: paymentLinksData } = useDoc<PaymentLinksConfig>(paymentLinksRef);
@@ -51,8 +52,6 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
   const filteredPaymentMethods = useMemo(() => {
     if (!enabledPaymentMethods) return [];
     if (!selectedCountry) return enabledPaymentMethods.filter(method => method.country === 'ALL');
-    
-    // Show methods for the selected country AND global methods
     return enabledPaymentMethods.filter(method => method.country === selectedCountry || method.country === 'ALL');
   }, [enabledPaymentMethods, selectedCountry]);
 
@@ -78,14 +77,47 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
 
     addDocumentNonBlocking(collection(firestore, 'subscriptionRequests'), subscriptionRequest);
     
+    setIsSubmitted(true);
     toast({
       title: "تم استلام طلبك بنجاح!",
-      description: "سيتم توجيهك الآن للخطوة التالية.",
+      description: "يرجى التواصل معنا الآن لتفعيل اشتراكك.",
     });
-
-    form.reset();
-    onSuccess();
   };
+
+  if (isSubmitted) {
+      return (
+          <div className="py-8 text-center space-y-6 animate-in fade-in zoom-in duration-300">
+              <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full mx-auto flex items-center justify-center">
+                  <CheckCircle2 className="w-12 h-12" />
+              </div>
+              <div className="space-y-2">
+                  <h3 className="text-2xl font-bold">تم استلام طلبك!</h3>
+                  <p className="text-muted-foreground">الخطوة الأخيرة: يرجى التواصل معنا عبر أحد الروابط أدناه لإرسال إثبات الدفع وتفعيل حسابك فوراً.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 pt-4">
+                  {paymentLinksData?.whatsappUrl && (
+                      <Button asChild size="lg" className="w-full bg-green-600 hover:bg-green-700">
+                          <a href={paymentLinksData.whatsappUrl} target="_blank" rel="noopener noreferrer">
+                              <MessageSquare className="ml-2 h-5 w-5" />
+                              تواصل عبر واتساب
+                          </a>
+                      </Button>
+                  )}
+                  {paymentLinksData?.telegramUrl && (
+                      <Button asChild size="lg" variant="outline" className="w-full border-blue-500 text-blue-600 hover:bg-blue-50">
+                          <a href={paymentLinksData.telegramUrl} target="_blank" rel="noopener noreferrer">
+                              <Send className="ml-2 h-5 w-5" />
+                              تواصل عبر تلجرام
+                          </a>
+                      </Button>
+                  )}
+              </div>
+              
+              <Button variant="ghost" onClick={onSuccess} className="w-full mt-4">إغلاق والعودة للرئيسية</Button>
+          </div>
+      );
+  }
 
   return (
     <Form {...form}>
@@ -118,7 +150,7 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
                                         <span>{method.name}</span>
                                     </FormLabel>
                                     <div className="flex gap-2">
-                                        <p className="flex-1 rounded-md border border-input bg-muted px-3 py-2 text-sm text-left" dir="ltr">{method.link}</p>
+                                        <p className="flex-1 rounded-md border border-input bg-muted px-3 py-2 text-sm text-left font-mono" dir="ltr">{method.link}</p>
                                         <Button
                                             type="button"
                                             size="icon"
@@ -205,7 +237,7 @@ export default function SubscriptionRequestForm({ planName, onSuccess }: Subscri
         </CardContent>
 
         <div className="space-y-4 pt-4 border-t">
-          <Button type="submit" disabled={isSubmitting} className="w-full">
+          <Button type="submit" disabled={isSubmitting} className="w-full h-14 text-lg">
               {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل بيانات الطلب والمتابعة'}
           </Button>
         </div>
