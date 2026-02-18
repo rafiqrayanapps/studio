@@ -32,9 +32,9 @@ const NavLink = ({
                 isActive ? "text-primary scale-110" : "text-muted-foreground/50 group-hover:text-primary/70"
              )} />
              
-             {/* Red dot for new notifications only */}
+             {/* Notification dot (Red) */}
              {id === 'notifications' && hasNewNotifications && (
-                <div className="absolute top-3 right-1/2 translate-x-4 h-2 w-2 rounded-full bg-destructive border-2 border-card animate-pulse" />
+                <div className="absolute top-3 right-1/2 translate-x-4 h-2 w-2 rounded-full bg-destructive border-2 border-card" />
              )}
         </Link>
     );
@@ -103,19 +103,22 @@ export default function BottomNav() {
 
   return (
     <div className="fixed bottom-6 inset-x-0 z-50 flex justify-center items-center pointer-events-none px-6">
-        <nav className="relative flex items-stretch h-16 w-full max-w-md bg-card/90 backdrop-blur-xl border border-primary/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-[2rem] pointer-events-auto px-2">
+        <nav className="relative flex items-stretch h-16 w-full max-w-md bg-card/90 backdrop-blur-xl border border-primary/10 shadow-[0_15px_40px_rgba(0,0,0,0.15)] rounded-[2.2rem] pointer-events-auto px-2">
             
-            {/* Sliding Fluid Indicator Dot */}
+            {/* Sliding Indicator (Active State) */}
             {activeIndex !== -1 && (
                 <div 
                     className="absolute top-0 h-full flex justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none"
                     style={{ 
                         width: '25%',
                         transform: `translateX(-${activeIndex * 100}%)`,
-                        right: '8px' // Offset for padding/border
+                        right: '8px' 
                     }}
                 >
-                    <div className="absolute top-0 h-1.5 w-1.5 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.8)]" />
+                    {/* The Dot Above Icon */}
+                    <div className="absolute top-0 h-1.5 w-1.5 bg-primary rounded-full shadow-[0_0_12px_rgba(var(--primary),0.9)]" />
+                    {/* Soft Glow Under Icon */}
+                    <div className="absolute bottom-2 h-10 w-10 bg-primary/5 rounded-full blur-xl" />
                 </div>
             )}
 

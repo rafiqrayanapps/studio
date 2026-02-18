@@ -110,32 +110,34 @@ export default function CategoryPage() {
   const renderContent = () => {
     if (category?.isUnderMaintenance && !isAdmin) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-8 shadow-2xl border border-primary/10 overflow-hidden relative min-h-[500px]">
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="absolute w-64 h-64 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0s' }}></div>
-                <div className="absolute w-80 h-80 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.4s' }}></div>
-                <div className="absolute w-96 h-96 bg-primary/5 rounded-full animate-ripple" style={{ animationDelay: '0.8s' }}></div>
+         <div className="flex flex-col items-center justify-center text-center p-6 bg-card rounded-[2.5rem] mt-4 shadow-xl border border-primary/5 overflow-hidden relative min-h-[450px]">
+            {/* Background Animations */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                <div className="absolute w-48 h-48 bg-primary/10 rounded-full animate-ripple" style={{ animationDelay: '0s' }}></div>
+                <div className="absolute w-64 h-64 bg-primary/10 rounded-full animate-ripple" style={{ animationDelay: '0.4s' }}></div>
             </div>
 
-            <div className="relative z-10 space-y-10">
+            <div className="relative z-10 space-y-8">
                 <div className="relative inline-block">
-                    <div className="relative z-10 bg-primary text-primary-foreground p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)]">
-                        <Settings2 className="h-20 w-20 animate-spin" style={{ animationDuration: '6s' }} />
+                    {/* Centered Gear Icon */}
+                    <div className="relative z-10 bg-primary text-primary-foreground p-8 rounded-[2rem] shadow-2xl">
+                        <Settings2 className="h-14 w-14 animate-spin" style={{ animationDuration: '8s' }} />
                     </div>
-                    <div className="absolute -bottom-6 -right-6 bg-yellow-400 p-4 rounded-2xl shadow-xl border-4 border-card animate-bounce">
-                        <HardHat className="h-10 w-10 text-yellow-900" />
+                    {/* Offset Helmet Icon */}
+                    <div className="absolute -bottom-4 -right-4 bg-yellow-400 p-3 rounded-xl shadow-lg border-4 border-card animate-bounce">
+                        <HardHat className="h-7 w-7 text-yellow-900" />
                     </div>
                 </div>
                 
-                <div className="space-y-4">
-                    <h3 className="font-bold text-4xl text-foreground tracking-tight">نعمل على التحسين</h3>
-                    <p className="text-muted-foreground text-xl max-w-sm mx-auto leading-relaxed">
+                <div className="space-y-3">
+                    <h3 className="font-bold text-3xl text-foreground">نعمل على التحسين</h3>
+                    <p className="text-muted-foreground text-base max-w-xs mx-auto leading-relaxed">
                         عفواً، يخضع هذا القسم لصيانة دورية لضمان أفضل تجربة لك. سنعود قريباً بكل جديد!
                     </p>
                 </div>
 
-                <Button variant="outline" onClick={() => router.back()} className="rounded-2xl px-12 h-16 text-lg font-bold border-2 hover:bg-primary hover:text-primary-foreground transition-all shadow-lg active:scale-95">
-                    <ArrowLeft className="ml-2 h-6 w-6" /> العودة للخلف
+                <Button variant="outline" onClick={() => router.back()} className="rounded-2xl px-10 h-14 text-base font-bold border-2 hover:bg-primary hover:text-primary-foreground transition-all shadow-md active:scale-95">
+                    <ArrowLeft className="ml-2 h-5 w-5" /> العودة للخلف
                 </Button>
             </div>
         </div>
@@ -234,7 +236,7 @@ export default function CategoryPage() {
              <Header showMenu={false} title={areAllCategoriesLoading ? '...' : (category?.name || "قسم غير معروف")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
-            <div className="relative z-10 -mt-10">
+            <div className="relative z-10 -mt-12">
               <div className="pb-4 px-6">
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-primary" />

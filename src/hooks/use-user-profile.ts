@@ -120,7 +120,7 @@ export function useUserProfile() {
     
     return { 
         user, 
-        userProfile: userProfile || (user ? { 
+        userProfile: userProfile || (user && tempReferralCode ? { 
             referralCode: tempReferralCode, 
             points: 1, 
             subscriptionTier: 'free' 
