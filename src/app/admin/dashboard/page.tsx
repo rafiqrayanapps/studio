@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -270,7 +271,9 @@ export default function AdminDashboard() {
                                 <CardDescription className="text-xs">النمط: {cat.displayStyle}</CardDescription>
                             </CardHeader>
                             <CardFooter className="p-2 border-t flex justify-end gap-2">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditCategory(cat.id)}><Edit2 className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditCategory(cat.id)}>
+                                    <Edit2 className="h-4 w-4" />
+                                </Button>
                                 {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>}
                             </CardFooter>
                         </Card>

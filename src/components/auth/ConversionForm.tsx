@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, getDocs, query, collection, where, writeBatch, serverTimestamp, getDoc, Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, ShieldAlert, CheckCircle2, Coins } from 'lucide-react';
+import { Loader2, Mail, Lock, ShieldAlert, CheckCircle2, Coins, AlertCircle } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
@@ -126,7 +127,7 @@ export default function ConversionForm() {
           if (e.code === 'auth/email-already-in-use') {
               setError("هذا البريد الإلكتروني مسجل بالفعل.");
           } else if (e.code === 'auth/admin-restricted-operation') {
-              setError("عذراً، يرجى التأكد من تفعيل موفر البريد الإلكتروني في Firebase Console.");
+              setError("تنبيه: يجب تفعيل موفر 'البريد الإلكتروني/كلمة المرور' في Firebase Console لإتمام هذه العملية.");
           } else {
               setError(e.message);
           }
@@ -208,9 +209,9 @@ export default function ConversionForm() {
               </FormItem>
             )} />
             {error && (
-                <div className="bg-destructive/10 p-3 rounded-lg flex items-center gap-2 text-destructive text-sm font-bold">
-                    <ShieldAlert className="h-4 w-4" />
-                    <p>{error}</p>
+                <div className="bg-destructive/10 p-4 rounded-xl flex items-start gap-3 text-destructive text-sm leading-relaxed">
+                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <p className="font-semibold">{error}</p>
                 </div>
             )}
           </CardContent>

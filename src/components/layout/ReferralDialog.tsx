@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -19,7 +20,7 @@ function ReferralDialogContent() {
     const { toast } = useToast();
     const searchParams = useSearchParams();
     
-    const [referralCode, setReferralCode] = useState('');
+    const [referralCodeInput, setReferralCodeInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
 
@@ -31,7 +32,7 @@ function ReferralDialogContent() {
         if (isOpen) {
             const refFromUrl = searchParams.get('ref');
             if (refFromUrl && !userProfile?.referredBy) {
-                setReferralCode(refFromUrl.toUpperCase());
+                setReferralCodeInput(refFromUrl.toUpperCase());
             }
         }
     }, [isOpen, searchParams, userProfile]);
@@ -51,7 +52,7 @@ function ReferralDialogContent() {
     };
 
     const handleRedeemReferral = async () => {
-        if (!firestore || !user || !referralCode) return;
+        if (!firestore || !user || !referralCodeInput) return;
         
         if (userProfile?.referredBy) {
             toast({ variant: "destructive", title: "تنبيه", description: "لقد استخدمت كوداً سابقاً، لا يمكنك استخدام أكثر من كود." });
@@ -69,7 +70,7 @@ function ReferralDialogContent() {
                 throw new Error("عذراً، هذا الجهاز استخدم كود دعوة مسبقاً ولا يمكنه الاستفادة من كود آخر.");
             }
 
-            const codeToFind = referralCode.trim().toUpperCase();
+            const codeToFind = referralCodeInput.trim().toUpperCase();
             const refQuery = query(collection(firestore, 'users'), where("referralCode", "==", codeToFind));
             const refSnap = await getDocs(refQuery);
             
@@ -124,7 +125,7 @@ function ReferralDialogContent() {
                 title: "تم تفعيل الكود بنجاح!", 
                 description: `مبروك! حصلت أنت وصديقك على ${pointsToAdd} نقطة مكافأة.` 
             });
-            setReferralCode('');
+            setReferralCodeInput('');
             setIsOpen(false);
         } catch (e: any) {
             toast({ variant: "destructive", title: "فشل تفعيل الكود", description: e.message });
@@ -198,14 +199,14 @@ function ReferralDialogContent() {
                                         <Input 
                                             placeholder="أدخل الكود هنا" 
                                             className="rounded-2xl h-12 bg-muted border-none text-center font-mono font-bold tracking-widest uppercase"
-                                            value={referralCode}
-                                            onChange={(e) => setReferralCode(e.target.value)}
+                                            value={referralCodeInput}
+                                            onChange={(e) => setReferralCodeInput(e.target.value)}
                                             disabled={isSubmitting}
                                         />
                                         <Button 
                                             className="rounded-2xl h-12 px-6 font-bold" 
                                             onClick={handleRedeemReferral}
-                                            disabled={isSubmitting || !referralCode}
+                                            disabled={isSubmitting || !referralCodeInput}
                                         >
                                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تفعيل'}
                                         </Button>
