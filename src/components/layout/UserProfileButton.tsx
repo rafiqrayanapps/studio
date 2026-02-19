@@ -8,7 +8,6 @@ import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, ChevronLeft, Lay
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 import { useRouter } from 'next/navigation';
 
 export default function UserProfileButton() {
@@ -35,35 +34,8 @@ export default function UserProfileButton() {
         );
     }
 
-    if (isAdmin || isEditor) {
-        const roleLabel = isAdmin ? "حساب المدير" : "حساب المحرر";
-        return (
-             <li>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="w-full justify-between h-auto p-3 hover:bg-secondary">
-                            <span className="font-semibold text-lg">{roleLabel}</span>
-                             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="start">
-                        <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                         <Link href="/admin/dashboard">
-                            <DropdownMenuItem className="cursor-pointer">
-                                <LayoutDashboard className="ml-2 h-4 w-4" />
-                                <span>لوحة التحكم</span>
-                            </DropdownMenuItem>
-                        </Link>
-                        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
-                            <LogOut className="ml-2 h-4 w-4" />
-                            <span>تسجيل الخروج</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </li>
-        )
-    }
+    // Role-based links for Admins/Editors
+    const showDashboardLink = isAdmin || isEditor;
 
     if (user && !user.isAnonymous) {
         return (
@@ -84,6 +56,23 @@ export default function UserProfileButton() {
                         </div>
                     </div>
                 </li>
+                
+                {showDashboardLink && (
+                    <li>
+                        <SheetClose asChild>
+                            <Link href="/admin/dashboard" className="block group">
+                                <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
+                                    <div className="flex items-center gap-2">
+                                        <LayoutDashboard className="h-5 w-5 text-primary" />
+                                        <span className="font-semibold text-lg">لوحة التحكم</span>
+                                    </div>
+                                    <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                            </Link>
+                        </SheetClose>
+                    </li>
+                )}
+
                 <li>
                     <SheetClose asChild>
                         <Link href="/account" className="block group">
@@ -94,6 +83,7 @@ export default function UserProfileButton() {
                         </Link>
                     </SheetClose>
                 </li>
+                
                 <li>
                     <SheetClose asChild>
                         <Link href="/login?tab=convert" className="block group">
@@ -105,8 +95,9 @@ export default function UserProfileButton() {
                                 <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                             </div>
                         </Link>
-                    </SheetClose>
+                    </ профилактика
                 </li>
+                
                 <li>
                     <SheetClose asChild>
                         <button 

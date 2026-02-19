@@ -20,7 +20,8 @@ import {
     Gift,
     Layers,
     UserMinus,
-    Eye
+    Menu,
+    X
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -42,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 import type { Category, ContentItem, WhitelistEntry, ReferralConfig } from '@/lib/definitions';
 import { deleteUserAccount } from '@/lib/user-actions';
@@ -71,13 +73,20 @@ const categorySchema = z.object({
 type CategoryFormValues = z.infer<typeof categorySchema>;
 
 export default function AdminDashboard() {
-  const { isAdmin, isEditor, user } = useUserProfile();
+  const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState(isAdmin ? 'categories' : 'items');
+  const [activeTab, setActiveTab] = useState('items');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+      if (!isUserLoading && isAdmin) {
+          setActiveTab('categories');
+      }
+  }, [isAdmin, isUserLoading]);
 
   const categoriesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories'), orderBy('order', 'asc')) : null, [firestore]);
   const { data: categories } = useCollection<Category>(categoriesQuery);
@@ -232,26 +241,37 @@ export default function AdminDashboard() {
       setActiveTab('items');
   };
 
+  const menuItems = [
+    ...(isAdmin ? [{ id: 'categories', label: 'الأقسام', icon: Layers }] : []),
+    { id: 'items', label: 'إضافة محتوى', icon: Plus },
+    ...(isAdmin ? [
+        { id: 'review', label: 'المراجعة', icon: ShieldCheck, badge: reviewItems.length },
+        { id: 'users', label: 'المستخدمين', icon: Users },
+        { id: 'settings', label: 'الإعدادات', icon: Settings }
+    ] : [])
+  ];
+
+  if (isUserLoading) {
+      return (
+          <div className="flex h-screen items-center justify-center bg-secondary/30">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          </div>
+      );
+  }
+
   return (
     <div className="flex min-h-screen bg-secondary/30">
-      <aside className="hidden md:flex w-64 flex-col bg-card border-l sticky top-0 h-screen">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 flex-col bg-card border-l sticky top-0 h-screen">
         <div className="p-6 border-b flex flex-col items-center gap-2">
             <div className="bg-primary text-primary-foreground p-3 rounded-2xl shadow-lg">
                 <LayoutDashboard className="h-8 w-8" />
             </div>
-            <h1 className="font-bold text-xl mt-2">لوحة التحكم</h1>
+            <h1 className="font-bold text-xl mt-2 text-center">لوحة التحكم</h1>
             <Badge variant="secondary" className="px-3">{isAdmin ? "مدير النظام" : "محرر محتوى"}</Badge>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-            {[
-                ...(isAdmin ? [{ id: 'categories', label: 'الأقسام', icon: Layers }] : []),
-                { id: 'items', label: 'إضافة محتوى', icon: Plus },
-                ...(isAdmin ? [
-                    { id: 'review', label: 'المراجعة', icon: ShieldCheck, badge: reviewItems.length },
-                    { id: 'users', label: 'المستخدمين', icon: Users },
-                    { id: 'settings', label: 'الإعدادات', icon: Settings }
-                ] : [])
-            ].map(item => (
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+            {menuItems.map(item => (
                 <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
@@ -275,13 +295,53 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+      {/* Mobile Top Bar */}
+      <div className="lg:hidden fixed top-0 inset-x-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+              <div className="bg-primary text-primary-foreground p-1.5 rounded-lg">
+                  <LayoutDashboard className="h-5 w-5" />
+              </div>
+              <span className="font-bold text-sm">لوحة التحكم</span>
+          </div>
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon"><Menu className="h-6 w-6" /></Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-64 p-0">
+                  <div className="flex flex-col h-full bg-card">
+                      <div className="p-6 border-b flex flex-col items-center gap-2">
+                          <h1 className="font-bold text-lg">قائمة التحكم</h1>
+                          <Badge variant="secondary">{isAdmin ? "مدير" : "محرر"}</Badge>
+                      </div>
+                      <nav className="flex-1 p-4 space-y-2">
+                          {menuItems.map(item => (
+                              <button
+                                  key={item.id}
+                                  onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                                      activeTab === item.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                                  }`}
+                              >
+                                  <item.icon className="h-5 w-5" />
+                                  <span className="font-bold">{item.label}</span>
+                              </button>
+                          ))}
+                      </nav>
+                      <div className="p-4 border-t">
+                          <Button variant="outline" className="w-full rounded-xl" onClick={() => router.push('/home')}>العودة للتطبيق</Button>
+                      </div>
+                  </div>
+              </SheetContent>
+          </Sheet>
+      </div>
+
+      <main className="flex-1 p-4 lg:p-8 pt-20 lg:pt-8 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             
             <TabsContent value="categories" className="m-0 space-y-6">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold">إدارة الأقسام</h2>
-                    {isAdmin && <Button onClick={() => setEditingCategory({ id: '', name: '', displayStyle: 'style1', visibility: 'public', parentId: null } as any)}><Plus className="ml-2 h-4 w-4" /> إضافة قسم</Button>}
+                    <h2 className="text-xl lg:text-2xl font-bold">إدارة الأقسام</h2>
+                    {isAdmin && <Button size="sm" onClick={() => setEditingCategory({ id: '', name: '', displayStyle: 'style1', visibility: 'public', parentId: null } as any)}><Plus className="ml-1 h-4 w-4" /> جديد</Button>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categories?.map(cat => (
@@ -295,13 +355,13 @@ export default function AdminDashboard() {
                             </CardHeader>
                             <CardFooter className="p-2 border-t flex justify-between gap-2">
                                 <Button variant="ghost" className="text-xs flex-1" onClick={() => goToManageItems(cat.id)}>
-                                    <FileText className="ml-1 h-3 w-3" /> إدارة المحتوى
+                                    <FileText className="ml-1 h-3 w-3" /> المحتوى
                                 </Button>
                                 <div className="flex gap-1">
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditCategory(cat)}>
                                         <Edit2 className="h-4 w-4" />
                                     </Button>
-                                    {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore, 'categories', cat.id))}><Trash2 className="h-4 w-4" /></Button>}
+                                    {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف القسم؟") && deleteDocumentNonBlocking(doc(firestore, 'categories', cat.id))}><Trash2 className="h-4 w-4" /></Button>}
                                 </div>
                             </CardFooter>
                         </Card>
@@ -310,17 +370,17 @@ export default function AdminDashboard() {
             </TabsContent>
 
             <TabsContent value="items" className="m-0 space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                <div className="flex flex-col xl:flex-row justify-between items-start gap-6">
                     <div className="flex-1 w-full space-y-6">
                         <Card>
                             <CardHeader>
                                 <CardTitle>إضافة محتوى جديد</CardTitle>
-                                <CardDescription>اختر القسم والنمط ثم املأ البيانات</CardDescription>
+                                <CardDescription>املأ البيانات واضغط نشر</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground">القسم المستهدف:</label>
+                                        <label className="text-xs font-bold text-muted-foreground">القسم:</label>
                                         <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
                                             <SelectTrigger className="h-12 rounded-xl">
                                                 <SelectValue placeholder="اختر القسم..." />
@@ -334,7 +394,7 @@ export default function AdminDashboard() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground">نمط العرض:</label>
+                                        <label className="text-xs font-bold text-muted-foreground">النمط:</label>
                                         <Select 
                                             value={itemForm.watch('displayStyle')} 
                                             onValueChange={(val: any) => itemForm.setValue('displayStyle', val)}
@@ -375,7 +435,7 @@ export default function AdminDashboard() {
                                                 {(currentItemStyle === 'style1' || currentItemStyle === 'style2') && (
                                                     <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>رابط التحميل المباشر</FormLabel>
+                                                            <FormLabel>رابط التحميل</FormLabel>
                                                             <FormControl><Input {...field} placeholder="https://..." className="h-11" /></FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -403,7 +463,7 @@ export default function AdminDashboard() {
                                                 {currentItemStyle === 'style4' && (
                                                     <FormField control={itemForm.control} name="videoUrl" render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>رابط الفيديو (YouTube/Direct)</FormLabel>
+                                                            <FormLabel>رابط الفيديو</FormLabel>
                                                             <FormControl><Input {...field} placeholder="https://..." className="h-11" /></FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -417,8 +477,8 @@ export default function AdminDashboard() {
                                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                                 <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
                                                                 <SelectContent>
-                                                                    <SelectItem value="public">عام (للجميع)</SelectItem>
-                                                                    <SelectItem value="pro">برو (المشتركين فقط)</SelectItem>
+                                                                    <SelectItem value="public">عام</SelectItem>
+                                                                    <SelectItem value="pro">برو فقط</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </FormItem>
@@ -434,7 +494,7 @@ export default function AdminDashboard() {
 
                                             <Button type="submit" className="w-full h-14 text-lg font-bold rounded-2xl shadow-lg" disabled={itemForm.formState.isSubmitting}>
                                                 {itemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : <Plus className="ml-2 h-5 w-5" />}
-                                                {isAdmin ? "نشر المحتوى فوراً" : "إرسال للمراجعة"}
+                                                {isAdmin ? "نشر فوراً" : "إرسال للمراجعة"}
                                             </Button>
                                         </form>
                                     </Form>
@@ -443,17 +503,16 @@ export default function AdminDashboard() {
                         </Card>
                     </div>
 
-                    <div className="w-full md:w-80">
+                    <div className="w-full xl:w-80 shrink-0">
                         <Card className="h-full">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg flex items-center gap-2">
                                     <Layers className="h-4 w-4 text-primary" />
                                     المحتوى الحالي
                                 </CardTitle>
-                                <CardDescription>في القسم المختار</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <ScrollArea className="h-[500px] pr-4">
+                                <ScrollArea className="h-[400px] lg:h-[500px] pr-4">
                                     {isLoadingItems ? (
                                         <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>
                                     ) : currentItems && currentItems.length > 0 ? (
@@ -466,7 +525,7 @@ export default function AdminDashboard() {
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-[11px] font-bold truncate">{item.title}</p>
                                                         <Badge variant={item.status === 'pending' ? 'outline' : 'secondary'} className="text-[8px] h-4 px-1 mt-1">
-                                                            {item.status === 'pending' ? 'قيد المراجعة' : 'منشور'}
+                                                            {item.status === 'pending' ? 'مراجعة' : 'منشور'}
                                                         </Badge>
                                                     </div>
                                                     {isAdmin && (
@@ -474,7 +533,7 @@ export default function AdminDashboard() {
                                                             variant="ghost" 
                                                             size="icon" 
                                                             className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
-                                                            onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore, 'categories', selectedCategoryId, 'items', item.id))}
+                                                            onClick={() => confirm("حذف المنشور؟") && deleteDocumentNonBlocking(doc(firestore, 'categories', selectedCategoryId, 'items', item.id))}
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -483,7 +542,7 @@ export default function AdminDashboard() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-center text-xs text-muted-foreground py-8">لا يوجد محتوى بعد.</p>
+                                        <p className="text-center text-xs text-muted-foreground py-8">اختر قسماً لعرض محتوياته.</p>
                                     )}
                                 </ScrollArea>
                             </CardContent>
@@ -496,7 +555,7 @@ export default function AdminDashboard() {
                 <TabsContent value="review" className="m-0 space-y-6">
                     <div className="flex items-center gap-3">
                         <ShieldCheck className="h-8 w-8 text-primary" />
-                        <h2 className="text-2xl font-bold">مراجعة المحتوى الجديد</h2>
+                        <h2 className="text-2xl font-bold">مراجعة المحتوى</h2>
                     </div>
                     {isLoadingReview ? (
                         <div className="flex justify-center p-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
@@ -516,21 +575,9 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <Badge>{item.visibility === 'pro' ? 'برو' : 'عام'}</Badge>
                                             </div>
-                                            
-                                            {item.prompt && (
-                                                <div className="bg-muted p-3 rounded-lg">
-                                                    <p className="text-xs font-bold mb-1">البرومبت:</p>
-                                                    <p className="text-xs text-muted-foreground">{item.prompt}</p>
-                                                </div>
-                                            )}
-
                                             <div className="flex gap-3 pt-4 border-t">
-                                                <Button className="bg-green-600 hover:bg-green-700 flex-1" onClick={() => handleApproveItem(item)}>
-                                                    <CheckCircle className="ml-2 h-4 w-4" /> قبول ونشر
-                                                </Button>
-                                                <Button variant="destructive" className="flex-1" onClick={() => handleRejectItem(item)}>
-                                                    <XCircle className="ml-2 h-4 w-4" /> رفض وحذف
-                                                </Button>
+                                                <Button className="bg-green-600 hover:bg-green-700 flex-1" onClick={() => handleApproveItem(item)}>قبول ونشر</Button>
+                                                <Button variant="destructive" className="flex-1" onClick={() => handleRejectItem(item)}>رفض</Button>
                                             </div>
                                         </CardContent>
                                     </div>
@@ -540,7 +587,7 @@ export default function AdminDashboard() {
                     ) : (
                         <Card className="p-20 text-center text-muted-foreground">
                             <CheckCircle className="h-16 w-16 mx-auto mb-4 opacity-20" />
-                            <p className="text-xl">لا توجد طلبات مراجعة حالياً.</p>
+                            <p className="text-xl">لا توجد طلبات معلقة حالياً.</p>
                         </Card>
                     )}
                 </TabsContent>
@@ -548,27 +595,25 @@ export default function AdminDashboard() {
 
             {isAdmin && (
                 <TabsContent value="users" className="m-0 space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold">إدارة المستخدمين</h2>
-                    </div>
-                    <Card>
+                    <h2 className="text-2xl font-bold">المستخدمين</h2>
+                    <Card className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>البريد الإلكتروني</TableHead>
-                                    <TableHead>الدور</TableHead>
-                                    <TableHead>الحالة</TableHead>
-                                    <TableHead className="text-left">إجراءات</TableHead>
+                                    <TableHead className="text-right">البريد</TableHead>
+                                    <TableHead className="text-right">الدور</TableHead>
+                                    <TableHead className="text-right">الحالة</TableHead>
+                                    <TableHead className="text-left">إجراء</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {whitelist?.map(entry => (
                                     <TableRow key={entry.email}>
-                                        <TableCell className="font-medium">{entry.email}</TableCell>
-                                        <TableCell><Badge variant="secondary">{entry.role}</Badge></TableCell>
-                                        <TableCell>{entry.isActivated ? <Badge className="bg-green-500">نشط</Badge> : <Badge variant="outline">غير مفعل</Badge>}</TableCell>
+                                        <TableCell className="font-medium text-right">{entry.email}</TableCell>
+                                        <TableCell className="text-right"><Badge variant="secondary">{entry.role}</Badge></TableCell>
+                                        <TableCell className="text-right">{entry.isActivated ? <Badge className="bg-green-500">نشط</Badge> : <Badge variant="outline">انتظار</Badge>}</TableCell>
                                         <TableCell className="text-left">
-                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteUserAccount(entry.activatedByUid!).then(() => toast({ title: "تم الحذف" }))}>
+                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => entry.activatedByUid && deleteUserAccount(entry.activatedByUid).then(() => toast({ title: "تم الحذف" }))}>
                                                 <UserMinus className="h-4 w-4" />
                                             </Button>
                                         </TableCell>
@@ -582,47 +627,36 @@ export default function AdminDashboard() {
 
             {isAdmin && (
                 <TabsContent value="settings" className="m-0 space-y-6">
-                    <h2 className="text-2xl font-bold">إعدادات النظام العامة</h2>
-                    <Accordion type="single" collapsible className="w-full space-y-4">
+                    <h2 className="text-2xl font-bold">الإعدادات</h2>
+                    <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="referral" className="border-none">
                             <Card>
-                                <AccordionTrigger className="p-6 font-bold text-lg hover:no-underline">
-                                    <div className="flex items-center gap-3">
-                                        <Gift className="h-6 w-6 text-primary" />
-                                        إعدادات الإحالة والمكافآت
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-6 pb-6 border-t pt-6">
-                                    <div className="space-y-6 max-w-lg">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <FormLabel>إحالات تفعيل "برو"</FormLabel>
-                                                <Input type="number" defaultValue={referralConfig?.requiredReferrals || 5} />
-                                                <FormDescription>العدد المطلوب للترقية التلقائية.</FormDescription>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <FormLabel>النقاط لكل إحالة</FormLabel>
-                                                <Input type="number" defaultValue={referralConfig?.pointsPerReferral || 10} />
-                                                <FormDescription>النقاط التي تضاف للرصيد.</FormDescription>
-                                            </div>
+                                <AccordionTrigger className="p-6 font-bold hover:no-underline">إعدادات الإحالة والمكافآت</AccordionTrigger>
+                                <AccordionContent className="px-6 pb-6 border-t pt-6 space-y-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <FormLabel>الهدف (عدد الإحالات)</FormLabel>
+                                            <Input type="number" defaultValue={referralConfig?.requiredReferrals || 5} />
                                         </div>
-                                        <Button type="button" className="w-full h-12 rounded-xl">حفظ الإعدادات</Button>
+                                        <div className="space-y-2">
+                                            <FormLabel>النقاط لكل إحالة</FormLabel>
+                                            <Input type="number" defaultValue={referralConfig?.pointsPerReferral || 10} />
+                                        </div>
                                     </div>
+                                    <Button className="w-full h-12 rounded-xl">حفظ التغييرات</Button>
                                 </AccordionContent>
                             </Card>
                         </AccordionItem>
                     </Accordion>
                 </TabsContent>
             )}
-
         </Tabs>
       </main>
 
       <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
               <DialogHeader>
-                  <DialogTitle>{editingCategory?.id ? "تعديل بيانات القسم" : "إضافة قسم جديد"}</DialogTitle>
-                  <DialogDescription>أدخل البيانات الأساسية للقسم وكيفية عرض المحتوى بداخله.</DialogDescription>
+                  <DialogTitle>{editingCategory?.id ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle>
               </DialogHeader>
               <Form {...catForm}>
                   <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-4">
@@ -631,14 +665,14 @@ export default function AdminDashboard() {
                       )} />
                       <FormField control={catForm.control} name="displayStyle" render={({ field }) => (
                           <FormItem>
-                              <FormLabel>نمط العرض الافتراضي</FormLabel>
+                              <FormLabel>نمط العرض</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                   <SelectContent>
-                                      <SelectItem value="style1">نمط 1 (تحميل)</SelectItem>
-                                      <SelectItem value="style3">نمط 3 (برومبت)</SelectItem>
-                                      <SelectItem value="style4">نمط 4 (فيديو)</SelectItem>
-                                      <SelectItem value="style5">نمط 5 (معرض)</SelectItem>
+                                      <SelectItem value="style1">نمط تحميل</SelectItem>
+                                      <SelectItem value="style3">نمط برومبت</SelectItem>
+                                      <SelectItem value="style4">نمط فيديو</SelectItem>
+                                      <SelectItem value="style5">نمط معرض</SelectItem>
                                   </SelectContent>
                               </Select>
                           </FormItem>
@@ -649,7 +683,7 @@ export default function AdminDashboard() {
                                   <FormLabel>الظهور</FormLabel>
                                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                      <SelectContent><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent>
+                                      <SelectContent><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو</SelectItem></SelectContent>
                                   </Select>
                               </FormItem>
                           )} />
@@ -657,19 +691,8 @@ export default function AdminDashboard() {
                               <FormItem><FormLabel>الترتيب</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>
                           )} />
                       </div>
-                      <FormField control={catForm.control} name="isUnderMaintenance" render={({ field }) => (
-                          <FormItem className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-                              <div className="space-y-0.5">
-                                  <FormLabel>وضع الصيانة</FormLabel>
-                                  <FormDescription className="text-[10px]">إظهار صفحة "نعمل على التحسين" للزوار.</FormDescription>
-                              </div>
-                              <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          </FormItem>
-                      )} />
                       <DialogFooter className="pt-4">
-                          <Button type="submit" className="w-full h-12" disabled={catForm.formState.isSubmitting}>
-                              {catForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ التغييرات"}
-                          </Button>
+                          <Button type="submit" className="w-full h-12" disabled={catForm.formState.isSubmitting}>حفظ التغييرات</Button>
                       </DialogFooter>
                   </form>
               </Form>
