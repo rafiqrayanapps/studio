@@ -64,7 +64,6 @@ export default function CategoryPage() {
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
     
-    // Logic for viewable items: Admin/Editor see all, others see approved or legacy items
     const viewableItems = (isAdmin || isEditor)
         ? rawItems 
         : rawItems.filter(item => 
@@ -143,7 +142,7 @@ export default function CategoryPage() {
 
     return (
         <div className="space-y-10">
-            {/* Sub-categories Navigation (Using the same design as Home Page) */}
+            {/* Sub-categories Navigation - Fixed Design */}
             {currentSubCategories.length > 0 && (
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 px-1 opacity-60">

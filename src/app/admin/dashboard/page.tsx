@@ -188,11 +188,16 @@ export default function AdminDashboard() {
       try {
           const isNew = !editingCategory?.id || editingCategory.id === '';
           const catId = isNew ? doc(collection(firestore, 'categories')).id : editingCategory!.id;
-          await setDoc(doc(firestore, 'categories', catId), {
+          
+          // Fix for parentId string vs null
+          const dataToSave = {
               ...values,
-              order: isNew ? mainCategories.length : (editingCategory!.order ?? 0),
+              parentId: values.parentId === 'null' ? null : values.parentId,
+              order: isNew ? allCategories.length : (editingCategory!.order ?? 0),
               createdAt: isNew ? serverTimestamp() : editingCategory!.createdAt
-          }, { merge: true });
+          };
+
+          await setDoc(doc(firestore, 'categories', catId), dataToSave, { merge: true });
           toast({ title: "تم الحفظ بنجاح" });
           setEditingCategory(null);
       } catch (e) {
@@ -312,7 +317,7 @@ export default function AdminDashboard() {
                                         setActiveTab('items'); 
                                     }}
                                 >
-                                    إدارة المحتوى
+                                    المحتوى
                                 </Button>
                                 <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10" onClick={() => { setEditingCategory(cat); catForm.reset(cat); }}><Edit2 className="h-4 w-4" /></Button>
                                 {isAdmin && (
@@ -339,7 +344,7 @@ export default function AdminDashboard() {
                             <CardTitle className="text-2xl font-black flex items-center gap-3">
                                 <Plus className="h-6 w-6" /> إضافة محتوى جديد
                             </CardTitle>
-                            <CardDescription className="text-primary-foreground/70">اختر القسم ثم املأ البيانات المطلوبة</CardDescription>
+                            <CardDescription className="text-primary-foreground/70">اختر القسم ثم النمط ثم البيانات</CardDescription>
                         </CardHeader>
                         <CardContent className="p-8 space-y-6">
                             <div className="grid grid-cols-1 gap-4">
@@ -370,13 +375,28 @@ export default function AdminDashboard() {
                             {effectiveCategoryId && (
                                 <Form {...itemForm}>
                                     <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-5 pt-4 border-t-2 border-dashed">
-                                        <div className="bg-primary/5 p-4 rounded-2xl flex items-center gap-3 border border-primary/10">
-                                            <div className="p-2 bg-primary text-primary-foreground rounded-lg"><Tag className="h-4 w-4" /></div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-muted-foreground">نمط العرض الحالي</p>
-                                                <p className="text-xs font-black text-primary">{targetCategory?.displayStyle || 'style1'}</p>
-                                            </div>
-                                        </div>
+                                        
+                                        {/* Style Selection Step */}
+                                        <FormField control={itemForm.control} name="displayStyle" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="font-black text-sm">نمط عرض المحتوى (Pattern)</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="h-12 rounded-xl border-2">
+                                                            <SelectValue placeholder="اختر النمط..." />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="style1">تحميل (Style 1)</SelectItem>
+                                                        <SelectItem value="style2">شبكي (Style 2)</SelectItem>
+                                                        <SelectItem value="style3">برومبت (Style 3)</SelectItem>
+                                                        <SelectItem value="style4">فيديو (Style 4)</SelectItem>
+                                                        <SelectItem value="style5">معرض (Style 5)</SelectItem>
+                                                        <SelectItem value="style6">موقع (Style 6)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        )} />
 
                                         <FormField control={itemForm.control} name="title" render={({ field }) => (
                                             <FormItem><FormLabel className="font-black text-sm">عنوان المنشور</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" placeholder="مثلاً: ملحقات فوتوشوب احترافية" /></FormControl></FormItem>
@@ -420,7 +440,7 @@ export default function AdminDashboard() {
                                             <FormField control={itemForm.control} name="visibility" render={({ field }) => (
                                                 <FormItem className="flex-1">
                                                     <FormLabel className="font-black text-sm">من يراه؟</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
                                                         <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
                                                         <SelectContent className="rounded-xl">
                                                             <SelectItem value="public">الجميع (مجاني)</SelectItem>
@@ -522,7 +542,7 @@ export default function AdminDashboard() {
                       <FormField control={catForm.control} name="parentId" render={({ field }) => (
                           <FormItem>
                               <FormLabel className="font-black text-sm">القسم الأب (اختياري)</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value || ''}>
+                              <Select onValueChange={field.onChange} value={field.value || 'null'}>
                                   <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="جعله قسماً رئيسياً" /></SelectTrigger></FormControl>
                                   <SelectContent className="rounded-xl">
                                       <SelectItem value="null">-- قسم رئيسي --</SelectItem>
@@ -535,7 +555,7 @@ export default function AdminDashboard() {
                       <FormField control={catForm.control} name="displayStyle" render={({ field }) => (
                           <FormItem>
                               <FormLabel className="font-black text-sm">نمط عرض المحتوى الافتراضي</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
                                   <SelectContent className="rounded-xl">
                                       <SelectItem value="style1">تحميل (Style 1)</SelectItem>
@@ -552,7 +572,7 @@ export default function AdminDashboard() {
                       <FormField control={catForm.control} name="visibility" render={({ field }) => (
                           <FormItem>
                               <FormLabel className="font-black text-sm">مستوى الوصول</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
                                   <SelectContent className="rounded-xl">
                                       <SelectItem value="public">متاح للجميع</SelectItem>
