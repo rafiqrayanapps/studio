@@ -5,12 +5,12 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc, increment } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, ReferralConfig } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Settings2, Coins, Cpu, Hammer, ExternalLink, Sparkles, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
@@ -19,7 +19,6 @@ import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
-import { Badge } from '@/components/ui/badge';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -134,15 +133,14 @@ export default function CategoryPage() {
         <div className="text-center py-20 text-muted-foreground bg-card rounded-[2.5rem] mt-4 shadow-sm">
             <Search className="h-16 w-16 mx-auto mb-4 opacity-20" />
             <p className="text-xl font-black">لا يوجد محتوى متاح حالياً.</p>
-            <p className="text-sm mt-2 opacity-60">تأكد من اختيار القسم الصحيح أو العودة لاحقاً.</p>
         </div>
     );
 
     const typedItems = filteredItems as WithId<ContentItem>[];
+    const displayStyle = category?.displayStyle || 'style1';
 
     return (
         <div className="space-y-10">
-            {/* Sub-categories Navigation - Fixed Design */}
             {currentSubCategories.length > 0 && (
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 px-1 opacity-60">
@@ -157,7 +155,6 @@ export default function CategoryPage() {
                                     <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95 group overflow-hidden">
                                         <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
                                         {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md" />}
-                                        {sub.fileTypes && <div className="absolute top-3.5 right-3.5 bg-black/20 text-[10px] font-bold px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm">{sub.fileTypes}</div>}
                                         <p className="font-bold text-lg relative z-10 leading-snug">{sub.name}</p>
                                     </div>
                                 </div>
@@ -167,10 +164,9 @@ export default function CategoryPage() {
                 </div>
             )}
 
-            {/* Content Display based on Style */}
             {typedItems.length > 0 && (
                 <div className="space-y-6">
-                    {category?.displayStyle === 'style3' ? (
+                    {displayStyle === 'style3' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {typedItems.map(item => (
                                 <Card key={item.id} className="overflow-hidden bg-card border-none shadow-md rounded-3xl relative">
@@ -193,7 +189,27 @@ export default function CategoryPage() {
                                 </Card>
                             ))}
                         </div>
-                    ) : category?.displayStyle === 'style6' ? (
+                    ) : displayStyle === 'style4' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {typedItems.map(item => (
+                                <Card key={item.id} className="overflow-hidden rounded-3xl border-none shadow-lg bg-card">
+                                    <div className="relative aspect-video bg-black group overflow-hidden">
+                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover opacity-80 group-hover:scale-110 transition-transform duration-700" />}
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="bg-primary/90 text-white p-4 rounded-full shadow-2xl scale-90 group-hover:scale-100 transition-transform cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
+                                                <PlayCircle className="h-10 w-10" />
+                                            </div>
+                                        </div>
+                                        {item.visibility === 'pro' && !isPro && !isAdmin && <div className="absolute top-4 left-4 bg-yellow-500 text-white p-1 rounded-full"><Lock className="h-4 w-4" /></div>}
+                                    </div>
+                                    <div className="p-4 text-center">
+                                        <h3 className="font-bold text-lg">{item.title}</h3>
+                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.instructions || 'شرح توضيحي للمحتوى المرفق.'}</p>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : displayStyle === 'style6' ? (
                         <div className="grid grid-cols-1 gap-6">
                             {typedItems.map(item => (
                                 <Card key={item.id} className="overflow-hidden rounded-[2rem] border-none shadow-lg bg-card">
@@ -203,7 +219,7 @@ export default function CategoryPage() {
                                         </div>
                                         <div className="p-6 flex-1 flex flex-col justify-center space-y-3">
                                             <h3 className="text-xl font-black">{item.title}</h3>
-                                            <p className="text-muted-foreground text-xs line-clamp-2">{item.instructions || 'تفضل بزيارة هذا الموقع للحصول على المزيد من المعلومات والإلهام لمشاريعك.'}</p>
+                                            <p className="text-muted-foreground text-xs line-clamp-2">{item.instructions || 'تفضل بزيارة هذا الموقع للحصول على المزيد من المعلومات.'}</p>
                                             <Button className="w-fit rounded-xl font-black px-6" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                                 <ExternalLink className="ml-2 h-4 w-4" /> زيارة الموقع
                                             </Button>
@@ -216,12 +232,15 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-2 gap-4">
                             {typedItems.map(item => (
                                 <div key={item.id} className="space-y-3 text-center">
-                                    <div className="relative aspect-square rounded-3xl overflow-hidden shadow-md bg-muted" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
+                                    <div className="relative aspect-square rounded-3xl overflow-hidden shadow-md bg-muted group" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform" />}
                                         {item.isNew && <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse">جديد</div>}
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                                            <Eye className="text-white h-8 w-8" />
+                                        </div>
                                     </div>
-                                    <h3 className="font-bold text-sm truncate">{item.title}</h3>
-                                    <Button size="sm" className="w-full rounded-xl h-10 font-black" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                    <h3 className="font-bold text-sm truncate px-1">{item.title}</h3>
+                                    <Button size="sm" className="w-full rounded-xl h-10 font-black shadow-sm" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                         <Download className="ml-2 h-4 w-4" /> تحميل
                                     </Button>
                                 </div>
@@ -244,7 +263,7 @@ export default function CategoryPage() {
               <div className="pb-4 px-6">
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input placeholder="ابحث..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Input placeholder="ابحث..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl focus:ring-2 focus:ring-primary/20" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -268,7 +287,7 @@ export default function CategoryPage() {
       
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
-          <DialogHeader className="sr-only"><DialogTitle>Preview</DialogTitle></DialogHeader>
+          <div className="sr-only">معاينة الصورة</div>
           {selectedImage && <div className="relative w-full h-[80vh]"><Image src={selectedImage} alt="" fill className="object-contain" /></div>}
         </DialogContent>
       </Dialog>
