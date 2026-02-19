@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
@@ -90,16 +90,6 @@ export default function CategoryPage() {
       } else {
           action();
       }
-  };
-
-  const confirmUnlock = () => {
-      if (!showUnlockDialog || !user || !firestore) return;
-      const { cost } = showUnlockDialog;
-      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), {
-          points: increment(-cost)
-      });
-      toast({ title: "تم فتح المحتوى بنجاح!" });
-      setShowUnlockDialog(null);
   };
 
   const handleSubCategoryClick = (sub: WithId<CategoryType>) => {
