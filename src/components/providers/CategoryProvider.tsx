@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, WithId } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import type { Category as CategoryType } from '@/lib/definitions';
 
 interface CategoryContextType {
@@ -21,20 +21,24 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
   const categoriesQuery = useMemoFirebase(
     () => {
       if (!firestore) return null;
-      return query(collection(firestore, 'categories'), orderBy('order', 'asc'));
+      // Fetch all documents without strict ordering to ensure no data is hidden
+      return query(collection(firestore, 'categories'));
     },
     [firestore]
   );
-  const { data: allCategories, isLoading: isLoadingCategories } = useCollection<CategoryType>(categoriesQuery);
+  const { data: rawCategories, isLoading: isLoadingCategories } = useCollection<CategoryType>(categoriesQuery);
 
-  const { mainCategories, subCategories, categoryMap } = useMemo(() => {
-    if (!allCategories) return { mainCategories: [], subCategories: new Map(), categoryMap: new Map() };
+  const { allCategories, mainCategories, subCategories, categoryMap } = useMemo(() => {
+    if (!rawCategories) return { allCategories: null, mainCategories: [], subCategories: new Map(), categoryMap: new Map() };
+    
+    // Sort in-memory: documents without 'order' will appear at the end
+    const sortedCategories = [...rawCategories].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
     
     const main: WithId<CategoryType>[] = [];
     const sub = new Map<string, WithId<CategoryType>[]>();
     const catMap = new Map<string, WithId<CategoryType>>();
 
-    allCategories.forEach(cat => {
+    sortedCategories.forEach(cat => {
         catMap.set(cat.id, cat);
         if (cat.parentId) {
             if (!sub.has(cat.parentId)) sub.set(cat.parentId, []);
@@ -44,8 +48,8 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
         }
     });
 
-    return { mainCategories: main, subCategories: sub, categoryMap: catMap };
-  }, [allCategories]);
+    return { allCategories: sortedCategories, mainCategories: main, subCategories: sub, categoryMap: catMap };
+  }, [rawCategories]);
 
   const value = {
     allCategories,

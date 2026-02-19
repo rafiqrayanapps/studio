@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,7 +20,6 @@ import {
     UserPlus,
     Palette,
     BellRing,
-    MousePointer2,
     Gift,
     Bell,
     Send,
@@ -30,7 +29,6 @@ import {
     Hammer,
     MonitorSmartphone,
     FileCode,
-    ExternalLink,
     Tag,
     Check,
     Zap,
@@ -39,7 +37,7 @@ import {
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, doc, setDoc, where, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, doc, setDoc, where, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 
@@ -59,10 +57,9 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescri
 import DynamicIcon from '@/components/ui/dynamic-icon';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, RequestDesignConfig, Notification, PaymentMethod, PricingPlan } from '@/lib/definitions';
+import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, Notification, PaymentMethod, PricingPlan } from '@/lib/definitions';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 
-// Schemas
 const itemSchema = z.object({
   title: z.string().min(2, "العنوان مطلوب"),
   imageUrl: z.string().url("رابط الصورة غير صالح"),
@@ -72,7 +69,6 @@ const itemSchema = z.object({
   instructions: z.string().optional(),
   videoUrl: z.string().optional(),
   visibility: z.enum(['public', 'pro']),
-  order: z.number().default(0),
   isNew: z.boolean().default(false),
 });
 
@@ -80,7 +76,6 @@ const categorySchema = z.object({
     name: z.string().min(2, "الاسم مطلوب"),
     displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5', 'style6']),
     visibility: z.enum(['public', 'pro']),
-    order: z.number().default(0),
     isUnderMaintenance: z.boolean().default(false),
     fileTypes: z.string().optional(),
 });
@@ -98,11 +93,10 @@ const notificationSchema = z.object({
 
 const paymentMethodSchema = z.object({
     name: z.string().min(2, "الاسم مطلوب"),
-    icon: z.string().min(2, "اسم الأيقونة مطلوب"),
+    icon: z.string().min(2, "الأيقونة مطلوبة"),
     link: z.string().min(1, "الرابط أو النص مطلوب"),
     isUrl: z.boolean().default(true),
     country: z.string().default('ALL'),
-    order: z.number().default(0),
     enabled: z.boolean().default(true),
 });
 
@@ -114,7 +108,6 @@ const pricingPlanSchema = z.object({
     description: z.string().optional(),
     features: z.string().describe("المميزات (افصل بينها بفاصلة)"),
     isFeatured: z.boolean().default(false),
-    order: z.number().default(0),
     enabled: z.boolean().default(true),
     link: z.string().optional(),
 });
@@ -132,68 +125,75 @@ export default function AdminDashboard() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Queries
   const categoriesQuery = useMemoFirebase(() => {
       if (!firestore) return null;
-      return query(collection(firestore, 'categories'), orderBy('order', 'asc'));
+      return query(collection(firestore, 'categories'));
   }, [firestore]);
-  const { data: categories } = useCollection<Category>(categoriesQuery);
+  const { data: rawCategories } = useCollection<Category>(categoriesQuery);
+  const categories = useMemo(() => {
+      if (!rawCategories) return null;
+      return [...rawCategories].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  }, [rawCategories]);
 
   const whitelistQuery = useMemoFirebase(() => {
       if (!firestore) return null;
-      return query(collection(firestore, 'whitelist'), orderBy('createdAt', 'desc'));
+      return query(collection(firestore, 'whitelist'));
   }, [firestore]);
   const { data: whitelist } = useCollection<WhitelistEntry>(whitelistQuery);
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !selectedCategoryId) return null;
-      return query(collection(firestore, 'categories', selectedCategoryId, 'items'), orderBy('order', 'asc'));
+      return query(collection(firestore, 'categories', selectedCategoryId, 'items'));
   }, [firestore, selectedCategoryId]);
-  const { data: currentItems, isLoading: isLoadingItems } = useCollection<ContentItem>(itemsQuery);
+  const { data: rawItems, isLoading: isLoadingItems } = useCollection<ContentItem>(itemsQuery);
+  const currentItems = useMemo(() => {
+      if (!rawItems) return null;
+      return [...rawItems].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  }, [rawItems]);
 
   const notificationsQuery = useMemoFirebase(() => {
       if (!firestore) return null;
-      return query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'));
+      return query(collection(firestore, 'notifications'));
   }, [firestore]);
   const { data: notifications } = useCollection<Notification>(notificationsQuery);
 
   const paymentsQuery = useMemoFirebase(() => {
       if (!firestore) return null;
-      return query(collection(firestore, 'paymentMethods'), orderBy('order', 'asc'));
+      return query(collection(firestore, 'paymentMethods'));
   }, [firestore]);
-  const { data: paymentMethods } = useCollection<PaymentMethod>(paymentsQuery);
+  const { data: rawPayments } = useCollection<PaymentMethod>(paymentsQuery);
+  const paymentMethods = useMemo(() => {
+      if (!rawPayments) return null;
+      return [...rawPayments].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  }, [rawPayments]);
 
   const plansQuery = useMemoFirebase(() => {
       if (!firestore) return null;
-      return query(collection(firestore, 'pricingPlans'), orderBy('order', 'asc'));
+      return query(collection(firestore, 'pricingPlans'));
   }, [firestore]);
-  const { data: pricingPlans } = useCollection<PricingPlan>(plansQuery);
+  const { data: rawPlans } = useCollection<PricingPlan>(plansQuery);
+  const pricingPlans = useMemo(() => {
+      if (!rawPlans) return null;
+      return [...rawPlans].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  }, [rawPlans]);
 
   const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
 
-  // Config Data
   const themeConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'theme') : null, [firestore]);
   const { data: themeConfig } = useDoc<ThemeConfig>(themeConfigRef);
-
-  const subDialogRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'subscriptionDialog') : null, [firestore]);
-  const { data: subDialogConfig } = useDoc<SubscriptionDialogConfig>(subDialogRef);
-
-  const reqDesignRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'requestDesign') : null, [firestore]);
-  const { data: reqDesignConfig } = useDoc<RequestDesignConfig>(reqDesignRef);
 
   const refConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
   const { data: refConfig } = useDoc<ReferralConfig>(refConfigRef);
 
-  // Forms
   const itemForm = useForm<z.infer<typeof itemSchema>>({
     resolver: zodResolver(itemSchema),
-    defaultValues: { title: '', imageUrl: '', displayStyle: 'style1', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', visibility: 'public', order: 0, isNew: false }
+    defaultValues: { title: '', imageUrl: '', displayStyle: 'style1', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', visibility: 'public', isNew: false }
   });
 
   const catForm = useForm<z.infer<typeof categorySchema>>({
       resolver: zodResolver(categorySchema),
-      defaultValues: { name: '', displayStyle: 'style1', visibility: 'public', order: 0, isUnderMaintenance: false, fileTypes: '' }
+      defaultValues: { name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '' }
   });
 
   const userForm = useForm<z.infer<typeof userWhitelistSchema>>({
@@ -208,12 +208,12 @@ export default function AdminDashboard() {
 
   const paymentForm = useForm<z.infer<typeof paymentMethodSchema>>({
       resolver: zodResolver(paymentMethodSchema),
-      defaultValues: { name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', order: 0, enabled: true }
+      defaultValues: { name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', enabled: true }
   });
 
   const planForm = useForm<z.infer<typeof pricingPlanSchema>>({
       resolver: zodResolver(pricingPlanSchema),
-      defaultValues: { name: '', price: '', currency: 'ر.س', frequency: '', description: '', features: '', isFeatured: false, order: 0, enabled: true, link: '' }
+      defaultValues: { name: '', price: '', currency: 'ر.س', frequency: '', description: '', features: '', isFeatured: false, enabled: true, link: '' }
   });
 
   useEffect(() => {
@@ -234,11 +234,10 @@ export default function AdminDashboard() {
     if (activeTab === 'review' && isAdmin) fetchPendingItems();
   }, [firestore, isAdmin, categories, activeTab]);
 
-  // Handlers
   const onAddItem = async (values: z.infer<typeof itemSchema>) => {
     if (!firestore || !selectedCategoryId) return;
     try {
-      const nextOrder = (currentItems?.length || 0) > 0 ? Math.max(...currentItems!.map(i => i.order || 0)) + 1 : 0;
+      const nextOrder = (currentItems?.length || 0) > 0 ? Math.max(...currentItems!.map(i => i.order ?? 0)) + 1 : 0;
       const itemData = { 
           ...values, 
           order: nextOrder, 
@@ -247,16 +246,7 @@ export default function AdminDashboard() {
       };
       await addDocumentNonBlocking(collection(firestore, 'categories', selectedCategoryId, 'items'), itemData);
       toast({ title: isAdmin ? "تمت إضافة المحتوى بنجاح" : "تم إرسال المحتوى للمراجعة" });
-      itemForm.reset({ 
-          ...itemForm.getValues(), 
-          title: '', 
-          imageUrl: '', 
-          downloadUrl: '', 
-          prompt: '', 
-          instructions: '', 
-          videoUrl: '', 
-          isNew: false 
-      });
+      itemForm.reset();
     } catch (e) {
       toast({ title: "فشل في إضافة المحتوى", variant: "destructive" });
     }
@@ -265,9 +255,9 @@ export default function AdminDashboard() {
   const onUpdateCategory = async (values: z.infer<typeof categorySchema>) => {
       if (!firestore) return;
       try {
-          const isNew = !editingCategory?.id || editingCategory.id === '';
+          const isNew = !editingCategory?.id;
           const catId = isNew ? doc(collection(firestore, 'categories')).id : editingCategory.id;
-          const finalOrder = isNew ? (categories?.length || 0) : values.order;
+          const finalOrder = isNew ? (categories?.length || 0) : (editingCategory.order ?? 0);
 
           await setDoc(doc(firestore, 'categories', catId), {
               ...values,
@@ -308,12 +298,13 @@ export default function AdminDashboard() {
   const onUpdatePlan = async (values: z.infer<typeof pricingPlanSchema>) => {
       if (!firestore) return;
       try {
-          const planId = (editingPlan?.id && editingPlan.id !== '') ? editingPlan.id : doc(collection(firestore, 'pricingPlans')).id;
+          const planId = (editingPlan?.id) ? editingPlan.id : doc(collection(firestore, 'pricingPlans')).id;
           const featuresArray = values.features.split(',').map(f => f.trim()).filter(f => f !== '');
           
           await setDoc(doc(firestore, 'pricingPlans', planId), {
               ...values,
-              features: featuresArray
+              features: featuresArray,
+              order: editingPlan?.order ?? (pricingPlans?.length || 0)
           }, { merge: true });
           
           toast({ title: "تم حفظ الباقة بنجاح" });
@@ -323,26 +314,14 @@ export default function AdminDashboard() {
       }
   };
 
-  const toggleMaintenance = async (categoryId: string, currentState: boolean) => {
-      if (!firestore) return;
-      try {
-          await updateDocumentNonBlocking(doc(firestore, 'categories', categoryId), {
-              isUnderMaintenance: !currentState
-          });
-          toast({ 
-              title: !currentState ? "تم تفعيل وضع الصيانة" : "تم إلغاء وضع الصيانة",
-              description: "تم تحديث حالة القسم فوراً."
-          });
-      } catch (e) {
-          toast({ title: "فشل تحديث وضع الصيانة", variant: "destructive" });
-      }
-  };
-
   const onUpdatePayment = async (values: z.infer<typeof paymentMethodSchema>) => {
       if (!firestore) return;
       try {
-          const methodId = (editingPayment?.id && editingPayment.id !== '') ? editingPayment.id : doc(collection(firestore, 'paymentMethods')).id;
-          await setDoc(doc(firestore, 'paymentMethods', methodId), values, { merge: true });
+          const methodId = (editingPayment?.id) ? editingPayment.id : doc(collection(firestore, 'paymentMethods')).id;
+          await setDoc(doc(firestore, 'paymentMethods', methodId), {
+              ...values,
+              order: editingPayment?.order ?? (paymentMethods?.length || 0)
+          }, { merge: true });
           toast({ title: "تم حفظ طريقة الدفع" });
           setEditingPayment(null);
       } catch (e) {
@@ -371,20 +350,6 @@ export default function AdminDashboard() {
           setIsAddUserOpen(false);
       } catch (e) {
           toast({ title: "فشل إضافة المستخدم", variant: "destructive" });
-      }
-  };
-
-  const onSendNotification = async (values: z.infer<typeof notificationSchema>) => {
-      if (!firestore) return;
-      try {
-          await addDocumentNonBlocking(collection(firestore, 'notifications'), {
-              ...values,
-              createdAt: serverTimestamp()
-          });
-          toast({ title: "تم إرسال الإشعار بنجاح" });
-          notifForm.reset();
-      } catch (e) {
-          toast({ title: "فشل إرسال الإشعار", variant: "destructive" });
       }
   };
 
@@ -419,7 +384,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex min-h-screen bg-secondary/30">
-      {/* Sidebar Desktop */}
       <aside className="hidden lg:flex w-72 flex-col bg-card border-l sticky top-0 h-screen shadow-xl z-50">
         <div className="p-8 border-b flex flex-col items-center gap-3">
             <div className="bg-primary text-primary-foreground p-4 rounded-[2rem] shadow-2xl shadow-primary/20 rotate-3">
@@ -466,58 +430,8 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Mobile Top Bar */}
-      <div className="lg:hidden fixed top-0 inset-x-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-              <div className="bg-primary text-primary-foreground p-2 rounded-xl">
-                  <LayoutDashboard className="h-5 w-5" />
-              </div>
-              <span className="font-black text-base">الإدارة</span>
-          </div>
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-xl">
-                      <Menu className="h-6 w-6" />
-                  </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[85vw] p-0 border-0">
-                  <SheetHeader className="sr-only">
-                    <SheetTitle>القائمة الرئيسية</SheetTitle>
-                    <SheetDescription>روابط التنقل الرئيسية في لوحة التحكم</SheetDescription>
-                  </SheetHeader>
-                  <div className="flex flex-col h-full bg-card">
-                      <div className="p-8 border-b text-center bg-primary/5">
-                          <h1 className="font-black text-xl">قائمة التحكم</h1>
-                          <Badge variant="outline" className="mt-2">{isAdmin ? "المدير" : "المحرر"}</Badge>
-                      </div>
-                      <nav className="flex-1 p-6 space-y-3">
-                          {menuItems.map(item => (
-                              <button 
-                                key={item.id} 
-                                onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }} 
-                                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all font-bold ${
-                                    activeTab === item.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
-                                }`}
-                              >
-                                  <item.icon className="h-5 w-5" />
-                                  <span>{item.label}</span>
-                              </button>
-                          ))}
-                      </nav>
-                      <div className="p-6 border-t">
-                          <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => router.push('/home')}>
-                              الرجوع للرئيسية
-                          </Button>
-                      </div>
-                  </div>
-              </SheetContent>
-          </Sheet>
-      </div>
-
       <main className="flex-1 p-4 lg:p-10 pt-20 lg:pt-10 overflow-y-auto">
         <Tabs value={activeTab} className="space-y-8">
-            
-            {/* Categories Tab */}
             <TabsContent value="categories" className="m-0 space-y-8 animate-in fade-in duration-500">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="space-y-1">
@@ -529,14 +443,7 @@ export default function AdminDashboard() {
                             size="lg" 
                             className="rounded-2xl h-14 px-8 font-black shadow-xl shadow-primary/20" 
                             onClick={() => { 
-                                catForm.reset({ 
-                                    name: '', 
-                                    displayStyle: 'style1', 
-                                    visibility: 'public', 
-                                    order: 0, 
-                                    isUnderMaintenance: false, 
-                                    fileTypes: '' 
-                                }); 
+                                catForm.reset(); 
                                 setEditingCategory({ id: '' } as any); 
                             }}
                         >
@@ -598,7 +505,7 @@ export default function AdminDashboard() {
                                             <p className="text-[10px] text-muted-foreground">{cat.isUnderMaintenance ? 'القسم مغلق حالياً' : 'القسم متاح للجميع'}</p>
                                         </div>
                                     </div>
-                                    <Switch checked={cat.isUnderMaintenance} onCheckedChange={() => toggleMaintenance(cat.id, !!cat.isUnderMaintenance)} />
+                                    <Switch checked={cat.isUnderMaintenance} onCheckedChange={() => updateDocumentNonBlocking(doc(firestore!, 'categories', cat.id), { isUnderMaintenance: !cat.isUnderMaintenance })} />
                                 </div>
                             </CardContent>
                             <CardFooter className="p-3 border-t flex gap-2 bg-muted/10">
@@ -624,10 +531,8 @@ export default function AdminDashboard() {
                 </div>
             </TabsContent>
 
-            {/* Items Tab */}
             <TabsContent value="items" className="m-0 space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                    {/* Add Form */}
                     <Card className="xl:col-span-5 shadow-2xl shadow-primary/5 rounded-[2.5rem] border-none">
                         <CardHeader className="p-8 pb-0">
                             <CardTitle className="text-2xl font-black">إضافة محتوى جديد</CardTitle>
@@ -850,7 +755,6 @@ export default function AdminDashboard() {
                         </CardContent>
                     </Card>
 
-                    {/* List View */}
                     <Card className="xl:col-span-7 shadow-xl rounded-[2.5rem] border-none bg-muted/10 overflow-hidden">
                         <CardHeader className="p-8">
                             <CardTitle className="text-xl font-black">المحتوى الحالي في القسم</CardTitle>
@@ -914,7 +818,6 @@ export default function AdminDashboard() {
                 </div>
             </TabsContent>
 
-            {/* Plans Tab */}
             {isAdmin && (
                 <TabsContent value="plans" className="m-0 space-y-8 animate-in fade-in duration-500">
                     <div className="flex justify-between items-center">
@@ -926,9 +829,7 @@ export default function AdminDashboard() {
                             size="lg" 
                             className="rounded-2xl h-14 px-8 font-black shadow-xl shadow-primary/20" 
                             onClick={() => { 
-                                planForm.reset({ 
-                                    name: '', price: '', currency: 'ر.س', frequency: '', description: '', features: '', isFeatured: false, order: 0, enabled: true, link: '' 
-                                }); 
+                                planForm.reset(); 
                                 setEditingPlan({ id: '' } as any); 
                             }}
                         >
@@ -937,12 +838,22 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {pricingPlans?.map(plan => (
+                        {pricingPlans?.map((plan, idx) => (
                             <Card key={plan.id} className={`overflow-hidden border-2 transition-all ${plan.isFeatured ? 'border-primary shadow-xl scale-[1.02]' : 'border-border shadow-sm'}`}>
                                 <CardHeader className="p-6 pb-4">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-1">
-                                            <CardTitle className="text-xl font-black">{plan.name}</CardTitle>
+                                            <div className="flex items-center gap-2">
+                                                <CardTitle className="text-xl font-black">{plan.name}</CardTitle>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === 0} onClick={() => moveItemInFirestore(pricingPlans, idx, 'up', ['pricingPlans'])}>
+                                                        <ChevronUp className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === (pricingPlans?.length || 0) - 1} onClick={() => moveItemInFirestore(pricingPlans, idx, 'down', ['pricingPlans'])}>
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
                                             <CardDescription className="line-clamp-1">{plan.description}</CardDescription>
                                         </div>
                                         {plan.isFeatured && <Badge className="bg-yellow-500 text-white font-bold">الأكثر تميزاً</Badge>}
@@ -981,10 +892,8 @@ export default function AdminDashboard() {
                 </TabsContent>
             )}
 
-            {/* Other Admin-Only Tabs */}
             {isAdmin && (
                 <>
-                    {/* Review Tab */}
                     <TabsContent value="review" className="space-y-8 m-0 animate-in fade-in duration-500">
                         <div className="flex justify-between items-center"><h2 className="text-3xl font-black">طلبات المراجعة ({reviewItems.length})</h2></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1013,7 +922,6 @@ export default function AdminDashboard() {
                         </div>
                     </TabsContent>
 
-                    {/* Notifications Tab */}
                     <TabsContent value="notifications" className="space-y-8 m-0 animate-in fade-in duration-500">
                         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
                             <Card className="xl:col-span-7 shadow-xl rounded-[2.5rem]">
@@ -1025,7 +933,12 @@ export default function AdminDashboard() {
                                 </CardHeader>
                                 <CardContent className="p-8 pt-4">
                                     <Form {...notifForm}>
-                                        <form onSubmit={notifForm.handleSubmit(onSendNotification)} className="space-y-6">
+                                        <form onSubmit={notifForm.handleSubmit(async (values) => {
+                                            if (!firestore) return;
+                                            await addDocumentNonBlocking(collection(firestore, 'notifications'), { ...values, createdAt: serverTimestamp() });
+                                            toast({ title: "تم إرسال الإشعار بنجاح" });
+                                            notifForm.reset();
+                                        })} className="space-y-6">
                                             <FormField control={notifForm.control} name="title" render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel className="font-black">عنوان الإشعار</FormLabel>
@@ -1069,7 +982,6 @@ export default function AdminDashboard() {
                         </div>
                     </TabsContent>
 
-                    {/* Settings Tab */}
                     <TabsContent value="settings" className="space-y-8 m-0 animate-in fade-in duration-500">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <Card className="rounded-[2.5rem] shadow-lg border-none">
@@ -1085,13 +997,6 @@ export default function AdminDashboard() {
                                         <div className="flex gap-3">
                                             <Input value={themeConfig?.primaryColor || ''} onChange={(e) => updateConfig('theme', { primaryColor: e.target.value })} placeholder="350 72% 51%" className="h-12 rounded-xl" />
                                             <div className="w-12 h-12 rounded-xl border-2 shadow-inner" style={{ backgroundColor: `hsl(${themeConfig?.primaryColor})` }} />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <label className="text-xs font-black px-1">اللون الأساسي (الوضع الليلي):</label>
-                                        <div className="flex gap-3">
-                                            <Input value={themeConfig?.primaryColorDark || ''} onChange={(e) => updateConfig('theme', { primaryColorDark: e.target.value })} placeholder="350 72% 51%" className="h-12 rounded-xl" />
-                                            <div className="w-12 h-12 rounded-xl border-2 shadow-inner" style={{ backgroundColor: `hsl(${themeConfig?.primaryColorDark})` }} />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -1113,16 +1018,11 @@ export default function AdminDashboard() {
                                         <label className="text-[10px] font-black uppercase">نقاط كل إحالة</label>
                                         <Input type="number" value={refConfig?.pointsPerReferral || 50} onChange={(e) => updateConfig('referral', { pointsPerReferral: parseInt(e.target.value) })} className="h-12 rounded-xl" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase">نقاط توليد كود</label>
-                                        <Input type="number" value={refConfig?.pointsToGenerateCode || 200} onChange={(e) => updateConfig('referral', { pointsToGenerateCode: parseInt(e.target.value) })} className="h-12 rounded-xl" />
-                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
                     </TabsContent>
 
-                    {/* Users Tab */}
                     <TabsContent value="users" className="space-y-8 m-0 animate-in fade-in duration-500">
                         <div className="flex justify-between items-center"><h2 className="text-3xl font-black">المستخدمين المعتمدين</h2><Button className="h-14 px-8 rounded-2xl font-black" onClick={() => setIsAddUserOpen(true)}><UserPlus className="ml-2 h-5 w-5" /> إضافة يدوية</Button></div>
                         <Card className="rounded-[2.5rem] shadow-xl overflow-hidden border-none">
@@ -1133,15 +1033,22 @@ export default function AdminDashboard() {
                         </Card>
                     </TabsContent>
 
-                    {/* Payments Tab */}
                     <TabsContent value="payments" className="space-y-8 m-0 animate-in fade-in duration-500">
-                        <div className="flex justify-between items-center"><h2 className="text-3xl font-black">طرق الدفع</h2><Button className="h-14 px-8 rounded-2xl font-black shadow-lg" onClick={() => { paymentForm.reset({ name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', order: 0, enabled: true }); setEditingPayment({ id: '' } as any); }}><Plus className="ml-2 h-5 w-5" /> إضافة طريقة دفع</Button></div>
+                        <div className="flex justify-between items-center"><h2 className="text-3xl font-black">طرق الدفع</h2><Button className="h-14 px-8 rounded-2xl font-black shadow-lg" onClick={() => { paymentForm.reset(); setEditingPayment({ id: '' } as any); }}><Plus className="ml-2 h-5 w-5" /> إضافة طريقة دفع</Button></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {paymentMethods?.map(method => (
+                            {paymentMethods?.map((method, idx) => (
                                 <Card key={method.id} className="rounded-[2rem] border-2 border-primary/5 shadow-sm overflow-hidden">
                                     <CardHeader className="p-6 pb-4 bg-muted/20 flex-row items-center gap-4 space-y-0">
+                                        <div className="flex flex-col gap-0.5">
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === 0} onClick={() => moveItemInFirestore(paymentMethods, idx, 'up', ['paymentMethods'])}>
+                                                <ChevronUp className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === (paymentMethods?.length || 0) - 1} onClick={() => moveItemInFirestore(paymentMethods, idx, 'down', ['paymentMethods'])}>
+                                                <ChevronDown className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                         <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner"><DynamicIcon name={method.icon} className="h-7 w-7" /></div>
-                                        <div className="flex-1 min-w-0"><CardTitle className="text-lg font-black truncate">{method.name}</CardTitle><div className="flex items-center gap-2 mt-1"><Badge variant="outline" className="text-[8px] font-black h-4 px-2">{method.country}</Badge><Badge variant="secondary" className="text-[8px] font-black h-4 px-2">{method.isUrl ? 'رابط مباشر' : 'نص للنسخ'}</Badge></div></div>
+                                        <div className="flex-1 min-w-0"><CardTitle className="text-lg font-black truncate">{method.name}</CardTitle><div className="flex items-center gap-2 mt-1"><Badge variant="outline" className="text-[8px] font-black h-4 px-2">{method.country}</Badge></div></div>
                                         <Switch checked={method.enabled} onCheckedChange={(val) => updateDocumentNonBlocking(doc(firestore!, 'paymentMethods', method.id), { enabled: val })} />
                                     </CardHeader>
                                     <CardFooter className="p-3 border-t bg-muted/5 flex gap-2">
@@ -1157,45 +1064,20 @@ export default function AdminDashboard() {
         </Tabs>
       </main>
 
-      {/* Dialogs */}
       <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
               <DialogHeader className="mb-6">
                   <DialogTitle className="text-2xl font-black">
-                      {(editingCategory?.id && editingCategory.id !== '') ? "تعديل القسم" : "إضافة قسم جديد"}
+                      {(editingCategory?.id) ? "تعديل القسم" : "إضافة قسم جديد"}
                   </DialogTitle>
-                  <DialogDescription className="font-bold text-muted-foreground">أدخل بيانات القسم لإدارته في الموقع الرئيسي.</DialogDescription>
               </DialogHeader>
               <Form {...catForm}>
                   <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-6">
-                      <FormField 
-                        control={catForm.control} 
-                        name="name" 
-                        render={({ field }) => (
+                      <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={catForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel className="font-black">صيغ الملفات (اختياري)</FormLabel><FormControl><Input {...field} placeholder="PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={catForm.control} name="displayStyle" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-black">اسم القسم</FormLabel>
-                            <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={catForm.control} 
-                        name="fileTypes" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-black flex items-center gap-2">
-                              <FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (اختياري)
-                            </FormLabel>
-                            <FormControl><Input {...field} placeholder="PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl>
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={catForm.control} 
-                        name="displayStyle" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-black">نمط العرض الافتراضي</FormLabel>
+                            <FormLabel className="font-black">نمط العرض</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
                               <SelectContent className="rounded-xl">
@@ -1207,12 +1089,8 @@ export default function AdminDashboard() {
                               </SelectContent>
                             </Select>
                           </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={catForm.control} 
-                        name="visibility" 
-                        render={({ field }) => (
+                      )} />
+                      <FormField control={catForm.control} name="visibility" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-black">مستوى الظهور</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -1223,8 +1101,7 @@ export default function AdminDashboard() {
                               </SelectContent>
                             </Select>
                           </FormItem>
-                        )} 
-                      />
+                      )} />
                       <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 text-lg font-black rounded-2xl">حفظ القسم الآن</Button></DialogFooter>
                   </form>
               </Form>
@@ -1233,11 +1110,7 @@ export default function AdminDashboard() {
 
       <Dialog open={!!editingPlan} onOpenChange={(open) => !open && setEditingPlan(null)}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
-              <DialogHeader className="mb-6">
-                  <DialogTitle className="text-2xl font-black">
-                      {(editingPlan?.id && editingPlan.id !== '') ? "تعديل الباقة" : "إضافة باقة جديدة"}
-                  </DialogTitle>
-              </DialogHeader>
+              <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">{(editingPlan?.id) ? "تعديل الباقة" : "إضافة باقة جديدة"}</DialogTitle></DialogHeader>
               <Form {...planForm}>
                   <form onSubmit={planForm.handleSubmit(onUpdatePlan)} className="space-y-5">
                       <FormField control={planForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم الباقة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
@@ -1258,18 +1131,8 @@ export default function AdminDashboard() {
               <Form {...paymentForm}>
                   <form onSubmit={paymentForm.handleSubmit(onUpdatePayment)} className="space-y-5">
                       <FormField control={paymentForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">الاسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
-                      <FormField control={paymentForm.control} name="icon" render={({ field }) => (
-                          <FormItem>
-                              <FormLabel className="font-black">اسم الأيقونة (Lucide)</FormLabel>
-                              <FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl>
-                          </FormItem>
-                      )} />
-                      <FormField control={paymentForm.control} name="link" render={({ field }) => (
-                          <FormItem>
-                              <FormLabel className="font-black">الرابط أو النص</FormLabel>
-                              <FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl>
-                          </FormItem>
-                      )} />
+                      <FormField control={paymentForm.control} name="icon" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم الأيقونة (Lucide)</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>)} />
+                      <FormField control={paymentForm.control} name="link" render={({ field }) => (<FormItem><FormLabel className="font-black">الرابط أو النص</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>)} />
                       <FormField control={paymentForm.control} name="country" render={({ field }) => (
                           <FormItem>
                               <FormLabel className="font-black">الدولة</FormLabel>
@@ -1294,13 +1157,7 @@ export default function AdminDashboard() {
               <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">إضافة مستخدم يدوياً</DialogTitle></DialogHeader>
               <Form {...userForm}>
                   <form onSubmit={userForm.handleSubmit(onAddUser)} className="space-y-6">
-                      <FormField control={userForm.control} name="email" render={({ field }) => (
-                          <FormItem>
-                              <FormLabel className="font-black">البريد الإلكتروني</FormLabel>
-                              <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
-                              <FormMessage />
-                          </FormItem>
-                      )} />
+                      <FormField control={userForm.control} name="email" render={({ field }) => (<FormItem><FormLabel className="font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
                       <FormField control={userForm.control} name="role" render={({ field }) => (
                           <FormItem>
                               <FormLabel className="font-black">الصلاحية</FormLabel>
