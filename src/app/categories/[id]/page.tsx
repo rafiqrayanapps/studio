@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -5,10 +6,9 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, increment } from 'firebase/firestore';
 import type { Category, ContentItem, ReferralConfig } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, PlayCircle, Crown, Lock, HardHat, Settings2, Coins, Sparkles, Cpu, Hammer } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Settings2, Coins, Cpu, Hammer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -35,7 +35,7 @@ export default function CategoryPage() {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [showUnlockDialog, setShowUnlockDialog] = useState<{item: WithId<ContentItem>, cost: number} | null>(null);
 
-  const { subCategories: allSubCategories, categoryMap, isLoadingCategories: areAllCategoriesLoading } = useCategories();
+  const { categoryMap, isLoadingCategories: areAllCategoriesLoading } = useCategories();
   const category = useMemo(() => categoryMap.get(id), [categoryMap, id]);
 
   const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
@@ -187,7 +187,7 @@ export default function CategoryPage() {
     if (!filteredItems || filteredItems.length === 0) return (
         <div className="text-center py-20 text-muted-foreground">
             <Search className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p className="text-lg">لا يوجد محتوى يطابق بحثك حالياً.</p>
+            <p className="text-lg font-bold">لا يوجد محتوى يطابق بحثك حالياً.</p>
         </div>
     );
     const typedItems = filteredItems as WithId<ContentItem>[];
@@ -239,7 +239,7 @@ export default function CategoryPage() {
                             {isLocked ? (
                                 <div className="h-28 bg-muted/50 rounded-xl flex flex-col items-center justify-center text-center p-4 gap-2 border border-dashed">
                                     <Lock className="h-6 w-6 text-muted-foreground" />
-                                    <p className="text-muted-foreground text-xs">محتوى حصري. {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? `افتحه بـ ${refConfig?.pointsPerUnlock} نقطة` : 'اشترك في برو للوصول.'}</p>
+                                    <p className="text-muted-foreground text-xs font-bold">محتوى حصري. {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? `افتحه بـ ${refConfig?.pointsPerUnlock} نقطة` : 'اشترك في برو للوصول.'}</p>
                                     <Button size="sm" variant="secondary" className="rounded-lg" onClick={() => handleAction(item, handleCopy)}>
                                         {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? 'فتح الآن' : 'الترقية الآن'}
                                     </Button>
@@ -266,7 +266,7 @@ export default function CategoryPage() {
           </div>
         );
       default:
-        return <div className="text-center p-12 text-muted-foreground">هذا النمط قيد التطوير...</div>;
+        return <div className="text-center p-12 text-muted-foreground font-bold">هذا النمط قيد التطوير...</div>;
     }
   };
   
@@ -303,14 +303,14 @@ export default function CategoryPage() {
       </main>
 
        <Dialog open={!!showUnlockDialog} onOpenChange={(open) => !open && setShowUnlockDialog(null)}>
-           <DialogContent dir="rtl" className="max-w-sm rounded-[2rem] gap-0 p-0 overflow-hidden">
+           <DialogContent dir="rtl" className="max-w-sm rounded-[2rem] gap-0 p-0 overflow-hidden border-none shadow-2xl">
                <div className="p-6 text-center space-y-4">
                    <div className="w-20 h-20 bg-primary/10 text-primary rounded-3xl mx-auto flex items-center justify-center animate-pulse">
                        <Coins className="w-10 h-10" />
                    </div>
                    <DialogHeader className="space-y-2">
                        <DialogTitle className="text-2xl font-bold">فتح محتوى برو</DialogTitle>
-                       <p className="text-sm text-muted-foreground leading-relaxed">
+                       <p className="text-sm text-muted-foreground leading-relaxed font-bold">
                            هل تريد استخدام <strong>{showUnlockDialog?.cost} نقطة</strong> من رصيدك لفتح هذا الملف بشكل دائم؟
                        </p>
                    </DialogHeader>
@@ -319,9 +319,9 @@ export default function CategoryPage() {
                    </div>
                </div>
                <DialogFooter className="flex-row border-t p-0">
-                   <Button variant="ghost" className="flex-1 h-14 rounded-none text-muted-foreground" onClick={() => setShowUnlockDialog(null)}>إلغاء</Button>
+                   <Button variant="ghost" className="flex-1 h-14 rounded-none text-muted-foreground font-bold" onClick={() => setShowUnlockDialog(null)}>إلغاء</Button>
                    <div className="w-px bg-border h-14" />
-                   <Button className="flex-1 h-14 rounded-none font-bold text-lg" onClick={confirmUnlock}>تأكيد الخصم</Button>
+                   <Button className="flex-1 h-14 rounded-none font-black text-lg" onClick={confirmUnlock}>تأكيد الخصم</Button>
                </DialogFooter>
            </DialogContent>
        </Dialog>

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -16,10 +17,8 @@ import {
     ArrowLeft,
     ShieldCheck,
     Layers,
-    UserMinus,
     Menu,
     UserPlus,
-    Save,
     Palette,
     BellRing,
     MousePointer2,
@@ -27,9 +26,10 @@ import {
     Bell,
     Send,
     CreditCard,
-    Globe,
-    ExternalLink,
-    Copy as CopyIcon
+    AlertTriangle,
+    Eye,
+    Hammer,
+    MonitorSmartphone
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -41,7 +41,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,9 +51,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import DynamicIcon from '@/components/ui/dynamic-icon';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, RequestDesignConfig, Notification, PaymentMethod } from '@/lib/definitions';
-import { deleteUserAccount } from '@/lib/user-actions';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 
 // Schemas
@@ -219,6 +218,21 @@ export default function AdminDashboard() {
       }
   };
 
+  const toggleMaintenance = async (categoryId: string, currentState: boolean) => {
+      if (!firestore) return;
+      try {
+          await updateDocumentNonBlocking(doc(firestore, 'categories', categoryId), {
+              isUnderMaintenance: !currentState
+          });
+          toast({ 
+              title: !currentState ? "تم تفعيل وضع الصيانة" : "تم إلغاء وضع الصيانة",
+              description: "تم تحديث حالة القسم فوراً."
+          });
+      } catch (e) {
+          toast({ title: "فشل تحديث وضع الصيانة", variant: "destructive" });
+      }
+  };
+
   const onUpdatePayment = async (values: z.infer<typeof paymentMethodSchema>) => {
       if (!firestore) return;
       try {
@@ -280,14 +294,14 @@ export default function AdminDashboard() {
   };
 
   const menuItems = [
-    { id: 'categories', label: 'الأقسام', icon: Layers },
-    { id: 'items', label: 'المحتوى', icon: Plus },
+    { id: 'categories', label: 'الأقسام والصيانة', icon: Layers },
+    { id: 'items', label: 'إدارة المحتوى', icon: Plus },
     ...(isAdmin ? [
-        { id: 'review', label: 'المراجعة', icon: ShieldCheck, badge: reviewItems.length },
-        { id: 'notifications', label: 'الإشعارات', icon: Bell },
+        { id: 'review', label: 'طلبات المراجعة', icon: ShieldCheck, badge: reviewItems.length },
+        { id: 'notifications', label: 'الإشعارات العامة', icon: Bell },
         { id: 'payments', label: 'طرق الدفع', icon: CreditCard },
         { id: 'users', label: 'المستخدمين', icon: Users },
-        { id: 'settings', label: 'الإعدادات', icon: Settings }
+        { id: 'settings', label: 'إعدادات النظام', icon: Settings }
     ] : [])
   ];
 
@@ -296,350 +310,403 @@ export default function AdminDashboard() {
   return (
     <div className="flex min-h-screen bg-secondary/30">
       {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex w-64 flex-col bg-card border-l sticky top-0 h-screen">
-        <div className="p-6 border-b flex flex-col items-center gap-2">
-            <div className="bg-primary text-primary-foreground p-3 rounded-2xl shadow-lg"><LayoutDashboard className="h-8 w-8" /></div>
-            <h1 className="font-bold text-xl mt-2">لوحة التحكم</h1>
-            <Badge variant="secondary">{isAdmin ? "مدير النظام" : "محرر"}</Badge>
+      <aside className="hidden lg:flex w-72 flex-col bg-card border-l sticky top-0 h-screen shadow-xl z-50">
+        <div className="p-8 border-b flex flex-col items-center gap-3">
+            <div className="bg-primary text-primary-foreground p-4 rounded-[2rem] shadow-2xl shadow-primary/20 rotate-3"><LayoutDashboard className="h-10 w-10" /></div>
+            <div className="text-center">
+                <h1 className="font-black text-2xl tracking-tighter">لوحة التحكم</h1>
+                <Badge variant="secondary" className="mt-1 rounded-full px-4">{isAdmin ? "مدير النظام" : "محرر محتوى"}</Badge>
+            </div>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-            {menuItems.map(item => (
-                <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-muted'}`}>
-                    <item.icon className="h-5 w-5" />
-                    <span className="font-bold">{item.label}</span>
-                    {item.badge ? <span className="mr-auto bg-destructive text-[10px] px-1.5 py-0.5 rounded-full text-white">{item.badge}</span> : null}
-                </button>
-            ))}
-        </nav>
-        <div className="p-4 border-t">
-            <Button variant="outline" className="w-full rounded-xl" onClick={() => router.push('/home')}><ArrowLeft className="ml-2 h-4 w-4" /> العودة للتطبيق</Button>
+        <ScrollArea className="flex-1 px-4 py-6">
+            <nav className="space-y-2">
+                {menuItems.map(item => (
+                    <button 
+                        key={item.id} 
+                        onClick={() => setActiveTab(item.id)} 
+                        className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 font-bold text-sm ${activeTab === item.id ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]' : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'}`}
+                    >
+                        <item.icon className={`h-5 w-5 transition-transform ${activeTab === item.id ? 'scale-110' : ''}`} />
+                        <span>{item.label}</span>
+                        {item.badge ? <span className="mr-auto bg-destructive text-[10px] px-2 py-0.5 rounded-full text-white animate-pulse">{item.badge}</span> : null}
+                    </button>
+                ))}
+            </nav>
+        </ScrollArea>
+        <div className="p-6 border-t bg-muted/20">
+            <Button variant="outline" className="w-full h-12 rounded-2xl border-2 font-bold hover:bg-primary hover:text-primary-foreground transition-all" onClick={() => router.push('/home')}><ArrowLeft className="ml-2 h-4 w-4" /> العودة للتطبيق</Button>
         </div>
       </aside>
 
       {/* Mobile Top Bar */}
-      <div className="lg:hidden fixed top-0 inset-x-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2"><div className="bg-primary text-primary-foreground p-1.5 rounded-lg"><LayoutDashboard className="h-5 w-5" /></div><span className="font-bold text-sm">لوحة التحكم</span></div>
+      <div className="lg:hidden fixed top-0 inset-x-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+              <div className="bg-primary text-primary-foreground p-2 rounded-xl"><LayoutDashboard className="h-5 w-5" /></div>
+              <span className="font-black text-base">الإدارة</span>
+          </div>
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="h-6 w-6" /></Button></SheetTrigger>
-              <SheetContent side="right" className="w-64 p-0">
+              <SheetTrigger asChild><Button variant="ghost" size="icon" className="rounded-xl"><Menu className="h-6 w-6" /></Button></SheetTrigger>
+              <SheetContent side="right" className="w-[85vw] p-0 border-0">
                   <SheetHeader className="sr-only">
                     <SheetTitle>القائمة الرئيسية</SheetTitle>
                     <SheetDescription>روابط التنقل الرئيسية في لوحة التحكم</SheetDescription>
                   </SheetHeader>
                   <div className="flex flex-col h-full bg-card">
-                      <div className="p-6 border-b text-center"><h1 className="font-bold text-lg">التحكم</h1></div>
-                      <nav className="flex-1 p-4 space-y-2">
+                      <div className="p-8 border-b text-center bg-primary/5">
+                          <h1 className="font-black text-xl">قائمة التحكم</h1>
+                          <Badge variant="outline" className="mt-2">{isAdmin ? "المدير" : "المحرر"}</Badge>
+                      </div>
+                      <nav className="flex-1 p-6 space-y-3">
                           {menuItems.map(item => (
-                              <button key={item.id} onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
-                                  <item.icon className="h-5 w-5" /><span className="font-bold">{item.label}</span>
+                              <button key={item.id} onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all font-bold ${activeTab === item.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
+                                  <item.icon className="h-5 w-5" /><span>{item.label}</span>
                               </button>
                           ))}
                       </nav>
-                      <div className="p-4 border-t"><Button variant="outline" className="w-full" onClick={() => router.push('/home')}>الرئيسية</Button></div>
+                      <div className="p-6 border-t"><Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => router.push('/home')}>الرجوع للرئيسية</Button></div>
                   </div>
               </SheetContent>
           </Sheet>
       </div>
 
-      <main className="flex-1 p-4 lg:p-8 pt-20 lg:pt-8 overflow-y-auto">
-        <Tabs value={activeTab} className="space-y-6">
+      <main className="flex-1 p-4 lg:p-10 pt-20 lg:pt-10 overflow-y-auto">
+        <Tabs value={activeTab} className="space-y-8">
             
-            <TabsContent value="categories" className="m-0 space-y-6">
-                <div className="flex justify-between items-center"><h2 className="text-xl lg:text-2xl font-bold">إدارة الأقسام</h2>{isAdmin && <Button size="sm" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', order: 0, isUnderMaintenance: false }); setEditingCategory({ id: '' } as any); }}><Plus className="ml-1 h-4 w-4" /> جديد</Button>}</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Categories & Maintenance */}
+            <TabsContent value="categories" className="m-0 space-y-8 animate-in fade-in duration-500">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="space-y-1">
+                        <h2 className="text-3xl font-black tracking-tighter">الأقسام والصيانة</h2>
+                        <p className="text-muted-foreground text-sm">تحكم في حالة الأقسام وتفعيل وضع الصيانة الفوري.</p>
+                    </div>
+                    {isAdmin && <Button size="lg" className="rounded-2xl h-14 px-8 font-black shadow-xl shadow-primary/20" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', order: 0, isUnderMaintenance: false }); setEditingCategory({ id: '' } as any); }}><Plus className="ml-2 h-5 w-5" /> إضافة قسم جديد</Button>}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {categories?.map(cat => (
-                        <Card key={cat.id} className="overflow-hidden border-2 border-primary/5">
-                            <CardHeader className="p-4 bg-muted/30 flex-row justify-between items-start space-y-0">
-                                <div><CardTitle className="text-lg">{cat.name}</CardTitle><CardDescription className="text-[10px]">النمط: {cat.displayStyle}</CardDescription></div>
-                                <div className="flex flex-col items-end gap-1">
-                                    <Badge variant={cat.visibility === 'pro' ? 'default' : 'outline'}>{cat.visibility === 'pro' ? 'برو' : 'عام'}</Badge>
-                                    {cat.isUnderMaintenance && <Badge className="bg-orange-500 text-[8px] h-4">صيانة</Badge>}
+                        <Card key={cat.id} className={`overflow-hidden border-2 transition-all duration-300 ${cat.isUnderMaintenance ? 'border-orange-500/30 bg-orange-50/10' : 'border-primary/5'}`}>
+                            <CardHeader className="p-6 bg-muted/20 flex-row justify-between items-start space-y-0">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-xl font-black">{cat.name}</CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className="text-[9px] font-bold h-5 uppercase">نمط: {cat.displayStyle}</Badge>
+                                        <Badge variant={cat.visibility === 'pro' ? 'default' : 'secondary'} className="text-[9px] font-bold h-5">{cat.visibility === 'pro' ? 'برو' : 'عام'}</Badge>
+                                    </div>
                                 </div>
+                                <div className="bg-background p-2 rounded-2xl shadow-sm border"><MonitorSmartphone className="h-6 w-6 text-primary" /></div>
                             </CardHeader>
-                            <CardFooter className="p-2 border-t flex gap-2">
-                                <Button variant="ghost" className="text-xs flex-1" onClick={() => { setSelectedCategoryId(cat.id); setActiveTab('items'); }}><FileText className="ml-1 h-3 w-3" /> المحتوى</Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setEditingCategory(cat); catForm.reset(cat); }}><Edit2 className="h-4 w-4" /></Button>
-                                {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف القسم؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', cat.id))}><Trash2 className="h-4 w-4" /></Button>}
+                            <CardContent className="p-6 pt-4 border-t bg-card/50">
+                                <div className="flex items-center justify-between p-4 bg-background rounded-2xl border shadow-inner">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-xl ${cat.isUnderMaintenance ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                            {cat.isUnderMaintenance ? <Hammer className="h-5 w-5 animate-pulse" /> : <CheckCircle className="h-5 w-5" />}
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <p className="text-xs font-black">وضع الصيانة</p>
+                                            <p className="text-[10px] text-muted-foreground">{cat.isUnderMaintenance ? 'القسم مغلق حالياً' : 'القسم متاح للجميع'}</p>
+                                        </div>
+                                    </div>
+                                    <Switch checked={cat.isUnderMaintenance} onCheckedChange={() => toggleMaintenance(cat.id, !!cat.isUnderMaintenance)} />
+                                </div>
+                            </CardContent>
+                            <CardFooter className="p-3 border-t flex gap-2 bg-muted/10">
+                                <Button variant="secondary" className="text-xs font-bold flex-1 h-10 rounded-xl" onClick={() => { setSelectedCategoryId(cat.id); setActiveTab('items'); }}><FileText className="ml-2 h-4 w-4" /> إدارة المحتوى</Button>
+                                <Button variant="ghost" size="icon" className="h-10 w-10 text-primary rounded-xl hover:bg-primary/10" onClick={() => { setEditingCategory(cat); catForm.reset(cat); }}><Edit2 className="h-4 w-4" /></Button>
+                                {isAdmin && <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive rounded-xl hover:bg-destructive/10" onClick={() => confirm("حذف القسم وكافة محتوياته؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', cat.id))}><Trash2 className="h-4 w-4" /></Button>}
                             </CardFooter>
                         </Card>
                     ))}
                 </div>
             </TabsContent>
 
-            <TabsContent value="items" className="m-0 space-y-6">
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <Card className="xl:col-span-2">
-                        <CardHeader><CardTitle>إضافة محتوى جديد</CardTitle></CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2"><label className="text-xs font-bold text-muted-foreground">اختر القسم المستهدف:</label><Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="اختر القسم..." /></SelectTrigger><SelectContent>{categories?.map(cat => (<SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>))}</SelectContent></Select></div>
-                                <div className="space-y-2"><label className="text-xs font-bold text-muted-foreground">نمط العرض:</label><Select value={itemForm.watch('displayStyle')} onValueChange={(val: any) => itemForm.setValue('displayStyle', val)}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="style1">تحميل (Style 1)</SelectItem><SelectItem value="style3">برومبت (Style 3)</SelectItem><SelectItem value="style4">فيديو (Style 4)</SelectItem><SelectItem value="style5">معرض (Style 5)</SelectItem></SelectContent></Select></div>
+            {/* Items Management */}
+            <TabsContent value="items" className="m-0 space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                    {/* Add Form */}
+                    <Card className="xl:col-span-5 shadow-2xl shadow-primary/5 rounded-[2.5rem] border-none">
+                        <CardHeader className="p-8 pb-0"><CardTitle className="text-2xl font-black">إضافة محتوى جديد</CardTitle><CardDescription>املأ البيانات لنشر محتوى جديد في القسم المختار.</CardDescription></CardHeader>
+                        <CardContent className="p-8 space-y-8">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-black flex items-center gap-2 px-1"><Layers className="h-4 w-4 text-primary" /> القسم المستهدف</label>
+                                    <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+                                        <SelectTrigger className="h-14 rounded-2xl border-2 focus:ring-primary/20"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
+                                        <SelectContent className="rounded-2xl">{categories?.map(cat => (<SelectItem key={cat.id} value={cat.id} className="font-bold py-3">{cat.name}</SelectItem>))}</SelectContent>
+                                    </Select>
+                                </div>
+                                {selectedCategoryId && (
+                                    <div className="space-y-2 animate-in fade-in zoom-in duration-300">
+                                        <label className="text-sm font-black flex items-center gap-2 px-1"><Palette className="h-4 w-4 text-primary" /> نمط العرض</label>
+                                        <Select value={itemForm.watch('displayStyle')} onValueChange={(val: any) => itemForm.setValue('displayStyle', val)}>
+                                            <SelectTrigger className="h-14 rounded-2xl border-2 focus:ring-primary/20"><SelectValue /></SelectTrigger>
+                                            <SelectContent className="rounded-2xl">
+                                                <SelectItem value="style1" className="font-bold py-3">نمط التحميل (Style 1)</SelectItem>
+                                                <SelectItem value="style3" className="font-bold py-3">نمط البرومبت (Style 3)</SelectItem>
+                                                <SelectItem value="style4" className="font-bold py-3">نمط الفيديو (Style 4)</SelectItem>
+                                                <SelectItem value="style5" className="font-bold py-3">نمط المعرض (Style 5)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                             </div>
-                            {selectedCategoryId && (
+
+                            {selectedCategoryId ? (
                                 <Form {...itemForm}>
-                                    <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-5 pt-4 border-t">
-                                        <FormField control={itemForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>العنوان</FormLabel><FormControl><Input {...field} placeholder="عنوان جذاب للمنشور" /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={itemForm.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel>رابط الصورة المعاينة</FormLabel><FormControl><Input {...field} placeholder="https://..." /></FormControl><FormMessage /></FormItem>)} />
-                                        {itemForm.watch('displayStyle') === 'style1' && <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (<FormItem><FormLabel>رابط التحميل المباشر</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />}
-                                        {itemForm.watch('displayStyle') === 'style3' && (
-                                            <div className="space-y-4">
-                                                <FormField control={itemForm.control} name="prompt" render={({ field }) => (<FormItem><FormLabel>نص البرومبت</FormLabel><FormControl><Textarea {...field} className="h-32" dir="ltr" /></FormControl></FormItem>)} />
-                                                <FormField control={itemForm.control} name="instructions" render={({ field }) => (<FormItem><FormLabel>تعليمات الاستخدام</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                            </div>
-                                        )}
-                                        {itemForm.watch('displayStyle') === 'style4' && <FormField control={itemForm.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel>رابط الفيديو</FormLabel><FormControl><Input {...field} placeholder="YouTube URL" /></FormControl></FormItem>)} />}
-                                        <div className="flex gap-4"><FormField control={itemForm.control} name="visibility" render={({ field }) => (<FormItem className="flex-1"><FormLabel>الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="public">عام (للجميع)</SelectItem><SelectItem value="pro">برو (للمشتركين)</SelectItem></SelectContent></Select></FormItem>)} /><FormField control={itemForm.control} name="order" render={({ field }) => (<FormItem className="w-24"><FormLabel>الترتيب</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} /></div>
-                                        <Button type="submit" className="w-full h-14 text-lg font-bold" disabled={itemForm.formState.isSubmitting}>{itemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : (isAdmin ? "نشر المحتوى فوراً" : "إرسال للمراجعة")}</Button>
+                                    <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-6 pt-6 border-t">
+                                        <FormField control={itemForm.control} name="title" render={({ field }) => (<FormItem><FormLabel className="font-black">عنوان المنشور</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" placeholder="مثال: ملحقات فوتوشوب حديثة" /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={itemForm.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel className="font-black">رابط صورة المعاينة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" placeholder="https://..." /></FormControl><FormMessage /></FormItem>)} />
+                                        
+                                        <div className="bg-muted/30 p-6 rounded-[2rem] space-y-5 border-2 border-dashed border-primary/10">
+                                            <p className="text-center text-[10px] font-black text-primary uppercase tracking-widest">خيارات النمط المختار</p>
+                                            {itemForm.watch('displayStyle') === 'style1' && <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">رابط التحميل المباشر</FormLabel><FormControl><Input {...field} className="h-11 rounded-xl bg-background" /></FormControl></FormItem>)} />}
+                                            {itemForm.watch('displayStyle') === 'style3' && (
+                                                <div className="space-y-4">
+                                                    <FormField control={itemForm.control} name="prompt" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">نص البرومبت</FormLabel><FormControl><Textarea {...field} className="h-32 rounded-xl bg-background" dir="ltr" /></FormControl></FormItem>)} />
+                                                    <FormField control={itemForm.control} name="instructions" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">تعليمات الاستخدام</FormLabel><FormControl><Input {...field} className="h-11 rounded-xl bg-background" /></FormControl></FormItem>)} />
+                                                </div>
+                                            )}
+                                            {itemForm.watch('displayStyle') === 'style4' && <FormField control={itemForm.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">رابط الفيديو (YouTube)</FormLabel><FormControl><Input {...field} className="h-11 rounded-xl bg-background" placeholder="https://youtube.com/..." /></FormControl></FormItem>)} />}
+                                        </div>
+
+                                        <div className="flex gap-4">
+                                            <FormField control={itemForm.control} name="visibility" render={({ field }) => (<FormItem className="flex-1"><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام (للجميع)</SelectItem><SelectItem value="pro">برو (مشتركين فقط)</SelectItem></SelectContent></Select></FormItem>)} />
+                                            <FormField control={itemForm.control} name="order" render={({ field }) => (<FormItem className="w-28"><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
+                                        </div>
+                                        <Button type="submit" className="w-full h-16 text-lg font-black rounded-3xl shadow-xl shadow-primary/20" disabled={itemForm.formState.isSubmitting}>{itemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : (isAdmin ? "نشر المحتوى فوراً" : "إرسال للمراجعة")}</Button>
                                     </form>
                                 </Form>
+                            ) : (
+                                <div className="text-center py-12 bg-muted/20 rounded-[2rem] border-2 border-dashed">
+                                    <AlertTriangle className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                                    <p className="text-muted-foreground font-bold">يرجى اختيار القسم المستهدف أولاً</p>
+                                </div>
                             )}
                         </CardContent>
                     </Card>
-                    <Card><CardHeader><CardTitle className="text-lg">المحتوى المنشور حالياً</CardTitle></CardHeader><CardContent><ScrollArea className="h-[600px]"><div className="space-y-3">{isLoadingItems ? <Loader2 className="animate-spin mx-auto mt-10" /> : currentItems?.map(item => (<div key={item.id} className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl group"><div className="h-12 w-12 rounded-xl bg-muted overflow-hidden border">{item.imageUrl && <img src={item.imageUrl} className="object-cover h-full w-full" />}</div><div className="flex-1 min-w-0"><p className="text-xs font-bold truncate">{item.title}</p><Badge variant={item.status === 'pending' ? 'outline' : 'secondary'} className="text-[8px] h-4 mt-1">{item.status === 'pending' ? 'مراجعة' : 'نشط'}</Badge></div><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedCategoryId, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button></div>))}</div></ScrollArea></CardContent></Card>
+
+                    {/* List View */}
+                    <Card className="xl:col-span-7 shadow-xl rounded-[2.5rem] border-none bg-muted/10 overflow-hidden">
+                        <CardHeader className="p-8"><CardTitle className="text-xl font-black">المحتوى الحالي في القسم</CardTitle></CardHeader>
+                        <CardContent className="p-8 pt-0">
+                            <ScrollArea className="h-[750px] pr-4 -mr-4">
+                                <div className="space-y-4">
+                                    {isLoadingItems ? <Loader2 className="animate-spin mx-auto mt-20 text-primary" /> : currentItems?.length === 0 ? <p className="text-center py-20 text-muted-foreground font-bold">لا يوجد محتوى في هذا القسم حالياً</p> : currentItems?.map(item => (
+                                        <div key={item.id} className="flex items-center gap-4 p-4 bg-card rounded-[1.5rem] border shadow-sm group hover:border-primary/30 transition-all">
+                                            <div className="h-16 w-16 rounded-2xl bg-muted overflow-hidden border-2 border-muted flex-shrink-0">
+                                                {item.imageUrl && <img src={item.imageUrl} className="object-cover h-full w-full" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-black text-sm truncate">{item.title}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Badge variant={item.status === 'pending' ? 'destructive' : 'secondary'} className="text-[8px] font-bold h-4">{item.status === 'pending' ? 'قيد المراجعة' : 'نشط ومفعل'}</Badge>
+                                                    <Badge variant="outline" className="text-[8px] font-bold h-4">الترتيب: {item.order}</Badge>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="icon" className="h-10 w-10 text-primary rounded-xl"><Edit2 className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive rounded-xl" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedCategoryId, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
                 </div>
             </TabsContent>
 
+            {/* Other Tabs (Review, Notifications, etc.) simplified for UX */}
             {isAdmin && (
-                <TabsContent value="payments" className="space-y-6 m-0">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold">طرق الدفع</h2>
-                        <Button onClick={() => { 
-                            paymentForm.reset({ name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', order: 0, enabled: true }); 
-                            setEditingPayment({ id: '' } as any); 
-                        }}>
-                            <Plus className="ml-2 h-4 w-4" /> إضافة طريقة
-                        </Button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {paymentMethods?.map(method => (
-                            <Card key={method.id} className="overflow-hidden border-2 border-primary/5">
-                                <CardHeader className="p-4 bg-muted/30 flex-row items-center gap-3 space-y-0">
-                                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                        <DynamicIcon name={method.icon} className="h-6 w-6" />
+                <>
+                    <TabsContent value="review" className="space-y-8 m-0 animate-in fade-in duration-500">
+                        <div className="flex justify-between items-center"><h2 className="text-3xl font-black">طلبات المراجعة ({reviewItems.length})</h2></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {isLoadingReview ? <Loader2 className="animate-spin mx-auto mt-10" /> : reviewItems.length === 0 ? <p className="col-span-full text-center py-20 bg-muted/20 rounded-[2.5rem] font-bold">كل شيء رائع! لا توجد منشورات بانتظار المراجعة.</p> : reviewItems.map(item => (
+                                <Card key={item.id} className="overflow-hidden rounded-[2rem] border-2 shadow-xl">
+                                    <div className="aspect-video relative bg-muted group cursor-zoom-in">
+                                        {item.imageUrl && <img src={item.imageUrl} className="object-cover w-full h-full" />}
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Eye className="text-white h-8 w-8" /></div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <CardTitle className="text-base truncate">{method.name}</CardTitle>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                            <Badge variant="outline" className="text-[8px] h-4 px-1">{method.country}</Badge>
-                                            <Badge variant="secondary" className="text-[8px] h-4 px-1">{method.isUrl ? 'رابط' : 'نص'}</Badge>
+                                    <CardHeader className="p-6"><CardTitle className="text-lg font-black">{item.title}</CardTitle><CardDescription className="font-bold text-xs text-primary">القسم: {categories?.find(c => c.id === item.categoryId)?.name}</CardDescription></CardHeader>
+                                    <CardFooter className="p-4 pt-0 gap-2">
+                                        <Button className="flex-1 bg-green-600 hover:bg-green-700 h-12 rounded-xl font-bold" onClick={() => updateDocumentNonBlocking(doc(firestore!, 'categories', item.categoryId, 'items', item.id), { status: 'approved' })}><CheckCircle className="ml-2 h-4 w-4" /> قبول</Button>
+                                        <Button variant="destructive" className="h-12 rounded-xl font-bold px-6" onClick={() => confirm("رفض وحذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', item.categoryId, 'items', item.id))}>رفض</Button>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="notifications" className="space-y-8 m-0 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                            <Card className="xl:col-span-7 shadow-xl rounded-[2.5rem]">
+                                <CardHeader className="p-8 pb-4"><CardTitle className="text-2xl font-black flex items-center gap-3"><BellRing className="h-7 w-7 text-primary" /> إرسال تنبيه جديد</CardTitle><CardDescription>سيتم إشعار كافة مستخدمي التطبيق فوراً بهذا التنبيه.</CardDescription></CardHeader>
+                                <CardContent className="p-8 pt-4">
+                                    <Form {...notifForm}>
+                                        <form onSubmit={notifForm.handleSubmit(onSendNotification)} className="space-y-6">
+                                            <FormField control={notifForm.control} name="title" render={({ field }) => (<FormItem><FormLabel className="font-black">عنوان الإشعار</FormLabel><FormControl><Input {...field} className="h-14 rounded-2xl" placeholder="مثال: تم إضافة قسم جديد للمصممين!" /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={notifForm.control} name="description" render={({ field }) => (<FormItem><FormLabel className="font-black">محتوى الإشعار</FormLabel><FormControl><Textarea {...field} className="h-40 rounded-2xl" placeholder="اكتب تفاصيل الإشعار بوضوح هنا..." /></FormControl><FormMessage /></FormItem>)} />
+                                            <Button type="submit" className="w-full h-16 text-lg font-black rounded-3xl" disabled={notifForm.formState.isSubmitting}>{notifForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : <><Send className="ml-2 h-5 w-5" /> إرسال الإشعار الآن</>}</Button>
+                                        </form>
+                                    </Form>
+                                </CardContent>
+                            </Card>
+                            <Card className="xl:col-span-5 rounded-[2.5rem] bg-muted/10 border-none">
+                                <CardHeader className="p-8"><CardTitle className="text-xl font-black">السجل</CardTitle></CardHeader>
+                                <CardContent className="p-8 pt-0">
+                                    <ScrollArea className="h-[500px]">
+                                        <div className="space-y-4">
+                                            {notifications?.map(notif => (
+                                                <div key={notif.id} className="p-5 bg-card rounded-2xl border shadow-sm relative group">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteDocumentNonBlocking(doc(firestore!, 'notifications', notif.id))}><Trash2 className="h-4 w-4" /></Button>
+                                                    <p className="font-black text-sm pr-6">{notif.title}</p>
+                                                    <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{notif.description}</p>
+                                                    <p className="text-[9px] text-primary font-bold mt-2">{safeFormatFirebaseTimestamp(notif.createdAt)}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="settings" className="space-y-8 m-0 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Theme Settings */}
+                            <Card className="rounded-[2.5rem] shadow-lg border-none">
+                                <CardHeader className="p-8"><CardTitle className="flex items-center gap-3 font-black"><Palette className="h-6 w-6 text-primary" /> مظهر المنصة</CardTitle><CardDescription>تخصيص الألوان الأساسية للموقع (صيغة HSL)</CardDescription></CardHeader>
+                                <CardContent className="p-8 pt-0 space-y-6">
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-black px-1">اللون الأساسي (الوضع الفاتح):</label>
+                                        <div className="flex gap-3">
+                                            <Input value={themeConfig?.primaryColor || ''} onChange={(e) => updateConfig('theme', { primaryColor: e.target.value })} placeholder="مثال: 350 72% 51%" className="h-12 rounded-xl" />
+                                            <div className="w-12 h-12 rounded-xl border-2 shadow-inner flex-shrink-0" style={{ backgroundColor: `hsl(${themeConfig?.primaryColor})` }} />
                                         </div>
                                     </div>
-                                    <Switch checked={method.enabled} onCheckedChange={(val) => updateDocumentNonBlocking(doc(firestore!, 'paymentMethods', method.id), { enabled: val })} />
-                                </CardHeader>
-                                <CardContent className="p-4 py-2">
-                                    <p className="text-[10px] text-muted-foreground truncate font-mono bg-muted/50 p-1.5 rounded" dir="ltr">{method.link}</p>
-                                </CardContent>
-                                <CardFooter className="p-2 border-t flex gap-2">
-                                    <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => { setEditingPayment(method); paymentForm.reset(method); }}>
-                                        <Edit2 className="ml-1 h-3.5 w-3.5" /> تعديل
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف طريقة الدفع؟") && deleteDocumentNonBlocking(doc(firestore!, 'paymentMethods', method.id))}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        ))}
-                    </div>
-                </TabsContent>
-            )}
-
-            {isAdmin && (
-                <TabsContent value="notifications" className="space-y-6 m-0">
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                        <Card className="xl:col-span-2">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><BellRing className="h-5 w-5 text-primary" /> إرسال تنبيه جديد</CardTitle>
-                                <CardDescription>سيظهر هذا التنبيه لجميع مستخدمي التطبيق فوراً.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Form {...notifForm}>
-                                    <form onSubmit={notifForm.handleSubmit(onSendNotification)} className="space-y-4">
-                                        <FormField control={notifForm.control} name="title" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>عنوان التنبيه</FormLabel>
-                                                <FormControl><Input {...field} placeholder="مثال: تم إضافة ملحقات جديدة!" /></FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={notifForm.control} name="description" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>نص التنبيه</FormLabel>
-                                                <FormControl><Textarea {...field} placeholder="اكتب تفاصيل التنبيه هنا..." className="h-32" /></FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-                                        <Button type="submit" className="w-full h-12" disabled={notifForm.formState.isSubmitting}>
-                                            {notifForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : <><Send className="ml-2 h-4 w-4" /> إرسال التنبيه الآن</>}
-                                        </Button>
-                                    </form>
-                                </Form>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader><CardTitle className="text-lg">الإشعارات السابقة</CardTitle></CardHeader>
-                            <CardContent>
-                                <ScrollArea className="h-[500px]">
                                     <div className="space-y-3">
-                                        {notifications?.map(notif => (
-                                            <div key={notif.id} className="p-3 bg-muted/40 rounded-xl space-y-1 relative group">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive absolute top-2 left-2 opacity-0 group-hover:opacity-100" onClick={() => deleteDocumentNonBlocking(doc(firestore!, 'notifications', notif.id))}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                                <p className="text-sm font-bold pl-6">{notif.title}</p>
-                                                <p className="text-[10px] text-muted-foreground line-clamp-2">{notif.description}</p>
-                                                <p className="text-[8px] text-primary/60 pt-1">{safeFormatFirebaseTimestamp(notif.createdAt)}</p>
-                                            </div>
-                                        ))}
+                                        <label className="text-xs font-black px-1">اللون الأساسي (الوضع الليلي):</label>
+                                        <div className="flex gap-3">
+                                            <Input value={themeConfig?.primaryColorDark || ''} onChange={(e) => updateConfig('theme', { primaryColorDark: e.target.value })} placeholder="مثال: 350 72% 51%" className="h-12 rounded-xl" />
+                                            <div className="w-12 h-12 rounded-xl border-2 shadow-inner flex-shrink-0" style={{ backgroundColor: `hsl(${themeConfig?.primaryColorDark})` }} />
+                                        </div>
                                     </div>
-                                </ScrollArea>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </TabsContent>
-            )}
-
-            {isAdmin && (
-                <TabsContent value="review" className="m-0 space-y-6">
-                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">طلبات المراجعة ({reviewItems.length})</h2></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {isLoadingReview ? <Loader2 className="animate-spin mx-auto mt-10" /> : reviewItems.map(item => (
-                            <Card key={item.id} className="overflow-hidden">
-                                <div className="aspect-video relative bg-muted">
-                                    {item.imageUrl && <img src={item.imageUrl} className="object-cover w-full h-full" />}
-                                </div>
-                                <CardHeader className="p-4">
-                                    <CardTitle className="text-lg">{item.title}</CardTitle>
-                                    <CardDescription>النمط: {item.displayStyle} | القسم: {categories?.find(c => c.id === item.categoryId)?.name}</CardDescription>
-                                </CardHeader>
-                                <CardFooter className="p-4 border-t gap-2">
-                                    <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateDocumentNonBlocking(doc(firestore!, 'categories', item.categoryId, 'items', item.id), { status: 'approved' })}><CheckCircle className="ml-2 h-4 w-4" /> قبول</Button>
-                                    <Button variant="destructive" onClick={() => confirm("رفض وحذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', item.categoryId, 'items', item.id))}>حذف</Button>
-                                </CardFooter>
+                                </CardContent>
                             </Card>
-                        ))}
-                    </div>
-                </TabsContent>
-            )}
 
-            {isAdmin && (
-                <TabsContent value="settings" className="space-y-6 m-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Theme Settings */}
-                        <Card>
-                            <CardHeader><CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5 text-primary" /> مظهر المنصة</CardTitle><CardDescription>تحكم في الألوان الأساسية للموقع</CardDescription></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="space-y-2"><label className="text-xs font-bold">اللون الأساسي (فاتح):</label><div className="flex gap-2"><Input value={themeConfig?.primaryColor || ''} onChange={(e) => updateConfig('theme', { primaryColor: e.target.value })} placeholder="350 72% 51%" /><div className="w-10 h-10 rounded border" style={{ backgroundColor: `hsl(${themeConfig?.primaryColor})` }} /></div></div>
-                                <div className="space-y-2"><label className="text-xs font-bold">اللون الأساسي (ليلي):</label><div className="flex gap-2"><Input value={themeConfig?.primaryColorDark || ''} onChange={(e) => updateConfig('theme', { primaryColorDark: e.target.value })} placeholder="350 72% 51%" /><div className="w-10 h-10 rounded border" style={{ backgroundColor: `hsl(${themeConfig?.primaryColorDark})` }} /></div></div>
-                            </CardContent>
+                            {/* Referral System Settings */}
+                            <Card className="rounded-[2.5rem] shadow-lg border-none">
+                                <CardHeader className="p-8"><CardTitle className="flex items-center gap-3 font-black"><Gift className="h-6 w-6 text-primary" /> نظام المكافآت</CardTitle><CardDescription>إعداد قواعد النقاط والترقية التلقائية لـ برو.</CardDescription></CardHeader>
+                                <CardContent className="p-8 pt-0 grid grid-cols-2 gap-6">
+                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">إحالات للترقية</label><Input type="number" value={refConfig?.requiredReferrals || 5} onChange={(e) => updateConfig('referral', { requiredReferrals: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
+                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">نقاط كل إحالة</label><Input type="number" value={refConfig?.pointsPerReferral || 10} onChange={(e) => updateConfig('referral', { pointsPerReferral: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
+                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">نقاط فتح ملف</label><Input type="number" value={refConfig?.pointsPerUnlock || 5} onChange={(e) => updateConfig('referral', { pointsPerUnlock: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
+                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">فاصل الجوائز</label><Input type="number" value={refConfig?.rewardInterval || 5} onChange={(e) => updateConfig('referral', { rewardInterval: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Subscription Dialog Settings */}
+                            <Card className="rounded-[2.5rem] shadow-lg border-none md:col-span-2">
+                                <CardHeader className="p-8"><CardTitle className="flex items-center gap-3 font-black"><BellRing className="h-6 w-6 text-primary" /> نافذة الاشتراك والطلب</CardTitle><CardDescription>التحكم في النافذة المنبثقة وأزرار طلب التصميم.</CardDescription></CardHeader>
+                                <CardContent className="p-8 pt-0 grid grid-cols-1 md:grid-cols-2 gap-10">
+                                    <div className="space-y-5">
+                                        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-dashed border-primary/20">
+                                            <span className="font-black text-sm">تفعيل النافذة المنبثقة</span>
+                                            <Switch checked={subDialogConfig?.enabled || false} onCheckedChange={(val) => updateConfig('subscriptionDialog', { enabled: val })} />
+                                        </div>
+                                        <div className="space-y-2"><label className="text-xs font-black">العنوان:</label><Input value={subDialogConfig?.title || ''} onChange={(e) => updateConfig('subscriptionDialog', { title: e.target.value })} className="h-12 rounded-xl" /></div>
+                                        <div className="space-y-2"><label className="text-xs font-black">الرابط:</label><Input value={subDialogConfig?.link || ''} onChange={(e) => updateConfig('subscriptionDialog', { link: e.target.value })} className="h-12 rounded-xl" /></div>
+                                    </div>
+                                    <div className="space-y-5">
+                                        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-dashed border-primary/20">
+                                            <span className="font-black text-sm">تفعيل زر "اطلب تصميمك"</span>
+                                            <Switch checked={reqDesignConfig?.enabled || false} onCheckedChange={(val) => updateConfig('requestDesign', { enabled: val })} />
+                                        </div>
+                                        <div className="space-y-2"><label className="text-xs font-black">رابط الطلب (واتساب):</label><Input value={reqDesignConfig?.url || ''} onChange={(e) => updateConfig('requestDesign', { url: e.target.value })} className="h-12 rounded-xl" /></div>
+                                        <div className="space-y-2"><label className="text-xs font-black">النص الوصفي للنافذة:</label><Textarea value={subDialogConfig?.description || ''} onChange={(e) => updateConfig('subscriptionDialog', { description: e.target.value })} className="h-24 rounded-xl resize-none" /></div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="users" className="space-y-8 m-0 animate-in fade-in duration-500">
+                        <div className="flex justify-between items-center"><h2 className="text-3xl font-black">المستخدمين المعتمدين</h2><Button className="h-14 px-8 rounded-2xl font-black" onClick={() => setIsAddUserOpen(true)}><UserPlus className="ml-2 h-5 w-5" /> إضافة يدوية</Button></div>
+                        <Card className="rounded-[2.5rem] shadow-xl overflow-hidden border-none">
+                            <Table>
+                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-right font-black">البريد الإلكتروني</TableHead><TableHead className="text-right font-black">الصلاحية</TableHead><TableHead className="text-right font-black">الحالة</TableHead><TableHead className="text-right font-black">كود التفعيل</TableHead></TableRow></TableHeader>
+                                <TableBody>{whitelist?.map(entry => (<TableRow key={entry.email} className="hover:bg-primary/5 transition-colors"><TableCell className="text-right font-bold py-5">{entry.email}</TableCell><TableCell className="text-right"><Badge variant="secondary" className="rounded-full px-3">{entry.role}</Badge></TableCell><TableCell className="text-right">{entry.isActivated ? <Badge className="bg-green-500 rounded-full px-3">نشط</Badge> : <Badge variant="outline" className="rounded-full px-3">في الانتظار</Badge>}</TableCell><TableCell className="text-right font-mono font-black text-primary">{entry.activationCode || '---'}</TableCell></TableRow>))}</TableBody>
+                            </Table>
                         </Card>
+                    </TabsContent>
 
-                        {/* Subscription Popup Settings */}
-                        <Card>
-                            <CardHeader><CardTitle className="flex items-center gap-2"><BellRing className="h-5 w-5 text-primary" /> نافذة الاشتراك</CardTitle><CardDescription>النافذة المنبثقة التي تظهر للزوار</CardDescription></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-3 bg-muted rounded-xl"><span>تفعيل النافذة</span><Switch checked={subDialogConfig?.enabled || false} onCheckedChange={(val) => updateConfig('subscriptionDialog', { enabled: val })} /></div>
-                                <div className="space-y-2"><label className="text-xs font-bold">العنوان:</label><Input value={subDialogConfig?.title || ''} onChange={(e) => updateConfig('subscriptionDialog', { title: e.target.value })} /></div>
-                                <div className="space-y-2"><label className="text-xs font-bold">النص الوصفي:</label><Textarea value={subDialogConfig?.description || ''} onChange={(e) => updateConfig('subscriptionDialog', { description: e.target.value })} /></div>
-                                <div className="space-y-2"><label className="text-xs font-bold">رابط الاشتراك:</label><Input value={subDialogConfig?.link || ''} onChange={(e) => updateConfig('subscriptionDialog', { link: e.target.value })} /></div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Request Design Settings */}
-                        <Card>
-                            <CardHeader><CardTitle className="flex items-center gap-2"><MousePointer2 className="h-5 w-5 text-primary" /> اطلب تصميمك</CardTitle><CardDescription>إعدادات زر طلب التصميم في المنيو</CardDescription></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-3 bg-muted rounded-xl"><span>تفعيل الزر</span><Switch checked={reqDesignConfig?.enabled || false} onCheckedChange={(val) => updateConfig('requestDesign', { enabled: val })} /></div>
-                                <div className="space-y-2"><label className="text-xs font-bold">رابط الطلب (واتساب/فورم):</label><Input value={reqDesignConfig?.url || ''} onChange={(e) => updateConfig('requestDesign', { url: e.target.value })} /></div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Referral System Settings */}
-                        <Card>
-                            <CardHeader><CardTitle className="flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /> نظام الإحالة</CardTitle><CardDescription>قواعد النقاط والترقيات التلقائية</CardDescription></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2"><label className="text-xs font-bold">هدف الترقية (إحالات):</label><Input type="number" value={refConfig?.requiredReferrals || 5} onChange={(e) => updateConfig('referral', { requiredReferrals: parseInt(e.target.value) })} /></div>
-                                    <div className="space-y-2"><label className="text-xs font-bold">نقاط كل إحالة:</label><Input type="number" value={refConfig?.pointsPerReferral || 10} onChange={(e) => updateConfig('referral', { pointsPerReferral: parseInt(e.target.value) })} /></div>
-                                    <div className="space-y-2"><label className="text-xs font-bold">تكلفة فتح ملف (نقطة):</label><Input type="number" value={refConfig?.pointsPerUnlock || 5} onChange={(e) => updateConfig('referral', { pointsPerUnlock: parseInt(e.target.value) })} /></div>
-                                    <div className="space-y-2"><label className="text-xs font-bold">فاصل المكافآت:</label><Input type="number" value={refConfig?.rewardInterval || 5} onChange={(e) => updateConfig('referral', { rewardInterval: parseInt(e.target.value) })} /></div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </TabsContent>
-            )}
-
-            {isAdmin && (
-                <TabsContent value="users" className="space-y-6 m-0">
-                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">المستخدمين المعتمدين</h2><Button onClick={() => setIsAddUserOpen(true)}><UserPlus className="ml-2 h-4 w-4" /> إضافة يدوية</Button></div>
-                    <Card className="overflow-hidden">
-                        <Table>
-                            <TableHeader><TableRow><TableHead className="text-right">البريد الإلكتروني</TableHead><TableHead className="text-right">الصلاحية</TableHead><TableHead className="text-right">الحالة</TableHead><TableHead className="text-right">كود التفعيل</TableHead><TableHead className="text-left">إجراء</TableHead></TableRow></TableHeader>
-                            <TableBody>{whitelist?.map(entry => (<TableRow key={entry.email}><TableCell className="text-right font-medium">{entry.email}</TableCell><TableCell className="text-right"><Badge variant="secondary">{entry.role}</Badge></TableCell><TableCell className="text-right">{entry.isActivated ? <Badge className="bg-green-500">نشط</Badge> : <Badge variant="outline">في الانتظار</Badge>}</TableCell><TableCell className="text-right font-mono text-xs">{entry.activationCode || '---'}</TableCell><TableCell className="text-left">{entry.activatedByUid && <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteUserAccount(entry.activatedByUid!).then(() => toast({title:"تم الحذف"}))}><UserMinus className="h-4 w-4" /></Button>}</TableCell></TableRow>))}</TableBody>
-                        </Table>
-                    </Card>
-                </TabsContent>
+                    <TabsContent value="payments" className="space-y-8 m-0 animate-in fade-in duration-500">
+                        <div className="flex justify-between items-center"><h2 className="text-3xl font-black">طرق الدفع</h2><Button className="h-14 px-8 rounded-2xl font-black shadow-lg" onClick={() => { paymentForm.reset({ name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', order: 0, enabled: true }); setEditingPayment({ id: '' } as any); }}><Plus className="ml-2 h-5 w-5" /> إضافة طريقة دفع</Button></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {paymentMethods?.map(method => (
+                                <Card key={method.id} className="rounded-[2rem] border-2 border-primary/5 shadow-sm overflow-hidden">
+                                    <CardHeader className="p-6 pb-4 bg-muted/20 flex-row items-center gap-4 space-y-0">
+                                        <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner"><DynamicIcon name={method.icon} className="h-7 w-7" /></div>
+                                        <div className="flex-1 min-w-0"><CardTitle className="text-lg font-black truncate">{method.name}</CardTitle><div className="flex items-center gap-2 mt-1"><Badge variant="outline" className="text-[8px] font-black h-4 px-2">{method.country}</Badge><Badge variant="secondary" className="text-[8px] font-black h-4 px-2">{method.isUrl ? 'رابط مباشر' : 'نص للنسخ'}</Badge></div></div>
+                                        <Switch checked={method.enabled} onCheckedChange={(val) => updateDocumentNonBlocking(doc(firestore!, 'paymentMethods', method.id), { enabled: val })} />
+                                    </CardHeader>
+                                    <CardFooter className="p-3 border-t bg-muted/5 flex gap-2">
+                                        <Button variant="ghost" size="sm" className="flex-1 rounded-xl h-10 font-bold" onClick={() => { setEditingPayment(method); paymentForm.reset(method); }}><Edit2 className="ml-2 h-4 w-4" /> تعديل</Button>
+                                        <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive rounded-xl" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'paymentMethods', method.id))}><Trash2 className="h-4 w-4" /></Button>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </TabsContent>
+                </>
             )}
         </Tabs>
       </main>
 
-      {/* Dialogs */}
+      {/* Unified Styled Dialogs */}
       <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
-          <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
-              <DialogHeader>
-                <DialogTitle>{editingCategory?.id ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle>
-                <DialogDescription>أدخل بيانات القسم لإدارته في الموقع الرئيسي.</DialogDescription>
-              </DialogHeader>
+          <DialogContent dir="rtl" className="max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
+              <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">{editingCategory?.id ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle><DialogDescription className="font-bold text-muted-foreground">أدخل بيانات القسم لإدارته في الموقع الرئيسي.</DialogDescription></DialogHeader>
               <Form {...catForm}>
-                  <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-4">
-                      <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>اسم القسم</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                      <FormField control={catForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel>نمط العرض</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="style1">تحميل (أفقي)</SelectItem><SelectItem value="style3">برومبت (بطاقات)</SelectItem><SelectItem value="style4">فيديو (عرض فيديو)</SelectItem><SelectItem value="style5">معرض (Style 5)</SelectItem></SelectContent></Select></FormItem>)} />
+                  <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-6">
+                      <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={catForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel className="font-black">نمط العرض الافتراضي</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="style1">تحميل (أفقي)</SelectItem><SelectItem value="style3">برومبت (بطاقات)</SelectItem><SelectItem value="style4">فيديو (عرض فيديو)</SelectItem><SelectItem value="style5">معرض (Style 5)</SelectItem></SelectContent></Select></FormItem>)} />
                       <div className="grid grid-cols-2 gap-4">
-                          <FormField control={catForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel>الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو</SelectItem></SelectContent></Select></FormItem>)} />
-                          <FormField control={catForm.control} name="order" render={({ field }) => (<FormItem><FormLabel>الترتيب</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
+                          <FormField control={catForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو</SelectItem></SelectContent></Select></FormItem>)} />
+                          <FormField control={catForm.control} name="order" render={({ field }) => (<FormItem><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
                       </div>
-                      <FormField control={catForm.control} name="isUnderMaintenance" render={({ field }) => (<FormItem className="flex items-center justify-between rounded-xl border p-4 bg-muted/20"><div className="space-y-0.5"><FormLabel>وضع الصيانة</FormLabel><FormDescription className="text-[10px]">تفعيل صفحة الصيانة لهذا القسم</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                      <DialogFooter><Button type="submit" className="w-full h-12 text-lg">حفظ كافة التغييرات</Button></DialogFooter>
+                      <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20">حفظ القسم الآن</Button></DialogFooter>
                   </form>
               </Form>
           </DialogContent>
       </Dialog>
 
       <Dialog open={!!editingPayment} onOpenChange={(open) => !open && setEditingPayment(null)}>
-          <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
-              <DialogHeader>
-                <DialogTitle>{editingPayment?.id ? "تعديل طريقة الدفع" : "إضافة طريقة دفع"}</DialogTitle>
-                <DialogDescription>تظهر هذه الطرق للمستخدمين عند طلب الاشتراك.</DialogDescription>
-              </DialogHeader>
+          <DialogContent dir="rtl" className="max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
+              <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">إعداد طريقة الدفع</DialogTitle><DialogDescription className="font-bold text-muted-foreground">تظهر هذه الطريقة للمستخدمين عند ترقية حساباتهم.</DialogDescription></DialogHeader>
               <Form {...paymentForm}>
-                  <form onSubmit={paymentForm.handleSubmit(onUpdatePayment)} className="space-y-4">
-                      <FormField control={paymentForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>الاسم</FormLabel><FormControl><Input {...field} placeholder="مثال: PayPal" /></FormControl></FormItem>)} />
-                      <FormField control={paymentForm.control} name="icon" render={({ field }) => (<FormItem><FormLabel>اسم الأيقونة (Lucide)</FormLabel><FormControl><div className="flex gap-2"><Input {...field} placeholder="CreditCard" className="text-left" dir="ltr" /><div className="w-10 h-10 rounded border flex items-center justify-center bg-muted"><DynamicIcon name={field.value} className="h-5 w-5" /></div></div></FormControl><FormDescription className="text-[10px]">ادخل اسم أيقونة صحيح من مكتبة Lucide Icons</FormDescription></FormItem>)} />
-                      <FormField control={paymentForm.control} name="link" render={({ field }) => (<FormItem><FormLabel>الرابط أو القيمة</FormLabel><FormControl><Input {...field} className="text-left" dir="ltr" /></FormControl></FormItem>)} />
+                  <form onSubmit={paymentForm.handleSubmit(onUpdatePayment)} className="space-y-5">
+                      <FormField control={paymentForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">الاسم</FormLabel><FormControl><Input {...field} placeholder="مثال: PayPal" className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={paymentForm.control} name="icon" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم الأيقونة (Lucide)</FormLabel><FormControl><div className="flex gap-3"><Input {...field} placeholder="CreditCard" className="h-12 rounded-xl text-left" dir="ltr" /><div className="w-12 h-12 rounded-xl border flex items-center justify-center bg-muted shadow-inner"><DynamicIcon name={field.value} className="h-6 w-6 text-primary" /></div></div></FormControl></FormItem>)} />
+                      <FormField control={paymentForm.control} name="link" render={({ field }) => (<FormItem><FormLabel className="font-black">الرابط أو النص المعروض</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>)} />
                       <div className="grid grid-cols-2 gap-4">
-                          <FormField control={paymentForm.control} name="country" render={({ field }) => (<FormItem><FormLabel>الدولة</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="ALL">الكل (Global)</SelectItem><SelectItem value="SA">السعودية (SA)</SelectItem><SelectItem value="YE">اليمن (YE)</SelectItem></SelectContent></Select></FormItem>)} />
-                          <FormField control={paymentForm.control} name="order" render={({ field }) => (<FormItem><FormLabel>الترتيب</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
+                          <FormField control={paymentForm.control} name="country" render={({ field }) => (<FormItem><FormLabel className="font-black">الدولة المستهدفة</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="ALL">الكل (Global)</SelectItem><SelectItem value="SA">السعودية (SA)</SelectItem><SelectItem value="YE">اليمن (YE)</SelectItem></SelectContent></Select></FormItem>)} />
+                          <FormField control={paymentForm.control} name="order" render={({ field }) => (<FormItem><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
                       </div>
-                      <div className="flex gap-4">
-                          <FormField control={paymentForm.control} name="isUrl" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between rounded-xl border p-3 bg-muted/20"><div className="space-y-0.5"><FormLabel className="text-xs">رابط مباشر</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                          <FormField control={paymentForm.control} name="enabled" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between rounded-xl border p-3 bg-muted/20"><div className="space-y-0.5"><FormLabel className="text-xs">تفعيل</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                      </div>
-                      <DialogFooter className="pt-2"><Button type="submit" className="w-full h-12">حفظ طريقة الدفع</Button></DialogFooter>
+                      <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 font-black text-lg rounded-2xl shadow-xl shadow-primary/20">تأكيد الإعدادات</Button></DialogFooter>
                   </form>
               </Form>
           </DialogContent>
       </Dialog>
 
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-          <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
-              <DialogHeader>
-                <DialogTitle>إضافة مستخدم يدوياً</DialogTitle>
-                <DialogDescription>امنح صلاحيات الوصول والاشتراك للمستخدمين عبر بريدهم.</DialogDescription>
-              </DialogHeader>
+          <DialogContent dir="rtl" className="max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
+              <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">إضافة مستخدم يدوياً</DialogTitle><DialogDescription className="font-bold text-muted-foreground">امنح صلاحيات الوصول والاشتراك للمستخدمين عبر بريدهم.</DialogDescription></DialogHeader>
               <Form {...userForm}>
-                  <form onSubmit={userForm.handleSubmit(onAddUser)} className="space-y-4">
-                      <FormField control={userForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>البريد الإلكتروني</FormLabel><FormControl><Input {...field} placeholder="example@mail.com" /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={userForm.control} name="role" render={({ field }) => (<FormItem><FormLabel>الدور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="pro">عضو برو (Pro)</SelectItem><SelectItem value="editor">محرر (Editor)</SelectItem><SelectItem value="admin">مدير (Admin)</SelectItem></SelectContent></Select></FormItem>)} />
-                      {userForm.watch('role') === 'pro' && <FormField control={userForm.control} name="activationCode" render={({ field }) => (<FormItem><FormLabel>كود تفعيل (اختياري)</FormLabel><FormControl><Input {...field} placeholder="اتركه فارغاً للتوليد التلقائي" /></FormControl></FormItem>)} />}
-                      <DialogFooter className="pt-4"><Button type="submit" className="w-full h-12" disabled={userForm.formState.isSubmitting}>{userForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "إضافة المستخدم الآن"}</Button></DialogFooter>
+                  <form onSubmit={userForm.handleSubmit(onAddUser)} className="space-y-6">
+                      <FormField control={userForm.control} name="email" render={({ field }) => (<FormItem><FormLabel className="font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} placeholder="example@mail.com" className="h-12 rounded-xl" /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={userForm.control} name="role" render={({ field }) => (<FormItem><FormLabel className="font-black">الدور / الصلاحية</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="pro" className="font-bold py-3">عضو برو (Pro)</SelectItem><SelectItem value="editor" className="font-bold py-3">محرر (Editor)</SelectItem><SelectItem value="admin" className="font-bold py-3">مدير (Admin)</SelectItem></SelectContent></Select></FormItem>)} />
+                      <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20" disabled={userForm.formState.isSubmitting}>{userForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "إضافة المستخدم الآن"}</Button></DialogFooter>
                   </form>
               </Form>
           </DialogContent>
