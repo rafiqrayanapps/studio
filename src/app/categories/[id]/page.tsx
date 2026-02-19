@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc, increment } from 'firebase/firestore';
-import type { Category, ContentItem, ReferralConfig } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, ReferralConfig } from '@/lib/definitions';
 import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Settings2, Coins, Cpu, Hammer, ExternalLink, Sparkles, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -64,7 +64,7 @@ export default function CategoryPage() {
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
     
-    // Admin/Editor sees everything, users see approved or items with no status (legacy)
+    // Logic for viewable items: Admin/Editor see all, others see approved or legacy items
     const viewableItems = (isAdmin || isEditor)
         ? rawItems 
         : rawItems.filter(item => 
@@ -104,6 +104,15 @@ export default function CategoryPage() {
       setShowUnlockDialog(null);
   };
 
+  const handleSubCategoryClick = (sub: WithId<CategoryType>) => {
+      const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin;
+      if (isLocked) {
+          setShowUpgradeDialog(true);
+      } else {
+          router.push(`/categories/${sub.id}`);
+      }
+  };
+
   const isLoading = areAllCategoriesLoading || areItemsLoading || isUserLoading;
 
   const renderContent = () => {
@@ -126,32 +135,35 @@ export default function CategoryPage() {
         <div className="text-center py-20 text-muted-foreground bg-card rounded-[2.5rem] mt-4 shadow-sm">
             <Search className="h-16 w-16 mx-auto mb-4 opacity-20" />
             <p className="text-xl font-black">لا يوجد محتوى متاح حالياً.</p>
-            <p className="text-sm mt-2 opacity-60">تأكد من أنك قمت بنشر المحتوى وتفعيله من لوحة التحكم.</p>
+            <p className="text-sm mt-2 opacity-60">تأكد من اختيار القسم الصحيح أو العودة لاحقاً.</p>
         </div>
     );
 
     const typedItems = filteredItems as WithId<ContentItem>[];
 
     return (
-        <div className="space-y-8">
-            {/* Sub-categories Navigation */}
+        <div className="space-y-10">
+            {/* Sub-categories Navigation (Using the same design as Home Page) */}
             {currentSubCategories.length > 0 && (
                 <div className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
+                    <div className="flex items-center gap-2 px-1 opacity-60">
                         <LayoutGrid className="h-4 w-4 text-primary" />
-                        <h4 className="text-sm font-black opacity-70">أقسام فرعية</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest">أقسام فرعية</h4>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        {currentSubCategories.map(sub => (
-                            <Card key={sub.id} className="cursor-pointer hover:bg-primary/5 transition-colors border-none shadow-sm rounded-2xl overflow-hidden group" onClick={() => router.push(`/categories/${sub.id}`)}>
-                                <CardContent className="p-4 flex items-center gap-3">
-                                    <div className="bg-primary/10 p-2 rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
-                                        <LayoutGrid className="h-5 w-5" />
+                    <div className="grid grid-cols-2 gap-4">
+                        {currentSubCategories.map(sub => {
+                            const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin;
+                            return (
+                                <div key={sub.id} onClick={() => handleSubCategoryClick(sub)}>
+                                    <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95 group overflow-hidden">
+                                        <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
+                                        {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md" />}
+                                        {sub.fileTypes && <div className="absolute top-3.5 right-3.5 bg-black/20 text-[10px] font-bold px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm">{sub.fileTypes}</div>}
+                                        <p className="font-bold text-lg relative z-10 leading-snug">{sub.name}</p>
                                     </div>
-                                    <span className="font-bold text-sm truncate">{sub.name}</span>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -192,8 +204,8 @@ export default function CategoryPage() {
                                         </div>
                                         <div className="p-6 flex-1 flex flex-col justify-center space-y-3">
                                             <h3 className="text-xl font-black">{item.title}</h3>
-                                            <p className="text-muted-foreground text-xs line-clamp-2">{item.instructions}</p>
-                                            <Button className="w-fit rounded-xl font-black" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                            <p className="text-muted-foreground text-xs line-clamp-2">{item.instructions || 'تفضل بزيارة هذا الموقع للحصول على المزيد من المعلومات والإلهام لمشاريعك.'}</p>
+                                            <Button className="w-fit rounded-xl font-black px-6" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                                 <ExternalLink className="ml-2 h-4 w-4" /> زيارة الموقع
                                             </Button>
                                         </div>
