@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,7 +10,6 @@ import {
     Settings, 
     CheckCircle, 
     Loader2,
-    LayoutDashboard,
     Layers,
     Send,
     Hammer,
@@ -18,14 +17,13 @@ import {
     ChevronUp,
     ChevronDown,
     Zap,
-    PlayCircle,
     Type,
-    Globe,
     CreditCard,
     ArrowRight,
     LayoutGrid,
     Eye,
-    ShieldAlert
+    ChevronLeft,
+    Monitor
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -36,18 +34,19 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 import type { Category, ContentItem, PricingPlan } from '@/lib/definitions';
 
+// Schemas
 const itemSchema = z.object({
   title: z.string().min(2, "العنوان مطلوب"),
   imageUrl: z.string().url("رابط الصورة غير صالح"),
@@ -68,106 +67,60 @@ const categorySchema = z.object({
     parentId: z.string().nullable().default(null),
 });
 
-const planSchema = z.object({
-    name: z.string().min(2),
-    price: z.string(),
-    currency: z.string().default('$'),
-    description: z.string(),
-    features: z.string(),
-    isFeatured: z.boolean().default(false),
-    enabled: z.boolean().default(true),
-    order: z.number().default(0),
-});
-
 export default function AdminDashboard() {
   const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('categories');
   
-  const [selectedMainId, setSelectedMainId] = useState<string>('');
-  const [selectedSubId, setSelectedSubId] = useState<string>('');
+  const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'settings'>('content');
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
+  const [isAddingItem, setIsAddingItem] = useState(false);
 
-  // Categories
+  // Categories Fetching
   const categoriesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories')) : null, [firestore]);
   const { data: rawCategories } = useCollection<Category>(categoriesQuery);
+  
   const allCategories = useMemo(() => {
       if (!rawCategories) return [];
       return [...rawCategories].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   }, [rawCategories]);
 
   const mainCategories = useMemo(() => allCategories.filter(c => !c.parentId), [allCategories]);
+  
+  const currentCategory = useMemo(() => 
+    selectedParentId ? allCategories.find(c => c.id === selectedParentId) : null
+  , [selectedParentId, allCategories]);
+
   const subCategories = useMemo(() => {
-      if (!selectedMainId) return [];
-      return allCategories.filter(c => c.parentId === selectedMainId);
-  }, [allCategories, selectedMainId]);
+      if (!selectedParentId) return [];
+      return allCategories.filter(c => c.parentId === selectedParentId);
+  }, [allCategories, selectedParentId]);
 
-  const effectiveCategoryId = selectedSubId && selectedSubId !== 'none' ? selectedSubId : selectedMainId;
-  const targetCategory = useMemo(() => allCategories.find(c => c.id === effectiveCategoryId), [allCategories, effectiveCategoryId]);
-
-  // Items
+  // Items Fetching
   const itemsQuery = useMemoFirebase(() => {
-      if (!firestore || !effectiveCategoryId) return null;
-      return query(collection(firestore, 'categories', effectiveCategoryId, 'items'));
-  }, [firestore, effectiveCategoryId]);
+      if (!firestore || !selectedParentId) return null;
+      return query(collection(firestore, 'categories', selectedParentId, 'items'));
+  }, [firestore, selectedParentId]);
   const { data: rawItems } = useCollection<ContentItem>(itemsQuery);
   const currentItems = useMemo(() => {
       if (!rawItems) return [];
       return [...rawItems].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   }, [rawItems]);
 
-  // Plans
-  const plansQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pricingPlans')) : null, [firestore]);
-  const { data: rawPlans } = useCollection<PricingPlan>(plansQuery);
-  const allPlans = useMemo(() => {
-      if (!rawPlans) return [];
-      return [...rawPlans].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  }, [rawPlans]);
-
   // Forms
-  const itemForm = useForm<z.infer<typeof itemSchema>>({
-    resolver: zodResolver(itemSchema),
-    defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', visibility: 'public', isNew: false }
-  });
-
   const catForm = useForm<z.infer<typeof categorySchema>>({
       resolver: zodResolver(categorySchema),
       defaultValues: { name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: null }
   });
 
-  const planForm = useForm<z.infer<typeof planSchema>>({
-      resolver: zodResolver(planSchema),
-      defaultValues: { name: '', price: '', currency: '$', description: '', features: '', isFeatured: false, enabled: true, order: 0 }
+  const itemForm = useForm<z.infer<typeof itemSchema>>({
+    resolver: zodResolver(itemSchema),
+    defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', visibility: 'public', isNew: false }
   });
 
   // Handlers
-  const onAddItem = async (values: z.infer<typeof itemSchema>) => {
-    if (!firestore || !effectiveCategoryId) return;
-    try {
-      const itemData = { 
-          ...values, 
-          order: currentItems.length, 
-          createdAt: serverTimestamp(), 
-          status: isAdmin ? 'approved' : 'pending' 
-      };
-      await addDocumentNonBlocking(collection(firestore, 'categories', effectiveCategoryId, 'items'), itemData);
-      toast({ title: isAdmin ? "تم النشر بنجاح" : "تم الإرسال للمراجعة" });
-      itemForm.reset({ 
-          ...itemForm.getValues(), 
-          title: '', 
-          imageUrl: '', 
-          downloadUrl: '', 
-          prompt: '', 
-          videoUrl: '' 
-      });
-    } catch (e) {
-      toast({ title: "خطأ في الإضافة", variant: "destructive" });
-    }
-  };
-
   const onUpdateCategory = async (values: z.infer<typeof categorySchema>) => {
       if (!firestore) return;
       try {
@@ -175,34 +128,35 @@ export default function AdminDashboard() {
           const catId = isNew ? doc(collection(firestore, 'categories')).id : editingCategory!.id;
           const dataToSave = {
               ...values,
-              parentId: values.parentId === 'null' ? null : values.parentId,
+              parentId: values.parentId || null,
               order: isNew ? allCategories.length : (editingCategory!.order ?? 0),
               createdAt: isNew ? serverTimestamp() : (editingCategory!.createdAt || serverTimestamp())
           };
           await setDoc(doc(firestore, 'categories', catId), dataToSave, { merge: true });
-          toast({ title: "تم حفظ القسم" });
+          toast({ title: "تم حفظ القسم بنجاح" });
           setEditingCategory(null);
+          catForm.reset();
       } catch (e) {
           toast({ title: "خطأ في الحفظ", variant: "destructive" });
       }
   };
 
-  const onUpdatePlan = async (values: z.infer<typeof planSchema>) => {
-      if (!firestore) return;
-      try {
-          const isNew = !editingPlan?.id;
-          const planId = isNew ? doc(collection(firestore, 'pricingPlans')).id : editingPlan!.id;
-          const dataToSave = {
-              ...values,
-              features: values.features.split(',').map(f => f.trim()),
-              order: isNew ? allPlans.length : values.order,
-          };
-          await setDoc(doc(firestore, 'pricingPlans', planId), dataToSave, { merge: true });
-          toast({ title: "تم حفظ الخطة" });
-          setEditingPlan(null);
-      } catch (e) {
-          toast({ title: "خطأ في حفظ الخطة", variant: "destructive" });
-      }
+  const onAddItem = async (values: z.infer<typeof itemSchema>) => {
+    if (!firestore || !selectedParentId) return;
+    try {
+      const itemData = { 
+          ...values, 
+          order: currentItems.length, 
+          createdAt: serverTimestamp(), 
+          status: isAdmin ? 'approved' : 'pending' 
+      };
+      await addDocumentNonBlocking(collection(firestore, 'categories', selectedParentId, 'items'), itemData);
+      toast({ title: isAdmin ? "تم النشر بنجاح" : "تم الإرسال للمراجعة" });
+      itemForm.reset();
+      setIsAddingItem(false);
+    } catch (e) {
+      toast({ title: "خطأ في الإضافة", variant: "destructive" });
+    }
   };
 
   const moveItem = async (list: any[], index: number, direction: 'up' | 'down', path: string[]) => {
@@ -218,585 +172,328 @@ export default function AdminDashboard() {
   if (isUserLoading) return <div className="flex h-screen items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="flex min-h-screen bg-secondary/30" dir="rtl">
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex w-72 flex-col bg-card border-l sticky top-0 h-screen shadow-xl z-50">
-        <div className="p-8 border-b flex flex-col items-center gap-3">
-            <div className="bg-primary text-primary-foreground p-4 rounded-[2rem] shadow-2xl rotate-3">
-                <LayoutDashboard className="h-8 w-8" />
+    <div className="min-h-screen bg-[#F8F9FC] text-foreground" dir="rtl">
+      
+      {/* Top Navigation Bar */}
+      <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b shadow-sm">
+        <div className="container mx-auto max-w-6xl px-4 flex h-20 items-center justify-between">
+            <div className="flex items-center gap-4">
+                <div className="bg-primary text-primary-foreground p-2.5 rounded-2xl shadow-lg shadow-primary/20">
+                    <Monitor className="h-6 w-6" />
+                </div>
+                <div>
+                    <h1 className="text-lg font-black tracking-tight">إدارة المنصة</h1>
+                    <p className="text-[10px] text-muted-foreground font-bold opacity-60">لوحة التحكم المركزية</p>
+                </div>
             </div>
-            <h1 className="font-black text-xl">لوحة التحكم</h1>
-        </div>
-        <ScrollArea className="flex-1 px-4 py-6">
-            <nav className="space-y-2">
+
+            <nav className="hidden md:flex items-center gap-1 bg-secondary/50 p-1 rounded-2xl border">
                 {[
-                    { id: 'categories', label: 'الأقسام', icon: Layers },
-                    { id: 'items', label: 'المحتوى', icon: Send },
-                    { id: 'plans', label: 'الاشتراكات', icon: CreditCard },
-                ].map(item => (
-                    <button 
-                        key={item.id}
-                        onClick={() => setActiveTab(item.id)} 
-                        className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-sm transition-all ${activeTab === item.id ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:bg-primary/5'}`}
+                    { id: 'content', label: 'المحتوى والأقسام', icon: Layers },
+                    { id: 'plans', label: 'باقات الاشتراك', icon: CreditCard },
+                    { id: 'settings', label: 'الإعدادات العامة', icon: Settings },
+                ].map(tool => (
+                    <button
+                        key={tool.id}
+                        onClick={() => { setActiveTool(tool.id as any); setSelectedParentId(null); }}
+                        className={cn(
+                            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all",
+                            activeTool === tool.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50"
+                        )}
                     >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.label}</span>
+                        <tool.icon className="h-4 w-4" />
+                        {tool.label}
                     </button>
                 ))}
             </nav>
-        </ScrollArea>
-        <div className="p-6 border-t">
-            <Button variant="outline" className="w-full rounded-2xl font-bold gap-2" onClick={() => router.push('/home')}>
-                <ArrowRight className="h-4 w-4" /> العودة للتطبيق
+
+            <Button variant="ghost" className="rounded-2xl font-black gap-2 text-xs" onClick={() => router.push('/home')}>
+                الموقع <ArrowRight className="h-4 w-4" />
             </Button>
         </div>
-      </aside>
+      </header>
 
-      <main className="flex-1 p-4 lg:p-10">
-        <Tabs value={activeTab} className="space-y-8">
-            
-            {/* Categories Management */}
-            <TabsContent value="categories" className="space-y-8">
-                <div className="flex justify-between items-center bg-card p-6 rounded-[2rem] shadow-sm">
-                    <div>
-                        <h2 className="text-2xl font-black text-foreground">إدارة الأقسام</h2>
-                        <p className="text-xs text-muted-foreground mt-1">أضف الأقسام الرئيسية والفرعية وحدد أنماط العرض</p>
-                    </div>
-                    <Button size="lg" className="rounded-2xl font-black px-8" onClick={() => { catForm.reset(); setEditingCategory({ id: '' } as any); }}>
-                        <Plus className="ml-2 h-5 w-5" /> إضافة قسم
-                    </Button>
-                </div>
+      {/* Main Content Area */}
+      <main className="container mx-auto max-w-6xl px-4 py-8">
+        
+        {activeTool === 'content' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {allCategories.map((cat, idx) => (
-                        <Card key={cat.id} className="overflow-hidden border-none shadow-lg rounded-[2.5rem] group">
-                            <CardHeader className="p-6 bg-muted/20 flex-row justify-between items-start space-y-0">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <CardTitle className="text-lg font-black">{cat.name}</CardTitle>
-                                        {cat.parentId && <Badge variant="outline" className="text-[9px] h-5">فرعي</Badge>}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 pt-1">
-                                        <Badge variant="secondary" className="text-[9px] font-bold">النمط: {cat.displayStyle}</Badge>
-                                        {cat.fileTypes && <Badge className="bg-primary/10 text-primary text-[9px] border-none font-bold uppercase">{cat.fileTypes}</Badge>}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-1 bg-background/50 p-1 rounded-xl border">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => moveItem(allCategories, idx, 'up', ['categories'])}><ChevronUp className="h-4 w-4" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === allCategories.length - 1} onClick={() => moveItem(allCategories, idx, 'down', ['categories'])}><ChevronDown className="h-4 w-4" /></Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-6 flex items-center justify-between border-t border-dashed">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-xl ${cat.isUnderMaintenance ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                                        {cat.isUnderMaintenance ? <Hammer className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black">حالة القسم</p>
-                                        <p className="text-[9px] text-muted-foreground">{cat.isUnderMaintenance ? 'تحت الصيانة' : 'نشط للجمهور'}</p>
-                                    </div>
-                                </div>
-                                <Switch 
-                                    checked={cat.isUnderMaintenance} 
-                                    onCheckedChange={(val) => updateDocumentNonBlocking(doc(firestore!, 'categories', cat.id), { isUnderMaintenance: val })} 
-                                />
-                            </CardContent>
-                            <CardFooter className="p-4 bg-muted/5 flex gap-2">
-                                <Button 
-                                    variant="secondary" 
-                                    className="flex-1 rounded-xl font-bold h-10 text-xs" 
-                                    onClick={() => { 
-                                        setSelectedMainId(cat.parentId || cat.id); 
-                                        if(cat.parentId) setSelectedSubId(cat.id); 
-                                        else setSelectedSubId('none'); 
-                                        setActiveTab('items'); 
-                                    }}
-                                >
-                                    إدارة المحتوى
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            {selectedParentId && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setSelectedParentId(null)}>
+                                    <ChevronRight className="h-5 w-5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="text-primary h-10 w-10 hover:bg-primary/10" onClick={() => { setEditingCategory(cat); catForm.reset(cat); }}><Edit2 className="h-4 w-4" /></Button>
-                                {isAdmin && (
-                                    <Button variant="ghost" size="icon" className="text-destructive h-10 w-10 hover:bg-destructive/10" onClick={() => confirm("حذف القسم؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', cat.id))}><Trash2 className="h-4 w-4" /></Button>
-                                )}
-                            </CardFooter>
-                        </Card>
-                    ))}
-                </div>
-            </TabsContent>
+                            )}
+                            <h2 className="text-2xl font-black">{selectedParentId ? currentCategory?.name : 'إدارة المحتوى'}</h2>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-medium">
+                            {selectedParentId ? 'تحكم في الأقسام الفرعية والمنشورات داخل هذا القسم' : 'ابدأ باختيار قسم أو أضف قسماً رئيسياً جديداً'}
+                        </p>
+                    </div>
 
-            {/* Content Management */}
-            <TabsContent value="items" className="space-y-8">
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-                    <Card className="xl:col-span-5 rounded-[2.5rem] border-none shadow-2xl overflow-hidden sticky top-10">
-                        <CardHeader className="p-8 bg-primary text-primary-foreground">
-                            <CardTitle className="text-xl font-black flex items-center gap-3"><Plus className="h-6 w-6" /> نشر محتوى جديد</CardTitle>
-                            <CardDescription className="text-primary-foreground/70">تظهر الحقول حسب نمط القسم المختار</CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-8 space-y-6">
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-muted-foreground px-1">القسم الرئيسي</label>
-                                    <Select value={selectedMainId} onValueChange={(v) => { setSelectedMainId(v); setSelectedSubId('none'); }}>
-                                        <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
-                                        <SelectContent className="rounded-xl">
-                                            {mainCategories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {subCategories.length > 0 && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-muted-foreground px-1">القسم الفرعي</label>
-                                        <Select value={selectedSubId} onValueChange={setSelectedSubId}>
-                                            <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="اختياري..." /></SelectTrigger>
-                                            <SelectContent className="rounded-xl">
-                                                <SelectItem value="none">-- لا يوجد --</SelectItem>
-                                                {subCategories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-                            </div>
+                    <div className="flex gap-2">
+                        <Dialog open={!!editingCategory} onOpenChange={(o) => !o && setEditingCategory(null)}>
+                            <DialogTrigger asChild>
+                                <Button size="lg" className="rounded-2xl font-black px-6 shadow-xl shadow-primary/20" onClick={() => {
+                                    catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, parentId: selectedParentId });
+                                    setEditingCategory({ id: '' } as any);
+                                }}>
+                                    <Plus className="ml-2 h-5 w-5" /> {selectedParentId ? 'قسم فرعي' : 'قسم رئيسي'}
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
+                                <DialogHeader><DialogTitle className="text-xl font-black">إعدادات القسم الجديد</DialogTitle></DialogHeader>
+                                <Form {...catForm}>
+                                    <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
+                                        <FormField control={catForm.control} name="name" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs font-black">اسم القسم</FormLabel>
+                                                <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={catForm.control} name="fileTypes" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs font-black">الصيغ (اختياري)</FormLabel>
+                                                <FormControl><Input {...field} placeholder="PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl>
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={catForm.control} name="displayStyle" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs font-black">نمط العرض</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="style1">تحميل (Style 1)</SelectItem>
+                                                        <SelectItem value="style3">برومبت (Style 3)</SelectItem>
+                                                        <SelectItem value="style4">فيديو (Style 4)</SelectItem>
+                                                        <SelectItem value="style5">معرض (Style 5)</SelectItem>
+                                                        <SelectItem value="style6">موقع (Style 6)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        )} />
+                                        <Button type="submit" className="w-full h-14 rounded-2xl font-black">حفظ التغييرات</Button>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
 
-                            {effectiveCategoryId && targetCategory ? (
-                                <Form {...itemForm}>
-                                    <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-5 pt-6 border-t-2 border-dashed">
-                                        <div className="bg-primary/5 p-4 rounded-2xl border flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-primary text-primary-foreground p-2 rounded-xl"><Type className="h-4 w-4" /></div>
-                                                <div><p className="text-[10px] font-black">النمط المطبق</p><p className="text-[10px] text-muted-foreground">{targetCategory.displayStyle}</p></div>
+                        {selectedParentId && (
+                            <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
+                                <DialogTrigger asChild>
+                                    <Button size="lg" variant="outline" className="rounded-2xl font-black px-6 border-2">
+                                        <Send className="ml-2 h-5 w-5" /> إضافة منشور
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
+                                    <DialogHeader><DialogTitle className="text-xl font-black">نشر محتوى جديد</DialogTitle></DialogHeader>
+                                    <Form {...itemForm}>
+                                        <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-4 pt-4">
+                                            <div className="bg-primary/5 p-3 rounded-xl border flex items-center justify-between mb-4">
+                                                <span className="text-[10px] font-black opacity-60">النمط المطبق: {currentCategory?.displayStyle}</span>
+                                                <Badge variant="outline" className="text-[10px]">{currentCategory?.displayStyle}</Badge>
                                             </div>
-                                            <Badge className="font-bold">{targetCategory.displayStyle}</Badge>
-                                        </div>
-
-                                        <FormField 
-                                            control={itemForm.control} 
-                                            name="title" 
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-black text-xs">عنوان المنشور</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} className="h-12 rounded-xl" placeholder="مثلاً: ملحقات فوتوشوب 2024" />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )} 
-                                        />
-                                        
-                                        <FormField 
-                                            control={itemForm.control} 
-                                            name="imageUrl" 
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-black text-xs">رابط الصورة المعروضة</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} className="h-12 rounded-xl text-left" dir="ltr" placeholder="https://..." />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )} 
-                                        />
-
-                                        <div className="space-y-5">
-                                            {targetCategory.displayStyle === 'style3' && (
-                                                <>
-                                                    <FormField 
-                                                        control={itemForm.control} 
-                                                        name="prompt" 
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="font-black text-xs text-primary">نص البرومبت</FormLabel>
-                                                                <FormControl>
-                                                                    <Textarea {...field} className="h-24 rounded-xl font-mono text-xs" dir="ltr" />
-                                                                </FormControl>
-                                                            </FormItem>
-                                                        )} 
-                                                    />
-                                                    <FormField 
-                                                        control={itemForm.control} 
-                                                        name="instructions" 
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="font-black text-xs">تعليمات الاستخدام</FormLabel>
-                                                                <FormControl>
-                                                                    <Input {...field} className="h-12 rounded-xl" />
-                                                                </FormControl>
-                                                            </FormItem>
-                                                        )} 
-                                                    />
-                                                </>
+                                            <FormField control={itemForm.control} name="title" render={({ field }) => (
+                                                <FormItem><FormLabel className="text-xs font-black">العنوان</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>
+                                            )} />
+                                            <FormField control={itemForm.control} name="imageUrl" render={({ field }) => (
+                                                <FormItem><FormLabel className="text-xs font-black">رابط الصورة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>
+                                            )} />
+                                            
+                                            {currentCategory?.displayStyle === 'style3' && (
+                                                <FormField control={itemForm.control} name="prompt" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs font-black">نص البرومبت</FormLabel><FormControl><Textarea {...field} className="rounded-xl font-mono text-xs" dir="ltr" /></FormControl></FormItem>
+                                                )} />
                                             )}
-
-                                            {targetCategory.displayStyle === 'style4' && (
-                                                <FormField 
-                                                    control={itemForm.control} 
-                                                    name="videoUrl" 
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="font-black text-xs text-primary">رابط الفيديو (يوتيوب)</FormLabel>
-                                                            <FormControl>
-                                                                <Input {...field} className="h-12 rounded-xl text-left" dir="ltr" />
-                                                            </FormControl>
-                                                        </FormItem>
-                                                    )} 
-                                                />
+                                            {currentCategory?.displayStyle === 'style4' && (
+                                                <FormField control={itemForm.control} name="videoUrl" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs font-black">رابط يوتيوب</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>
+                                                )} />
                                             )}
+                                            
+                                            <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (
+                                                <FormItem><FormLabel className="text-xs font-black">رابط التحميل / الزيارة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>
+                                            )} />
 
-                                            {targetCategory.displayStyle === 'style6' && (
-                                                <FormField 
-                                                    control={itemForm.control} 
-                                                    name="instructions" 
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="font-black text-xs">وصف الموقع</FormLabel>
-                                                            <FormControl>
-                                                                <Textarea {...field} className="h-20 rounded-xl" placeholder="اكتب نبذة عن الموقع..." />
-                                                            </FormControl>
-                                                        </FormItem>
-                                                    )} 
-                                                />
-                                            )}
-
-                                            <FormField 
-                                                control={itemForm.control} 
-                                                name="downloadUrl" 
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="font-black text-xs">رابط التحميل أو الزيارة</FormLabel>
-                                                        <FormControl>
-                                                            <Input {...field} className="h-12 rounded-xl text-left" dir="ltr" placeholder="https://..." />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )} 
-                                            />
-                                        </div>
-
-                                        <div className="flex gap-4">
-                                            <FormField 
-                                                control={itemForm.control} 
-                                                name="visibility" 
-                                                render={({ field }) => (
+                                            <div className="flex gap-4 pt-2">
+                                                <FormField control={itemForm.control} name="visibility" render={({ field }) => (
                                                     <FormItem className="flex-1">
-                                                        <FormLabel className="font-black text-xs">مستوى الوصول</FormLabel>
+                                                        <FormLabel className="text-xs font-black">الوصول</FormLabel>
                                                         <Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl>
-                                                                <SelectTrigger className="h-12 rounded-xl">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                            </FormControl>
+                                                            <FormControl><SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
                                                             <SelectContent className="rounded-xl">
-                                                                <SelectItem value="public">عام (مجاني)</SelectItem>
-                                                                <SelectItem value="pro">برو فقط</SelectItem>
+                                                                <SelectItem value="public">مجاني</SelectItem>
+                                                                <SelectItem value="pro">برو</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     </FormItem>
-                                                )} 
-                                            />
-                                            <FormField 
-                                                control={itemForm.control} 
-                                                name="isNew" 
-                                                render={({ field }) => (
-                                                    <FormItem className="flex items-center justify-between p-4 border-2 rounded-xl bg-green-50/20">
-                                                        <FormLabel className="font-black m-0 text-[10px]">شارة جديد</FormLabel>
-                                                        <FormControl>
+                                                )} />
+                                                <FormField control={itemForm.control} name="isNew" render={({ field }) => (
+                                                    <FormItem className="flex flex-col justify-end p-2 border rounded-xl bg-muted/30">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black">جديد</span>
                                                             <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                        </FormControl>
+                                                        </div>
                                                     </FormItem>
-                                                )} 
-                                            />
+                                                )} />
+                                            </div>
+                                            <Button type="submit" className="w-full h-14 rounded-2xl font-black mt-4">نشر الآن</Button>
+                                        </form>
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
+                        )}
+                    </div>
+                </div>
+
+                {!selectedParentId ? (
+                    /* Main Categories Grid */
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {mainCategories.map((cat, idx) => (
+                            <Card key={cat.id} className="rounded-[2.5rem] border-none shadow-xl shadow-gray-200/50 overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                                <CardHeader className="bg-primary p-8 text-primary-foreground relative overflow-hidden">
+                                    <div className="absolute -right-4 -bottom-4 bg-white/10 w-24 h-24 rounded-full blur-2xl" />
+                                    <div className="flex justify-between items-start relative z-10">
+                                        <div>
+                                            <CardTitle className="text-xl font-black">{cat.name}</CardTitle>
+                                            <Badge className="mt-2 bg-white/20 text-white border-none font-bold uppercase text-[9px]">{cat.displayStyle}</Badge>
                                         </div>
+                                        <div className="flex flex-col gap-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); moveItem(mainCategories, idx, 'up', ['categories']); }} disabled={idx === 0}><ChevronUp className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); moveItem(mainCategories, idx, 'down', ['categories']); }} disabled={idx === mainCategories.length - 1}><ChevronDown className="h-4 w-4" /></Button>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-6 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn("p-2 rounded-xl", cat.isUnderMaintenance ? "bg-orange-100 text-orange-600" : "bg-green-100 text-green-600")}>
+                                                {cat.isUnderMaintenance ? <Hammer className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black">حالة القسم</p>
+                                                <p className="text-[9px] text-muted-foreground font-medium">{cat.isUnderMaintenance ? 'تحت الصيانة' : 'نشط حالياً'}</p>
+                                            </div>
+                                        </div>
+                                        <Switch checked={cat.isUnderMaintenance} onCheckedChange={(v) => updateDocumentNonBlocking(doc(firestore!, 'categories', cat.id), { isUnderMaintenance: v })} />
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="p-4 bg-muted/30 flex gap-2">
+                                    <Button className="flex-1 rounded-xl font-black h-11 text-xs" onClick={() => setSelectedParentId(cat.id)}>
+                                        إدارة القسم <ChevronLeft className="mr-2 h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-primary hover:bg-primary/10" onClick={() => { setEditingCategory(cat); catForm.reset(cat); }}><Edit2 className="h-4 w-4" /></Button>
+                                    {isAdmin && (
+                                        <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-destructive hover:bg-destructive/10" onClick={() => confirm("حذف القسم؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', cat.id))}><Trash2 className="h-4 w-4" /></Button>
+                                    )}
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                ) : (
+                    /* Detailed Category Management */
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        
+                        {/* Sub-categories Column */}
+                        <div className="lg:col-span-4 space-y-6">
+                            <div className="flex items-center justify-between px-2">
+                                <h3 className="font-black text-sm flex items-center gap-2 text-primary">
+                                    <Layers className="h-4 w-4" /> الأقسام الفرعية
+                                </h3>
+                                <Badge variant="secondary" className="font-bold">{subCategories.length}</Badge>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {subCategories.length === 0 ? (
+                                    <div className="text-center py-12 bg-white rounded-[2rem] border-2 border-dashed opacity-40">
+                                        <p className="text-xs font-bold">لا توجد أقسام فرعية</p>
+                                    </div>
+                                ) : (
+                                    subCategories.map((sub, idx) => (
+                                        <div key={sub.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-secondary p-2 rounded-lg"><LayoutGrid className="h-4 w-4 opacity-40" /></div>
+                                                <span className="font-black text-sm">{sub.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setEditingCategory(sub); catForm.reset(sub); }}><Edit2 className="h-3.5 w-3.5" /></Button>
+                                                {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', sub.id))}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
 
-                                        <Button type="submit" className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20" disabled={itemForm.formState.isSubmitting}>
-                                            <Send className="ml-2 h-5 w-5" /> نشر الآن
-                                        </Button>
-                                    </form>
-                                </Form>
-                            ) : (
-                                <div className="text-center py-12 border-2 border-dashed rounded-3xl opacity-40">
-                                    <LayoutGrid className="h-12 w-12 mx-auto mb-2" />
-                                    <p className="font-bold text-sm">اختر قسماً للبدء بالإضافة</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                        {/* Items Column */}
+                        <div className="lg:col-span-8 space-y-6">
+                            <div className="flex items-center justify-between px-2">
+                                <h3 className="font-black text-sm flex items-center gap-2 text-primary">
+                                    <Send className="h-4 w-4" /> المحتوى الحالي
+                                </h3>
+                                <Badge variant="secondary" className="font-bold">{currentItems.length} منشور</Badge>
+                            </div>
 
-                    <div className="xl:col-span-7 space-y-6">
-                        <Card className="rounded-[2.5rem] bg-card border-none shadow-sm overflow-hidden">
-                            <CardHeader className="p-8 flex-row items-center justify-between border-b">
-                                <div><CardTitle className="text-lg font-black">المحتوى الحالي</CardTitle><p className="text-[10px] text-muted-foreground">ترتيب العناصر في القسم المختار</p></div>
-                                <Badge variant="secondary" className="font-black h-8 px-4 rounded-full">{currentItems.length} منشور</Badge>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <ScrollArea className="h-[750px]">
-                                    {!effectiveCategoryId ? (
-                                        <div className="text-center py-32 opacity-30"><Layers className="h-20 w-20 mx-auto mb-4" /><p className="font-black">اختر قسماً لعرض محتوياته</p></div>
-                                    ) : currentItems.length === 0 ? (
-                                        <div className="text-center py-32 opacity-30"><Send className="h-20 w-20 mx-auto mb-4" /><p className="font-black">هذا القسم فارغ حالياً</p></div>
+                            <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white">
+                                <ScrollArea className="h-[600px]">
+                                    {currentItems.length === 0 ? (
+                                        <div className="text-center py-32 opacity-20">
+                                            <Send className="h-16 w-16 mx-auto mb-4" />
+                                            <p className="font-black">لم يتم إضافة محتوى بعد</p>
+                                        </div>
                                     ) : (
                                         <div className="divide-y">
                                             {currentItems.map((item, idx) => (
-                                                <div key={item.id} className="flex items-center gap-4 p-5 group hover:bg-primary/5 transition-colors">
+                                                <div key={item.id} className="flex items-center gap-4 p-5 hover:bg-secondary/20 transition-colors group">
                                                     <div className="flex flex-col bg-muted/50 rounded-xl overflow-hidden border">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 rounded-none" disabled={idx === 0} onClick={() => moveItem(currentItems, idx, 'up', ['categories', effectiveCategoryId, 'items'])}><ChevronUp className="h-4 w-4" /></Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 rounded-none" disabled={idx === currentItems.length - 1} onClick={() => moveItem(currentItems, idx, 'down', ['categories', effectiveCategoryId, 'items'])}><ChevronDown className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={idx === 0} onClick={() => moveItem(currentItems, idx, 'up', ['categories', selectedParentId!, 'items'])}><ChevronUp className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={idx === currentItems.length - 1} onClick={() => moveItem(currentItems, idx, 'down', ['categories', selectedParentId!, 'items'])}><ChevronDown className="h-4 w-4" /></Button>
                                                     </div>
-                                                    <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-muted relative shrink-0">
+                                                    <div className="h-14 w-14 rounded-2xl overflow-hidden border-2 relative shrink-0">
                                                         {item.imageUrl && <img src={item.imageUrl} alt="" className="object-cover h-full w-full" />}
-                                                        {item.visibility === 'pro' && <div className="absolute top-0 right-0 bg-yellow-500 text-white p-1 rounded-bl-xl shadow-sm"><Zap className="h-3 w-3 fill-white" /></div>}
+                                                        {item.visibility === 'pro' && <div className="absolute top-0 right-0 bg-yellow-500 text-white p-0.5 rounded-bl-lg"><Zap className="h-2.5 w-2.5 fill-white" /></div>}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-black text-sm truncate">{item.title}</p>
-                                                        <div className="flex items-center gap-2 mt-1.5">
-                                                            {item.isNew && <Badge className="bg-green-500 text-white text-[8px] h-4 border-none">جديد</Badge>}
-                                                            <Badge variant="outline" className="text-[8px] h-4 py-0">{item.visibility}</Badge>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            {item.isNew && <Badge className="bg-green-500 text-white text-[8px] h-4">جديد</Badge>}
+                                                            <span className="text-[10px] opacity-40 font-bold uppercase">{item.visibility}</span>
                                                         </div>
                                                     </div>
-                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        {isAdmin && (
-                                                            <Button 
-                                                                variant="ghost" size="icon" className="text-destructive h-10 w-10 hover:bg-destructive/10" 
-                                                                onClick={() => confirm("حذف العنصر؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', effectiveCategoryId, 'items', item.id))}
-                                                            ><Trash2 className="h-4 w-4" /></Button>
-                                                        )}
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {isAdmin && <Button variant="ghost" size="icon" className="text-destructive h-10 w-10 hover:bg-destructive/10" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId!, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button>}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
                                 </ScrollArea>
-                            </CardContent>
-                        </Card>
+                            </Card>
+                        </div>
                     </div>
-                </div>
-            </TabsContent>
+                )}
+            </div>
+        )}
 
-            {/* Pricing Plans */}
-            <TabsContent value="plans" className="space-y-8">
-                <div className="flex justify-between items-center bg-card p-6 rounded-[2rem] shadow-sm">
-                    <h2 className="text-2xl font-black text-foreground">إدارة الباقات</h2>
-                    <Button size="lg" className="rounded-2xl font-black" onClick={() => { planForm.reset(); setEditingPlan({ id: '' } as any); }}>
-                        <Plus className="ml-2 h-5 w-5" /> إضافة باقة
-                    </Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {allPlans.map((plan, idx) => (
-                        <Card key={plan.id} className={`rounded-[2.5rem] border-none shadow-lg overflow-hidden ${plan.isFeatured ? 'ring-4 ring-primary/20' : ''}`}>
-                            <CardHeader className="p-6 bg-muted/20">
-                                <div className="flex justify-between items-start">
-                                    <div><CardTitle className="font-black text-xl">{plan.name}</CardTitle><CardDescription className="text-xs">{plan.description}</CardDescription></div>
-                                    {plan.isFeatured && <Badge className="bg-primary text-white font-bold">Featured</Badge>}
-                                </div>
-                                <div className="mt-4 flex items-baseline gap-1">
-                                    <span className="text-3xl font-black">{plan.price}</span>
-                                    <span className="text-sm font-bold text-muted-foreground">{plan.currency}</span>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-6 h-40">
-                                <ul className="space-y-2">
-                                    {plan.features.slice(0, 4).map((f, i) => (
-                                        <li key={i} className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><CheckCircle className="h-3 w-3 text-green-500" /> {f}</li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                            <CardFooter className="p-4 border-t flex gap-2">
-                                <Button variant="ghost" size="icon" className="text-primary h-10 w-10" onClick={() => { setEditingPlan(plan); planForm.reset({ ...plan, features: plan.features.join(', ') }); }}><Edit2 className="h-4 w-4" /></Button>
-                                {isAdmin && (
-                                    <Button variant="ghost" size="icon" className="text-destructive h-10 w-10" onClick={() => confirm("حذف الباقة؟") && deleteDocumentNonBlocking(doc(firestore!, 'pricingPlans', plan.id))}><Trash2 className="h-4 w-4" /></Button>
-                                )}
-                            </CardFooter>
-                        </Card>
-                    ))}
-                </div>
-            </TabsContent>
-        </Tabs>
+        {activeTool === 'plans' && (
+            <div className="animate-in fade-in zoom-in-95 duration-500 text-center py-20 opacity-40">
+                <CreditCard className="h-20 w-20 mx-auto mb-4" />
+                <h3 className="text-2xl font-black">إدارة الباقات قيد التطوير</h3>
+            </div>
+        )}
+
+        {activeTool === 'settings' && (
+            <div className="animate-in fade-in zoom-in-95 duration-500 text-center py-20 opacity-40">
+                <Settings className="h-20 w-20 mx-auto mb-4" />
+                <h3 className="text-2xl font-black">الإعدادات العامة قيد التطوير</h3>
+            </div>
+        )}
+
       </main>
-
-      {/* Dialogs */}
-      <Dialog open={!!editingCategory} onOpenChange={(o) => !o && setEditingCategory(null)}>
-          <DialogContent className="max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl" dir="rtl">
-              <DialogHeader><DialogTitle className="text-2xl font-black flex items-center gap-3"><Settings className="text-primary h-6 w-6" /> إعدادات القسم</DialogTitle></DialogHeader>
-              <Form {...catForm}>
-                  <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-6 pt-4">
-                      <FormField 
-                        control={catForm.control} 
-                        name="name" 
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="font-black text-xs">اسم القسم</FormLabel>
-                                <FormControl>
-                                    <Input {...field} className="h-12 rounded-xl" />
-                                </FormControl>
-                            </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={catForm.control} 
-                        name="fileTypes" 
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="font-black text-xs flex items-center gap-2">
-                                    <FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (مثل: PSD, AI)
-                                </FormLabel>
-                                <FormControl>
-                                    <Input {...field} className="h-12 rounded-xl text-left" dir="ltr" />
-                                </FormControl>
-                            </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={catForm.control} 
-                        name="parentId" 
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="font-black text-xs">القسم الأب (اختياري)</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value || 'null'}>
-                                    <FormControl>
-                                        <SelectTrigger className="h-12 rounded-xl">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="null">-- قسم رئيسي --</SelectItem>
-                                        {mainCategories.filter(c => c.id !== editingCategory?.id).map(c => (
-                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={catForm.control} 
-                        name="displayStyle" 
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="font-black text-xs">نمط عرض المحتوى</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger className="h-12 rounded-xl">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="style1">تحميل (Style 1)</SelectItem>
-                                        <SelectItem value="style3">برومبت (Style 3)</SelectItem>
-                                        <SelectItem value="style4">فيديو (Style 4)</SelectItem>
-                                        <SelectItem value="style5">معرض (Style 5)</SelectItem>
-                                        <SelectItem value="style6">موقع (Style 6)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </FormItem>
-                        )} 
-                      />
-                      <DialogFooter className="pt-4">
-                        <Button type="submit" className="w-full h-14 font-black text-lg rounded-2xl shadow-xl shadow-primary/20">
-                            حفظ التغييرات
-                        </Button>
-                      </DialogFooter>
-                  </form>
-              </Form>
-          </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!editingPlan} onOpenChange={(o) => !o && setEditingPlan(null)}>
-          <DialogContent className="max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl" dir="rtl">
-              <DialogHeader><DialogTitle className="text-2xl font-black">إدارة باقة الاشتراك</DialogTitle></DialogHeader>
-              <Form {...planForm}>
-                  <form onSubmit={planForm.handleSubmit(onUpdatePlan)} className="space-y-4 pt-4">
-                      <FormField 
-                        control={planForm.control} 
-                        name="name" 
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="font-black text-xs">اسم الباقة</FormLabel>
-                                <FormControl>
-                                    <Input {...field} className="h-12 rounded-xl" />
-                                </FormControl>
-                            </FormItem>
-                        )} 
-                      />
-                      <div className="grid grid-cols-2 gap-4">
-                          <FormField 
-                            control={planForm.control} 
-                            name="price" 
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-black text-xs">السعر</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} className="h-12 rounded-xl text-center" />
-                                    </FormControl>
-                                </FormItem>
-                            )} 
-                          />
-                          <FormField 
-                            control={planForm.control} 
-                            name="currency" 
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-black text-xs">العملة</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} className="h-12 rounded-xl text-center" />
-                                    </FormControl>
-                                </FormItem>
-                            )} 
-                          />
-                      </div>
-                      <FormField 
-                        control={planForm.control} 
-                        name="description" 
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="font-black text-xs">وصف قصير</FormLabel>
-                                <FormControl>
-                                    <Input {...field} className="h-12 rounded-xl" />
-                                </FormControl>
-                            </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={planForm.control} 
-                        name="features" 
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="font-black text-xs">المميزات (افصل بينها بفاصلة ,)</FormLabel>
-                                <FormControl>
-                                    <Textarea {...field} className="h-20 rounded-xl" />
-                                </FormControl>
-                            </FormItem>
-                        )} 
-                      />
-                      <div className="flex gap-4">
-                          <FormField 
-                            control={planForm.control} 
-                            name="isFeatured" 
-                            render={({ field }) => (
-                                <FormItem className="flex-1 flex items-center justify-between p-3 border-2 rounded-xl">
-                                    <FormLabel className="m-0 font-black text-[10px]">باقة مميزة</FormLabel>
-                                    <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                    </FormControl>
-                                </FormItem>
-                            )} 
-                          />
-                          <FormField 
-                            control={planForm.control} 
-                            name="enabled" 
-                            render={({ field }) => (
-                                <FormItem className="flex-1 flex items-center justify-between p-3 border-2 rounded-xl">
-                                    <FormLabel className="m-0 font-black text-[10px]">مفعلة</FormLabel>
-                                    <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                    </FormControl>
-                                </FormItem>
-                            )} 
-                          />
-                      </div>
-                      <DialogFooter className="pt-4">
-                        <Button type="submit" className="w-full h-14 font-black rounded-2xl shadow-xl">
-                            حفظ الباقة
-                        </Button>
-                      </DialogFooter>
-                  </form>
-              </Form>
-          </DialogContent>
-      </Dialog>
     </div>
   );
 }
