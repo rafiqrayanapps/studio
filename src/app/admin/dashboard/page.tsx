@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -20,8 +19,7 @@ import {
     Gift,
     Layers,
     UserMinus,
-    Eye,
-    EyeOff
+    Eye
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -69,7 +67,6 @@ const categorySchema = z.object({
     visibility: z.enum(['public', 'pro']),
     order: z.number().default(0),
     isUnderMaintenance: z.boolean().default(false),
-    fileTypes: z.string().optional(),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -79,7 +76,7 @@ export default function AdminDashboard() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('items');
+  const [activeTab, setActiveTab] = useState(isAdmin ? 'categories' : 'items');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
@@ -125,8 +122,7 @@ export default function AdminDashboard() {
           displayStyle: 'style1',
           visibility: 'public',
           order: 0,
-          isUnderMaintenance: false,
-          fileTypes: ''
+          isUnderMaintenance: false
       }
   });
 
@@ -195,8 +191,7 @@ export default function AdminDashboard() {
           displayStyle: cat.displayStyle,
           visibility: cat.visibility,
           order: cat.order || 0,
-          isUnderMaintenance: cat.isUnderMaintenance || false,
-          fileTypes: cat.fileTypes || ''
+          isUnderMaintenance: cat.isUnderMaintenance || false
       });
   };
 
@@ -236,47 +231,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (entry: WhitelistEntry) => {
-    if (!firestore || !isAdmin) return;
-    if (!confirm(`هل أنت متأكد من حذف ${entry.email}؟ سيتم حذفه من القائمة البيضاء والمصادقة.`)) return;
-
-    try {
-        if (entry.activatedByUid) {
-            const result = await deleteUserAccount(entry.activatedByUid);
-            if (!result.success) {
-                toast({ title: result.error || "فشل حذف حساب المستخدم", variant: "destructive" });
-                return;
-            }
-        }
-
-        const whitelistRef = doc(firestore, 'whitelist', entry.email.toLowerCase());
-        await deleteDocumentNonBlocking(whitelistRef);
-        
-        toast({ title: "تم حذف المستخدم بالكامل من النظام" });
-    } catch (e) {
-        toast({ title: "حدث خطأ أثناء الحذف", variant: "destructive" });
-    }
-  };
-
-  const referralForm = useForm<ReferralConfig>({
-      defaultValues: { 
-          requiredReferrals: 5, 
-          rewardInterval: 5,
-          pointsPerReferral: 10,
-          pointsPerUnlock: 5
-      }
-  });
-
-  useEffect(() => {
-      if (referralConfig) referralForm.reset(referralConfig);
-  }, [referralConfig, referralForm]);
-
-  const onReferralSubmit = async (values: ReferralConfig) => {
-      if (!firestore || !isAdmin) return;
-      await setDoc(doc(firestore, 'appConfig', 'referral'), values, { merge: true });
-      toast({ title: "تم حفظ إعدادات الإحالة والنقاط" });
-  };
-
   const goToManageItems = (catId: string) => {
       setSelectedCategoryId(catId);
       setActiveTab('items');
@@ -294,10 +248,10 @@ export default function AdminDashboard() {
         </div>
         <nav className="flex-1 p-4 space-y-2">
             {[
-                { id: 'categories', label: 'الأقسام', icon: Layers },
-                { id: 'items', label: 'إدارة المحتوى', icon: FileText },
+                ...(isAdmin ? [{ id: 'categories', label: 'الأقسام', icon: Layers }] : []),
+                { id: 'items', label: 'إضافة محتوى', icon: Plus },
                 ...(isAdmin ? [
-                    { id: 'review', label: 'مراجعة المحتوى', icon: ShieldCheck, badge: reviewItems.length },
+                    { id: 'review', label: 'المراجعة', icon: ShieldCheck, badge: reviewItems.length },
                     { id: 'users', label: 'المستخدمين', icon: Users },
                     { id: 'settings', label: 'الإعدادات', icon: Settings }
                 ] : [])
@@ -341,7 +295,7 @@ export default function AdminDashboard() {
                                     <CardTitle className="text-lg">{cat.name}</CardTitle>
                                     <Badge variant={cat.visibility === 'pro' ? 'default' : 'outline'}>{cat.visibility === 'pro' ? 'برو' : 'عام'}</Badge>
                                 </div>
-                                <CardDescription className="text-xs">النمط: {cat.displayStyle} {cat.isUnderMaintenance && <span className="text-destructive font-bold">(صيانة)</span>}</CardDescription>
+                                <CardDescription className="text-xs">النمط: {cat.displayStyle}</CardDescription>
                             </CardHeader>
                             <CardFooter className="p-2 border-t flex justify-between gap-2">
                                 <Button variant="ghost" className="text-xs flex-1" onClick={() => goToManageItems(cat.id)}>
@@ -404,8 +358,8 @@ export default function AdminDashboard() {
 
                                 {selectedCategoryId && (
                                     <Form {...itemForm}>
-                                        <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <div className="space-y-4 pt-4 border-t">
+                                        <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-5 pt-4 border-t">
+                                            <div className="space-y-4">
                                                 <FormField control={itemForm.control} name="title" render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>العنوان</FormLabel>
@@ -495,7 +449,7 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="w-full md:w-80">
-                        <Card className="h-full border-none shadow-none md:border md:shadow-sm">
+                        <Card className="h-full">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg flex items-center gap-2">
                                     <Layers className="h-4 w-4 text-primary" />
@@ -510,18 +464,15 @@ export default function AdminDashboard() {
                                     ) : currentItems && currentItems.length > 0 ? (
                                         <div className="space-y-3">
                                             {currentItems.map(item => (
-                                                <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/50 hover:bg-muted rounded-xl transition-colors group">
-                                                    <div className="h-12 w-12 bg-muted rounded-lg relative overflow-hidden shrink-0 shadow-inner">
+                                                <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/50 rounded-xl transition-colors group">
+                                                    <div className="h-12 w-12 bg-muted rounded-lg relative overflow-hidden shrink-0">
                                                         {item.imageUrl && <img src={item.imageUrl} className="object-cover w-full h-full" alt="" />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-[11px] font-bold truncate leading-tight">{item.title}</p>
-                                                        <div className="flex items-center gap-1.5 mt-1">
-                                                            <Badge variant={item.status === 'pending' ? 'outline' : 'secondary'} className="text-[8px] h-4 px-1">
-                                                                {item.status === 'pending' ? 'قيد المراجعة' : 'منشور'}
-                                                            </Badge>
-                                                            {item.visibility === 'pro' && <Badge className="bg-yellow-500 text-white text-[8px] h-4 px-1">برو</Badge>}
-                                                        </div>
+                                                        <p className="text-[11px] font-bold truncate">{item.title}</p>
+                                                        <Badge variant={item.status === 'pending' ? 'outline' : 'secondary'} className="text-[8px] h-4 px-1 mt-1">
+                                                            {item.status === 'pending' ? 'قيد المراجعة' : 'منشور'}
+                                                        </Badge>
                                                     </div>
                                                     {isAdmin && (
                                                         <Button 
@@ -537,10 +488,7 @@ export default function AdminDashboard() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-12 space-y-2 opacity-40">
-                                            <FileText className="h-10 w-10 mx-auto" />
-                                            <p className="text-xs font-bold">لا يوجد محتوى بعد.</p>
-                                        </div>
+                                        <p className="text-center text-xs text-muted-foreground py-8">لا يوجد محتوى بعد.</p>
                                     )}
                                 </ScrollArea>
                             </CardContent>
@@ -625,7 +573,7 @@ export default function AdminDashboard() {
                                         <TableCell><Badge variant="secondary">{entry.role}</Badge></TableCell>
                                         <TableCell>{entry.isActivated ? <Badge className="bg-green-500">نشط</Badge> : <Badge variant="outline">غير مفعل</Badge>}</TableCell>
                                         <TableCell className="text-left">
-                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(entry)}>
+                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteUserAccount(entry.activatedByUid!).then(() => toast({ title: "تم الحذف" }))}>
                                                 <UserMinus className="h-4 w-4" />
                                             </Button>
                                         </TableCell>
@@ -637,7 +585,7 @@ export default function AdminDashboard() {
                 </TabsContent>
             )}
 
-            {isAdmin && ( activeTab === 'settings' &&
+            {isAdmin && (
                 <TabsContent value="settings" className="m-0 space-y-6">
                     <h2 className="text-2xl font-bold">إعدادات النظام العامة</h2>
                     <Accordion type="single" collapsible className="w-full space-y-4">
@@ -646,39 +594,25 @@ export default function AdminDashboard() {
                                 <AccordionTrigger className="p-6 font-bold text-lg hover:no-underline">
                                     <div className="flex items-center gap-3">
                                         <Gift className="h-6 w-6 text-primary" />
-                                        إعدادات نظام الإحالة والمكافآت والنقاط
+                                        إعدادات الإحالة والمكافآت
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="px-6 pb-6 border-t pt-6">
-                                    <Form {...referralForm}>
-                                        <form onSubmit={referralForm.handleSubmit(onReferralSubmit)} className="space-y-6 max-w-lg">
+                                    <Form {...itemForm}>
+                                        <form className="space-y-6 max-w-lg">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                                <FormField control={referralForm.control} name="requiredReferrals" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>إحالات تفعيل "برو"</FormLabel>
-                                                        <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                        <FormDescription>العدد المطلوب للترقية التلقائية.</FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )} />
-                                                <FormField control={referralForm.control} name="pointsPerReferral" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>النقاط لكل إحالة</FormLabel>
-                                                        <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                        <FormDescription>النقاط التي تضاف للرصيد.</FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )} />
-                                            </div>
-                                            <FormField control={referralForm.control} name="pointsPerUnlock" render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>تكلفة فتح محتوى برو (بالنقاط)</FormLabel>
-                                                    <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                    <FormDescription>عدد النقاط التي سيتم خصمها من رصيد المستخدم عند فتح ملف مقفل.</FormDescription>
-                                                    <FormMessage />
+                                                    <FormLabel>إحالات تفعيل "برو"</FormLabel>
+                                                    <FormControl><Input type="number" defaultValue={5} /></FormControl>
+                                                    <FormDescription>العدد المطلوب للترقية التلقائية.</FormDescription>
                                                 </FormItem>
-                                            )} />
-                                            <Button type="submit" className="w-full h-12 rounded-xl">حفظ الإعدادات</Button>
+                                                <FormItem>
+                                                    <FormLabel>النقاط لكل إحالة</FormLabel>
+                                                    <FormControl><Input type="number" defaultValue={10} /></FormControl>
+                                                    <FormDescription>النقاط التي تضاف للرصيد.</FormDescription>
+                                                </FormItem>
+                                            </div>
+                                            <Button type="button" className="w-full h-12 rounded-xl">حفظ الإعدادات</Button>
                                         </form>
                                     </Form>
                                 </AccordionContent>

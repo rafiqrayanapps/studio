@@ -83,7 +83,7 @@ export default function AccountPage() {
               {isPro && (
                   <CardDescription className="flex items-center gap-1 text-yellow-500 font-semibold">
                     <Crown className="h-4 w-4" />
-                    <span>عضوية برو</span>
+                    <span>عضوية برو نشطة</span>
                   </CardDescription>
               )}
             </CardHeader>
