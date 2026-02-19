@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -65,9 +66,16 @@ export default function CategoryPage() {
     if (!rawItems) return [];
     
     // 1. Filter by visibility/status
+    // Normal users see 'approved' OR items with no status field (legacy).
+    // Admin/Editor see everything.
     const viewableItems = (isAdmin || isEditor)
         ? rawItems 
-        : rawItems.filter(item => item.status === 'approved' || item.status === undefined || !item.status);
+        : rawItems.filter(item => 
+            item.status === 'approved' || 
+            item.status === undefined || 
+            item.status === null || 
+            (typeof item.status === 'string' && item.status.length === 0)
+          );
         
     // 2. Filter by search term
     const searchedItems = viewableItems.filter((item) => 
@@ -197,7 +205,7 @@ export default function CategoryPage() {
        )
     }
 
-    if (!isLoading && (!filteredItems || filteredItems.length === 0)) return (
+    if (!isLoading && filteredItems.length === 0) return (
         <div className="text-center py-20 text-muted-foreground bg-card rounded-[2.5rem] mt-4 shadow-sm">
             <Search className="h-12 w-12 mx-auto mb-4 opacity-20" />
             <p className="text-lg font-bold">لا يوجد محتوى متاح حالياً.</p>
