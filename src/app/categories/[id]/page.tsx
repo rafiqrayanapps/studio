@@ -2,10 +2,10 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, increment } from 'firebase/firestore';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
+import { collection, query, doc } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, ReferralConfig } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,9 +30,8 @@ export default function CategoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const { toast } = useToast();
-  const { isPro, isAdmin, isEditor, userProfile, user, isLoading: isUserLoading } = useUserProfile();
+  const { isPro, isAdmin, isEditor, userProfile, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const [showUnlockDialog, setShowUnlockDialog] = useState<{item: WithId<ContentItem>, cost: number} | null>(null);
 
   const { categoryMap, subCategories, isLoadingCategories: areAllCategoriesLoading } = useCategories();
   const category = useMemo(() => id ? categoryMap.get(id) : null, [categoryMap, id]);
@@ -79,21 +78,16 @@ export default function CategoryPage() {
   }, [rawItems, searchTerm, isAdmin, isEditor]);
 
   const handleAction = (item: WithId<ContentItem>, action: () => void) => {
-      const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
+      const isLocked = item.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
       if (isLocked) {
-          const cost = refConfig?.pointsPerUnlock || 5;
-          if (userProfile && (userProfile.points ?? 0) >= cost) {
-              setShowUnlockDialog({ item, cost });
-          } else {
-              setShowUpgradeDialog(true);
-          }
+          setShowUpgradeDialog(true);
       } else {
           action();
       }
   };
 
   const handleSubCategoryClick = (sub: WithId<CategoryType>) => {
-      const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin;
+      const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
       if (isLocked) {
           setShowUpgradeDialog(true);
       } else {
@@ -139,7 +133,7 @@ export default function CategoryPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         {currentSubCategories.map(sub => {
-                            const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin;
+                            const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
                             return (
                                 <div key={sub.id} onClick={() => handleSubCategoryClick(sub)}>
                                     <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95 group overflow-hidden">
@@ -190,11 +184,31 @@ export default function CategoryPage() {
                                                 <PlayCircle className="h-10 w-10" />
                                             </div>
                                         </div>
-                                        {item.visibility === 'pro' && !isPro && !isAdmin && <div className="absolute top-4 left-4 bg-yellow-500 text-white p-1 rounded-full"><Lock className="h-4 w-4" /></div>}
+                                        {item.visibility === 'pro' && !isPro && !isAdmin && !isEditor && <div className="absolute top-4 left-4 bg-yellow-500 text-white p-1 rounded-full"><Lock className="h-4 w-4" /></div>}
                                     </div>
                                     <div className="p-4 text-center">
                                         <h3 className="font-bold text-lg">{item.title}</h3>
                                         <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.instructions || 'شرح توضيحي للمحتوى المرفق.'}</p>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : displayStyle === 'style5' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {typedItems.map(item => (
+                                <Card key={item.id} className="overflow-hidden rounded-[2rem] border-none shadow-lg bg-card group">
+                                    <div className="relative aspect-square md:aspect-video bg-muted cursor-pointer overflow-hidden" onClick={() => handleAction(item, () => item.imageUrl && setSelectedImage(item.imageUrl))}>
+                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                            <Eye className="text-white h-10 w-10" />
+                                        </div>
+                                        {item.visibility === 'pro' && !isPro && !isAdmin && !isEditor && <div className="absolute top-4 left-4 bg-yellow-500 text-white p-1 rounded-full shadow-lg"><Lock className="h-4 w-4" /></div>}
+                                    </div>
+                                    <div className="p-6 flex flex-col items-center gap-3">
+                                        <h3 className="text-lg font-black">{item.title}</h3>
+                                        <Button className="w-full rounded-xl font-black h-12 shadow-md" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                            <Download className="ml-2 h-4 w-4" /> تحميل الآن
+                                        </Button>
                                     </div>
                                 </Card>
                             ))}
@@ -278,6 +292,9 @@ export default function CategoryPage() {
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
           <div className="sr-only">معاينة الصورة</div>
+          <button className="absolute -top-12 right-0 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors" onClick={() => setSelectedImage(null)}>
+            <X className="h-6 w-6" />
+          </button>
           {selectedImage && <div className="relative w-full h-[80vh]"><Image src={selectedImage} alt="" fill className="object-contain" /></div>}
         </DialogContent>
       </Dialog>
