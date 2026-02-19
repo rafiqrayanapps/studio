@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -288,7 +289,10 @@ export default function AdminDashboard() {
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="h-6 w-6" /></Button></SheetTrigger>
               <SheetContent side="right" className="w-64 p-0">
-                  <SheetHeader className="sr-only"><SheetTitle>القائمة</SheetTitle><SheetDescription>إدارة الموقع</SheetDescription></SheetHeader>
+                  <SheetHeader className="sr-only">
+                      <SheetTitle>قائمة التحكم</SheetTitle>
+                      <SheetDescription>التنقل بين أدوات إدارة الموقع</SheetDescription>
+                  </SheetHeader>
                   <div className="flex flex-col h-full bg-card">
                       <div className="p-6 border-b flex flex-col items-center gap-2"><h1 className="font-bold text-lg">قائمة التحكم</h1><Badge variant="secondary">{isAdmin ? "مدير" : "محرر"}</Badge></div>
                       <nav className="flex-1 p-4 space-y-2">
@@ -416,7 +420,10 @@ export default function AdminDashboard() {
       {/* Dialogs */}
       <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
-              <DialogHeader><DialogTitle>{editingCategory?.id ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle></DialogHeader>
+              <DialogHeader>
+                  <DialogTitle>{editingCategory?.id ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle>
+                  <DialogDescription>أدخل تفاصيل القسم لتحديثه أو إنشاء قسم جديد.</DialogDescription>
+              </DialogHeader>
               <Form {...catForm}>
                   <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-4">
                       <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>اسم القسم</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
@@ -434,7 +441,10 @@ export default function AdminDashboard() {
 
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
-              <DialogHeader><DialogTitle>إضافة مستخدم للقائمة البيضاء</DialogTitle><DialogDescription>امنح صلاحيات الوصول والاشتراك يدوياً</DialogDescription></DialogHeader>
+              <DialogHeader>
+                  <DialogTitle>إضافة مستخدم للقائمة البيضاء</DialogTitle>
+                  <DialogDescription>امنح صلاحيات الوصول والاشتراك يدوياً للمستخدمين.</DialogDescription>
+              </DialogHeader>
               <Form {...userForm}>
                   <form onSubmit={userForm.handleSubmit(onAddUser)} className="space-y-4">
                       <FormField control={userForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>البريد الإلكتروني</FormLabel><FormControl><Input {...field} placeholder="example@mail.com" /></FormControl><FormMessage /></FormItem>)} />
