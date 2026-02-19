@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, doc, increment } from 'firebase/firestore';
+import { collection, query, doc, increment } from 'firebase/firestore';
 import type { Category, ContentItem, ReferralConfig } from '@/lib/definitions';
 import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Settings2, Coins, Cpu, Hammer, ExternalLink, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export default function CategoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const { toast } = useToast();
-  const { isPro, isAdmin, userProfile, user, isLoading: isUserLoading } = useUserProfile();
+  const { isPro, isAdmin, isEditor, userProfile, user, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [showUnlockDialog, setShowUnlockDialog] = useState<{item: WithId<ContentItem>, cost: number} | null>(null);
 
@@ -41,9 +41,10 @@ export default function CategoryPage() {
   const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
   const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
 
+  // Fetch all items without strict orderBy to avoid filtering out items missing the field
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
-      return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
+      return query(collection(firestore, 'categories', id, 'items'));
   }, [firestore, id]);
   const { data: rawItems, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
 
@@ -62,19 +63,27 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
-    const viewableItems = isAdmin 
+    
+    // 1. Filter by visibility/status
+    const viewableItems = (isAdmin || isEditor)
         ? rawItems 
-        : rawItems.filter(item => item.status === 'approved' || item.status === undefined);
+        : rawItems.filter(item => item.status === 'approved' || item.status === undefined || !item.status);
         
-    return viewableItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [rawItems, searchTerm, isAdmin]);
+    // 2. Filter by search term
+    const searchedItems = viewableItems.filter((item) => 
+        (item.title || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // 3. Sort in-memory to ensure items without 'order' still show up at the end
+    return [...searchedItems].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  }, [rawItems, searchTerm, isAdmin, isEditor]);
 
   const handleAction = (item: WithId<ContentItem>, action: () => void) => {
       const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
       
       if (isLocked) {
           const cost = refConfig?.pointsPerUnlock || 5;
-          if (userProfile && userProfile.points >= cost) {
+          if (userProfile && (userProfile.points ?? 0) >= cost) {
               setShowUnlockDialog({ item, cost });
           } else {
               setShowUpgradeDialog(true);
@@ -188,12 +197,14 @@ export default function CategoryPage() {
        )
     }
 
-    if (!filteredItems || filteredItems.length === 0) return (
-        <div className="text-center py-20 text-muted-foreground">
+    if (!isLoading && (!filteredItems || filteredItems.length === 0)) return (
+        <div className="text-center py-20 text-muted-foreground bg-card rounded-[2.5rem] mt-4 shadow-sm">
             <Search className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p className="text-lg font-bold">لا يوجد محتوى يطابق بحثك حالياً.</p>
+            <p className="text-lg font-bold">لا يوجد محتوى متاح حالياً.</p>
+            {searchTerm && <p className="text-sm">جرب البحث بكلمات أخرى.</p>}
         </div>
     );
+
     const typedItems = filteredItems as WithId<ContentItem>[];
 
     switch (category?.displayStyle) {
@@ -213,8 +224,8 @@ export default function CategoryPage() {
                 </div>
                 <div className="w-full mt-auto">
                      <Button className="w-full h-11" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                        {isLocked ? (userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? <Coins className="ml-2 h-4 w-4" /> : <Lock className="ml-2 h-4 w-4" />) : <Download className="ml-2 h-4 w-4" />}
-                        {isLocked ? (userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? 'فتح بالنقاط' : 'ترقية للتحميل') : 'تحميل'}
+                        {isLocked ? (userProfile && (userProfile.points ?? 0) >= (refConfig?.pointsPerUnlock || 5) ? <Coins className="ml-2 h-4 w-4" /> : <Lock className="ml-2 h-4 w-4" />) : <Download className="ml-2 h-4 w-4" />}
+                        {isLocked ? (userProfile && (userProfile.points ?? 0) >= (refConfig?.pointsPerUnlock || 5) ? 'فتح بالنقاط' : 'ترقية للتحميل') : 'تحميل'}
                     </Button>
                 </div>
               </div>
@@ -245,9 +256,9 @@ export default function CategoryPage() {
                             {isLocked ? (
                                 <div className="h-28 bg-muted/50 rounded-xl flex flex-col items-center justify-center text-center p-4 gap-2 border border-dashed">
                                     <Lock className="h-6 w-6 text-muted-foreground" />
-                                    <p className="text-muted-foreground text-xs font-bold">محتوى حصري. {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? `افتحه بـ ${refConfig?.pointsPerUnlock} نقطة` : 'اشترك في برو للوصول.'}</p>
+                                    <p className="text-muted-foreground text-xs font-bold">محتوى حصري. {userProfile && (userProfile.points ?? 0) >= (refConfig?.pointsPerUnlock || 5) ? `افتحه بـ ${refConfig?.pointsPerUnlock} نقطة` : 'اشترك في برو للوصول.'}</p>
                                     <Button size="sm" variant="secondary" className="rounded-lg" onClick={() => handleAction(item, handleCopy)}>
-                                        {userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? 'فتح الآن' : 'الترقية الآن'}
+                                        {userProfile && (userProfile.points ?? 0) >= (refConfig?.pointsPerUnlock || 5) ? 'فتح الآن' : 'الترقية الآن'}
                                     </Button>
                                 </div>
                             ) : (
@@ -302,8 +313,8 @@ export default function CategoryPage() {
                                 className="rounded-2xl px-8 h-12 font-black transition-all hover:gap-3" 
                                 onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
                             >
-                                {isLocked ? (userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? <Coins className="ml-2 h-4 w-4" /> : <Lock className="ml-2 h-4 w-4" />) : <ExternalLink className="ml-2 h-4 w-4" />}
-                                {isLocked ? (userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? 'فتح بالنقاط' : 'ترقية للزيارة') : 'زيارة الموقع'}
+                                {isLocked ? (userProfile && (userProfile.points ?? 0) >= (refConfig?.pointsPerUnlock || 5) ? <Coins className="ml-2 h-4 w-4" /> : <Lock className="ml-2 h-4 w-4" />) : <ExternalLink className="ml-2 h-4 w-4" />}
+                                {isLocked ? (userProfile && (userProfile.points ?? 0) >= (refConfig?.pointsPerUnlock || 5) ? 'فتح بالنقاط' : 'ترقية للزيارة') : 'زيارة الموقع'}
                             </Button>
                         </div>
                     </div>
@@ -375,6 +386,20 @@ export default function CategoryPage() {
        </Dialog>
 
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
+      
+      {/* Modal for image preview */}
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Image Preview</DialogTitle>
+          </DialogHeader>
+          {selectedImage && (
+            <div className="relative w-full h-[80vh]">
+                <Image src={selectedImage} alt="Preview" fill className="object-contain" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
