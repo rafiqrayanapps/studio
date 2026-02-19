@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -26,7 +25,11 @@ import {
     MousePointer2,
     Gift,
     Bell,
-    Send
+    Send,
+    CreditCard,
+    Globe,
+    ExternalLink,
+    Copy as CopyIcon
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -48,8 +51,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import DynamicIcon from '@/components/ui/dynamic-icon';
 
-import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, RequestDesignConfig, Notification } from '@/lib/definitions';
+import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, RequestDesignConfig, Notification, PaymentMethod } from '@/lib/definitions';
 import { deleteUserAccount } from '@/lib/user-actions';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 
@@ -85,6 +89,16 @@ const notificationSchema = z.object({
     description: z.string().min(5, "الوصف مطلوب"),
 });
 
+const paymentMethodSchema = z.object({
+    name: z.string().min(2, "الاسم مطلوب"),
+    icon: z.string().min(2, "اسم الأيقونة مطلوب"),
+    link: z.string().min(1, "الرابط أو النص مطلوب"),
+    isUrl: z.boolean().default(true),
+    country: z.string().default('ALL'),
+    order: z.number().default(0),
+    enabled: z.boolean().default(true),
+});
+
 export default function AdminDashboard() {
   const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
@@ -93,6 +107,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('categories');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -111,6 +126,9 @@ export default function AdminDashboard() {
 
   const notificationsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc')) : null, [firestore]);
   const { data: notifications } = useCollection<Notification>(notificationsQuery);
+
+  const paymentsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'paymentMethods'), orderBy('order', 'asc')) : null, [firestore]);
+  const { data: paymentMethods } = useCollection<PaymentMethod>(paymentsQuery);
 
   const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
@@ -147,6 +165,11 @@ export default function AdminDashboard() {
   const notifForm = useForm<z.infer<typeof notificationSchema>>({
       resolver: zodResolver(notificationSchema),
       defaultValues: { title: '', description: '' }
+  });
+
+  const paymentForm = useForm<z.infer<typeof paymentMethodSchema>>({
+      resolver: zodResolver(paymentMethodSchema),
+      defaultValues: { name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', order: 0, enabled: true }
   });
 
   useEffect(() => {
@@ -193,6 +216,18 @@ export default function AdminDashboard() {
           setEditingCategory(null);
       } catch (e) {
           toast({ title: "فشل حفظ القسم", variant: "destructive" });
+      }
+  };
+
+  const onUpdatePayment = async (values: z.infer<typeof paymentMethodSchema>) => {
+      if (!firestore) return;
+      try {
+          const methodId = editingPayment?.id || doc(collection(firestore, 'paymentMethods')).id;
+          await setDoc(doc(firestore, 'paymentMethods', methodId), values, { merge: true });
+          toast({ title: "تم حفظ طريقة الدفع" });
+          setEditingPayment(null);
+      } catch (e) {
+          toast({ title: "فشل الحفظ", variant: "destructive" });
       }
   };
 
@@ -250,6 +285,7 @@ export default function AdminDashboard() {
     ...(isAdmin ? [
         { id: 'review', label: 'المراجعة', icon: ShieldCheck, badge: reviewItems.length },
         { id: 'notifications', label: 'الإشعارات', icon: Bell },
+        { id: 'payments', label: 'طرق الدفع', icon: CreditCard },
         { id: 'users', label: 'المستخدمين', icon: Users },
         { id: 'settings', label: 'الإعدادات', icon: Settings }
     ] : [])
@@ -362,6 +398,50 @@ export default function AdminDashboard() {
                     <Card><CardHeader><CardTitle className="text-lg">المحتوى المنشور حالياً</CardTitle></CardHeader><CardContent><ScrollArea className="h-[600px]"><div className="space-y-3">{isLoadingItems ? <Loader2 className="animate-spin mx-auto mt-10" /> : currentItems?.map(item => (<div key={item.id} className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl group"><div className="h-12 w-12 rounded-xl bg-muted overflow-hidden border">{item.imageUrl && <img src={item.imageUrl} className="object-cover h-full w-full" />}</div><div className="flex-1 min-w-0"><p className="text-xs font-bold truncate">{item.title}</p><Badge variant={item.status === 'pending' ? 'outline' : 'secondary'} className="text-[8px] h-4 mt-1">{item.status === 'pending' ? 'مراجعة' : 'نشط'}</Badge></div><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedCategoryId, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button></div>))}</div></ScrollArea></CardContent></Card>
                 </div>
             </TabsContent>
+
+            {isAdmin && (
+                <TabsContent value="payments" className="space-y-6 m-0">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold">طرق الدفع</h2>
+                        <Button onClick={() => { 
+                            paymentForm.reset({ name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', order: 0, enabled: true }); 
+                            setEditingPayment({ id: '' } as any); 
+                        }}>
+                            <Plus className="ml-2 h-4 w-4" /> إضافة طريقة
+                        </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {paymentMethods?.map(method => (
+                            <Card key={method.id} className="overflow-hidden border-2 border-primary/5">
+                                <CardHeader className="p-4 bg-muted/30 flex-row items-center gap-3 space-y-0">
+                                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <DynamicIcon name={method.icon} className="h-6 w-6" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <CardTitle className="text-base truncate">{method.name}</CardTitle>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <Badge variant="outline" className="text-[8px] h-4 px-1">{method.country}</Badge>
+                                            <Badge variant="secondary" className="text-[8px] h-4 px-1">{method.isUrl ? 'رابط' : 'نص'}</Badge>
+                                        </div>
+                                    </div>
+                                    <Switch checked={method.enabled} onCheckedChange={(val) => updateDocumentNonBlocking(doc(firestore!, 'paymentMethods', method.id), { enabled: val })} />
+                                </CardHeader>
+                                <CardContent className="p-4 py-2">
+                                    <p className="text-[10px] text-muted-foreground truncate font-mono bg-muted/50 p-1.5 rounded" dir="ltr">{method.link}</p>
+                                </CardContent>
+                                <CardFooter className="p-2 border-t flex gap-2">
+                                    <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => { setEditingPayment(method); paymentForm.reset(method); }}>
+                                        <Edit2 className="ml-1 h-3.5 w-3.5" /> تعديل
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف طريقة الدفع؟") && deleteDocumentNonBlocking(doc(firestore!, 'paymentMethods', method.id))}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </TabsContent>
+            )}
 
             {isAdmin && (
                 <TabsContent value="notifications" className="space-y-6 m-0">
@@ -518,6 +598,31 @@ export default function AdminDashboard() {
                       </div>
                       <FormField control={catForm.control} name="isUnderMaintenance" render={({ field }) => (<FormItem className="flex items-center justify-between rounded-xl border p-4 bg-muted/20"><div className="space-y-0.5"><FormLabel>وضع الصيانة</FormLabel><FormDescription className="text-[10px]">تفعيل صفحة الصيانة لهذا القسم</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
                       <DialogFooter><Button type="submit" className="w-full h-12 text-lg">حفظ كافة التغييرات</Button></DialogFooter>
+                  </form>
+              </Form>
+          </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingPayment} onOpenChange={(open) => !open && setEditingPayment(null)}>
+          <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
+              <DialogHeader>
+                <DialogTitle>{editingPayment?.id ? "تعديل طريقة الدفع" : "إضافة طريقة دفع"}</DialogTitle>
+                <DialogDescription>تظهر هذه الطرق للمستخدمين عند طلب الاشتراك.</DialogDescription>
+              </DialogHeader>
+              <Form {...paymentForm}>
+                  <form onSubmit={paymentForm.handleSubmit(onUpdatePayment)} className="space-y-4">
+                      <FormField control={paymentForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>الاسم</FormLabel><FormControl><Input {...field} placeholder="مثال: PayPal" /></FormControl></FormItem>)} />
+                      <FormField control={paymentForm.control} name="icon" render={({ field }) => (<FormItem><FormLabel>اسم الأيقونة (Lucide)</FormLabel><FormControl><div className="flex gap-2"><Input {...field} placeholder="CreditCard" className="text-left" dir="ltr" /><div className="w-10 h-10 rounded border flex items-center justify-center bg-muted"><DynamicIcon name={field.value} className="h-5 w-5" /></div></div></FormControl><FormDescription className="text-[10px]">ادخل اسم أيقونة صحيح من مكتبة Lucide Icons</FormDescription></FormItem>)} />
+                      <FormField control={paymentForm.control} name="link" render={({ field }) => (<FormItem><FormLabel>الرابط أو القيمة</FormLabel><FormControl><Input {...field} className="text-left" dir="ltr" /></FormControl></FormItem>)} />
+                      <div className="grid grid-cols-2 gap-4">
+                          <FormField control={paymentForm.control} name="country" render={({ field }) => (<FormItem><FormLabel>الدولة</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="ALL">الكل (Global)</SelectItem><SelectItem value="SA">السعودية (SA)</SelectItem><SelectItem value="YE">اليمن (YE)</SelectItem></SelectContent></Select></FormItem>)} />
+                          <FormField control={paymentForm.control} name="order" render={({ field }) => (<FormItem><FormLabel>الترتيب</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
+                      </div>
+                      <div className="flex gap-4">
+                          <FormField control={paymentForm.control} name="isUrl" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between rounded-xl border p-3 bg-muted/20"><div className="space-y-0.5"><FormLabel className="text-xs">رابط مباشر</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                          <FormField control={paymentForm.control} name="enabled" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between rounded-xl border p-3 bg-muted/20"><div className="space-y-0.5"><FormLabel className="text-xs">تفعيل</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                      </div>
+                      <DialogFooter className="pt-2"><Button type="submit" className="w-full h-12">حفظ طريقة الدفع</Button></DialogFooter>
                   </form>
               </Form>
           </DialogContent>
