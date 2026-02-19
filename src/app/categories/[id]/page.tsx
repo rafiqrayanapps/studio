@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -43,9 +42,11 @@ export default function CategoryPage() {
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
+      // Note: Strict ordering might hide items without the 'order' field. 
+      // We keep it but ensure filtering logic is robust.
       return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
   }, [firestore, id]);
-  const { data: items, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
+  const { data: rawItems, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
 
   const isFavorite = (itemId: string) => favorites.some(item => item.id === itemId);
 
@@ -61,10 +62,14 @@ export default function CategoryPage() {
   };
 
   const filteredItems = useMemo(() => {
-    if (!items) return [];
-    const viewableItems = isAdmin ? items : items.filter(item => item.status === 'approved' || !item.status);
+    if (!rawItems) return [];
+    // If Admin, show everything. If not, only show approved status.
+    const viewableItems = isAdmin 
+        ? rawItems 
+        : rawItems.filter(item => item.status === 'approved' || item.status === undefined);
+        
     return viewableItems.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [items, searchTerm, isAdmin]);
+  }, [rawItems, searchTerm, isAdmin]);
 
   const handleAction = (item: WithId<ContentItem>, action: () => void) => {
       const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
@@ -111,7 +116,6 @@ export default function CategoryPage() {
     if (category?.isUnderMaintenance && !isAdmin) {
        return (
          <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-4 shadow-2xl border border-primary/10 overflow-hidden relative min-h-[500px]">
-            {/* Orbiting Particles Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
                 {[...Array(6)].map((_, i) => (
                     <div 
@@ -129,19 +133,14 @@ export default function CategoryPage() {
 
             <div className="relative z-10 space-y-10 w-full max-w-sm">
                 <div className="relative inline-block mx-auto">
-                    {/* Pulsing Background Rings */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/10 rounded-full animate-ping" />
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-primary/5 rounded-full animate-pulse duration-3000" />
                     
-                    {/* Main Icon Container with Glass Effect */}
                     <div className="relative z-10 bg-primary/90 text-primary-foreground p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(var(--primary),0.3)] backdrop-blur-md border border-white/20">
                         <Cpu className="h-16 w-16 animate-pulse" />
-                        
-                        {/* The Scanning Laser Line */}
                         <div className="absolute top-0 left-4 right-4 h-[2px] bg-white/60 shadow-[0_0_15px_rgba(255,255,255,0.8)] animate-[scan_2s_ease-in-out_infinite]" />
                     </div>
 
-                    {/* Floating Tool Icons */}
                     <div className="absolute -top-4 -right-4 bg-background p-3 rounded-2xl shadow-xl border border-border animate-bounce">
                         <Hammer className="h-6 w-6 text-primary" />
                     </div>

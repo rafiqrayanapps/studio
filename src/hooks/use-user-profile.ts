@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, onSnapshot, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import type { UserProfile, WhitelistEntry } from '@/lib/definitions';
 import { useEffect, useState, useMemo } from 'react';
@@ -82,13 +82,13 @@ export function useUserProfile() {
                 const data = snapshot.data() as WhitelistEntry;
                 const currentFingerprint = await getDeviceFingerprint();
                 
-                // Compatibility: Check both deviceFingerprints (array) and deviceFingerprint (string)
                 const fingerprints = data.deviceFingerprints || (data.deviceFingerprint ? [data.deviceFingerprint] : []);
                 
                 if (fingerprints.length > 0) {
                     const latestFingerprint = fingerprints[fingerprints.length - 1];
-                    // Only kick if we have a mismatch AND the current device is NOT the latest
-                    if (latestFingerprint !== currentFingerprint) {
+                    // Only kick if mismatch and not the latest authorized fingerprint
+                    if (latestFingerprint !== currentFingerprint && fingerprints.includes(currentFingerprint)) {
+                        // This device was authorized but isn't the LATEST anymore.
                         console.warn("Session started on another device. Signing out...");
                         setIsLoggingOut(true);
                         await auth.signOut();
@@ -115,6 +115,9 @@ export function useUserProfile() {
         return false;
     }, [isAdmin, isEditor, userProfile]);
     
+    // Crucial: isLoading must only be false when all relevant auth data is checked
+    const finalLoading = isAuthLoading || (user && isProfileLoading && !tempReferralCode) || (!!user?.email && isWhitelistLoading);
+
     return { 
         user, 
         userProfile: userProfile || (user && tempReferralCode ? { 
@@ -126,6 +129,6 @@ export function useUserProfile() {
         isAdmin, 
         isEditor,
         points: userProfile?.points ?? (user ? 1 : 0),
-        isLoading: isAuthLoading || (user && isProfileLoading && !tempReferralCode) || (user?.email ? isWhitelistLoading : false)
+        isLoading: finalLoading
     };
 }
