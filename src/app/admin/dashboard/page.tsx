@@ -29,7 +29,8 @@ import {
     AlertTriangle,
     Eye,
     Hammer,
-    MonitorSmartphone
+    MonitorSmartphone,
+    FileCode
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -75,6 +76,7 @@ const categorySchema = z.object({
     visibility: z.enum(['public', 'pro']),
     order: z.number().default(0),
     isUnderMaintenance: z.boolean().default(false),
+    fileTypes: z.string().optional(),
 });
 
 const userWhitelistSchema = z.object({
@@ -153,7 +155,7 @@ export default function AdminDashboard() {
 
   const catForm = useForm<z.infer<typeof categorySchema>>({
       resolver: zodResolver(categorySchema),
-      defaultValues: { name: '', displayStyle: 'style1', visibility: 'public', order: 0, isUnderMaintenance: false }
+      defaultValues: { name: '', displayStyle: 'style1', visibility: 'public', order: 0, isUnderMaintenance: false, fileTypes: '' }
   });
 
   const userForm = useForm<z.infer<typeof userWhitelistSchema>>({
@@ -205,11 +207,11 @@ export default function AdminDashboard() {
   const onUpdateCategory = async (values: z.infer<typeof categorySchema>) => {
       if (!firestore) return;
       try {
-          const catId = editingCategory?.id || doc(collection(firestore, 'categories')).id;
+          const catId = (editingCategory?.id && editingCategory.id !== '') ? editingCategory.id : doc(collection(firestore, 'categories')).id;
           await setDoc(doc(firestore, 'categories', catId), {
               ...values,
               parentId: null,
-              createdAt: editingCategory?.createdAt || serverTimestamp()
+              createdAt: (editingCategory?.createdAt && editingCategory.id !== '') ? editingCategory.createdAt : serverTimestamp()
           }, { merge: true });
           toast({ title: "تم حفظ القسم بنجاح" });
           setEditingCategory(null);
@@ -236,7 +238,7 @@ export default function AdminDashboard() {
   const onUpdatePayment = async (values: z.infer<typeof paymentMethodSchema>) => {
       if (!firestore) return;
       try {
-          const methodId = editingPayment?.id || doc(collection(firestore, 'paymentMethods')).id;
+          const methodId = (editingPayment?.id && editingPayment.id !== '') ? editingPayment.id : doc(collection(firestore, 'paymentMethods')).id;
           await setDoc(doc(firestore, 'paymentMethods', methodId), values, { merge: true });
           toast({ title: "تم حفظ طريقة الدفع" });
           setEditingPayment(null);
@@ -379,7 +381,7 @@ export default function AdminDashboard() {
                         <h2 className="text-3xl font-black tracking-tighter">الأقسام والصيانة</h2>
                         <p className="text-muted-foreground text-sm">تحكم في حالة الأقسام وتفعيل وضع الصيانة الفوري.</p>
                     </div>
-                    {isAdmin && <Button size="lg" className="rounded-2xl h-14 px-8 font-black shadow-xl shadow-primary/20" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', order: 0, isUnderMaintenance: false }); setEditingCategory({ id: '' } as any); }}><Plus className="ml-2 h-5 w-5" /> إضافة قسم جديد</Button>}
+                    {isAdmin && <Button size="lg" className="rounded-2xl h-14 px-8 font-black shadow-xl shadow-primary/20" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', order: 0, isUnderMaintenance: false, fileTypes: '' }); setEditingCategory({ id: '' } as any); }}><Plus className="ml-2 h-5 w-5" /> إضافة قسم جديد</Button>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -388,12 +390,13 @@ export default function AdminDashboard() {
                             <CardHeader className="p-6 bg-muted/20 flex-row justify-between items-start space-y-0">
                                 <div className="space-y-1">
                                     <CardTitle className="text-xl font-black">{cat.name}</CardTitle>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <Badge variant="outline" className="text-[9px] font-bold h-5 uppercase">نمط: {cat.displayStyle}</Badge>
                                         <Badge variant={cat.visibility === 'pro' ? 'default' : 'secondary'} className="text-[9px] font-bold h-5">{cat.visibility === 'pro' ? 'برو' : 'عام'}</Badge>
+                                        {cat.fileTypes && <Badge className="bg-primary/10 text-primary text-[8px] font-black h-5 border-primary/20">{cat.fileTypes}</Badge>}
                                     </div>
                                 </div>
-                                <div className="bg-background p-2 rounded-2xl shadow-sm border"><MonitorSmartphone className="h-6 w-6 text-primary" /></div>
+                                <div className="bg-background p-2 rounded-2xl shadow-sm border flex-shrink-0"><MonitorSmartphone className="h-6 w-6 text-primary" /></div>
                             </CardHeader>
                             <CardContent className="p-6 pt-4 border-t bg-card/50">
                                 <div className="flex items-center justify-between p-4 bg-background rounded-2xl border shadow-inner">
@@ -666,10 +669,14 @@ export default function AdminDashboard() {
       {/* Unified Styled Dialogs */}
       <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
-              <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">{editingCategory?.id ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle><DialogDescription className="font-bold text-muted-foreground">أدخل بيانات القسم لإدارته في الموقع الرئيسي.</DialogDescription></DialogHeader>
+              <DialogHeader className="mb-6">
+                  <DialogTitle className="text-2xl font-black">{(editingCategory?.id && editingCategory.id !== '') ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle>
+                  <DialogDescription className="font-bold text-muted-foreground">أدخل بيانات القسم لإدارته في الموقع الرئيسي.</DialogDescription>
+              </DialogHeader>
               <Form {...catForm}>
                   <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-6">
                       <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={catForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel className="font-black flex items-center gap-2"><FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (اختياري)</FormLabel><FormControl><Input {...field} placeholder="مثال: PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl><FormDescription className="text-[10px]">تظهر للمستخدمين في الصفحة الرئيسية.</FormDescription></FormItem>)} />
                       <FormField control={catForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel className="font-black">نمط العرض الافتراضي</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="style1">تحميل (أفقي)</SelectItem><SelectItem value="style3">برومبت (بطاقات)</SelectItem><SelectItem value="style4">فيديو (عرض فيديو)</SelectItem><SelectItem value="style5">معرض (Style 5)</SelectItem></SelectContent></Select></FormItem>)} />
                       <div className="grid grid-cols-2 gap-4">
                           <FormField control={catForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو</SelectItem></SelectContent></Select></FormItem>)} />
