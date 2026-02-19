@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -12,16 +13,11 @@ import {
     Loader2,
     Layers,
     Send,
-    Hammer,
-    FileCode,
     ChevronUp,
     ChevronDown,
     Zap,
-    Type,
     CreditCard,
     ArrowRight,
-    LayoutGrid,
-    Eye,
     ChevronLeft,
     ChevronRight,
     Monitor,
@@ -30,10 +26,10 @@ import {
     Brush,
     Palette,
     Info,
-    Layout
+    FileCode
 } from 'lucide-react';
 
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, doc, setDoc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
@@ -46,13 +42,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import type { Category, ContentItem, PricingPlan, ThemeConfig, Notification, ShareLinkConfig, RequestDesignConfig, SubscriptionDialogConfig } from '@/lib/definitions';
+import type { Category, ContentItem, PricingPlan, ThemeConfig, Notification, ShareLinkConfig, RequestDesignConfig } from '@/lib/definitions';
 
 // Schemas
 const itemSchema = z.object({
@@ -79,12 +75,10 @@ const planSchema = z.object({
     name: z.string().min(2, "الاسم مطلوب"),
     price: z.string().min(1, "السعر مطلوب"),
     currency: z.string().default("ر.س"),
-    frequency: z.string().optional(),
     description: z.string().min(5, "الوصف مطلوب"),
     features: z.string().describe("المميزات مفصولة بفاصلة"),
     isFeatured: z.boolean().default(false),
     enabled: z.boolean().default(true),
-    link: z.string().optional(),
 });
 
 const themeSchema = z.object({
@@ -268,44 +262,51 @@ export default function AdminDashboard() {
   if (isUserLoading) return <div className="flex h-screen items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC] text-foreground" dir="rtl">
+    <div className="min-h-screen bg-[#F8F9FC] text-foreground pb-24" dir="rtl">
       
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b shadow-sm">
-        <div className="container mx-auto max-w-6xl px-4 flex h-20 items-center justify-between">
-            <div className="flex items-center gap-4">
-                <div className="bg-primary text-primary-foreground p-2.5 rounded-2xl shadow-lg shadow-primary/20">
-                    <Monitor className="h-6 w-6" />
+        <div className="container mx-auto max-w-6xl px-4">
+            <div className="flex h-20 items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="bg-primary text-primary-foreground p-2 rounded-xl shadow-lg shadow-primary/20">
+                        <Monitor className="h-5 w-5" />
+                    </div>
+                    <div className="hidden sm:block">
+                        <h1 className="text-sm font-black tracking-tight">إدارة المنصة</h1>
+                        <p className="text-[9px] text-muted-foreground font-bold opacity-60">لوحة التحكم</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-lg font-black tracking-tight">إدارة المنصة</h1>
-                    <p className="text-[10px] text-muted-foreground font-bold opacity-60">لوحة التحكم المركزية</p>
+
+                <div className="flex-1 flex justify-center px-4 overflow-hidden">
+                    <ScrollArea className="w-full max-w-sm">
+                        <nav className="flex items-center gap-1 bg-secondary/50 p-1 rounded-2xl border whitespace-nowrap">
+                            {[
+                                { id: 'content', label: 'المحتوى', icon: Layers },
+                                { id: 'plans', label: 'الباقات', icon: CreditCard },
+                                { id: 'settings', label: 'الإعدادات', icon: Settings },
+                            ].map(tool => (
+                                <button
+                                    key={tool.id}
+                                    onClick={() => { setActiveTool(tool.id as any); setSelectedParentId(null); }}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] transition-all",
+                                        activeTool === tool.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50"
+                                    )}
+                                >
+                                    <tool.icon className="h-3.5 w-3.5" />
+                                    {tool.label}
+                                </button>
+                            ))}
+                        </nav>
+                        <ScrollBar orientation="horizontal" className="hidden" />
+                    </ScrollArea>
                 </div>
+
+                <Button variant="ghost" size="sm" className="rounded-xl font-black gap-2 text-[10px]" onClick={() => router.push('/home')}>
+                    الموقع <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
             </div>
-
-            <nav className="hidden md:flex items-center gap-1 bg-secondary/50 p-1 rounded-2xl border">
-                {[
-                    { id: 'content', label: 'المحتوى والأقسام', icon: Layers },
-                    { id: 'plans', label: 'باقات الاشتراك', icon: CreditCard },
-                    { id: 'settings', label: 'الإعدادات العامة', icon: Settings },
-                ].map(tool => (
-                    <button
-                        key={tool.id}
-                        onClick={() => { setActiveTool(tool.id as any); setSelectedParentId(null); }}
-                        className={cn(
-                            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all",
-                            activeTool === tool.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50"
-                        )}
-                    >
-                        <tool.icon className="h-4 w-4" />
-                        {tool.label}
-                    </button>
-                ))}
-            </nav>
-
-            <Button variant="ghost" className="rounded-2xl font-black gap-2 text-xs" onClick={() => router.push('/home')}>
-                الموقع <ArrowRight className="h-4 w-4" />
-            </Button>
         </div>
       </header>
 
@@ -315,7 +316,6 @@ export default function AdminDashboard() {
         {activeTool === 'content' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 
-                {/* Content Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
                             <h2 className="text-2xl font-black">{selectedParentId ? currentCategory?.name : 'إدارة المحتوى'}</h2>
                         </div>
                         <p className="text-xs text-muted-foreground font-medium">
-                            {selectedParentId ? 'تحكم في الأقسام الفرعية والمنشورات داخل هذا القسم' : 'ابدأ باختيار قسم أو أضف قسماً رئيسياً جديداً'}
+                            {selectedParentId ? 'تحكم في الأقسام الفرعية والمنشورات' : 'ابدأ باختيار قسم أو أضف قسماً رئيسياً جديداً'}
                         </p>
                     </div>
 
@@ -353,8 +353,10 @@ export default function AdminDashboard() {
                                         )} />
                                         <FormField control={catForm.control} name="fileTypes" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-xs font-black">الصيغ (مثل: PSD, AI)</FormLabel>
-                                                <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                                                <FormLabel className="text-xs font-black flex items-center gap-2">
+                                                    <FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (اختياري)
+                                                </FormLabel>
+                                                <FormControl><Input {...field} placeholder="مثل: PSD, AI" className="h-12 rounded-xl" /></FormControl>
                                             </FormItem>
                                         )} />
                                         <FormField control={catForm.control} name="displayStyle" render={({ field }) => (
@@ -372,6 +374,15 @@ export default function AdminDashboard() {
                                                 </Select>
                                             </FormItem>
                                         )} />
+                                        <div className="p-4 bg-muted/50 rounded-2xl flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <p className="text-xs font-black">وضع الصيانة</p>
+                                                <p className="text-[10px] text-muted-foreground">يخفي القسم عن المستخدمين العاديين</p>
+                                            </div>
+                                            <FormField control={catForm.control} name="isUnderMaintenance" render={({ field }) => (
+                                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                            )} />
+                                        </div>
                                         <Button type="submit" className="w-full h-14 rounded-2xl font-black">حفظ التغييرات</Button>
                                     </form>
                                 </Form>
@@ -550,7 +561,6 @@ export default function AdminDashboard() {
                                         <FormField control={planForm.control} name="price" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">السعر</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                         <FormField control={planForm.control} name="currency" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">العملة</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                     </div>
-                                    <FormField control={planForm.control} name="description" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">وصف قصير</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                     <FormField control={planForm.control} name="features" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">المميزات (مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)} />
                                     <div className="flex gap-4 p-3 bg-muted rounded-xl">
                                         <FormField control={planForm.control} name="isFeatured" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between space-y-0 gap-2"><span className="text-xs font-black">باقة مميزة</span><Switch checked={field.value} onCheckedChange={field.onChange} /></FormItem>)} />
@@ -593,12 +603,15 @@ export default function AdminDashboard() {
         {activeTool === 'settings' && (
             <div className="animate-in fade-in duration-500">
                 <Tabs defaultValue="appearance" className="w-full space-y-8" dir="rtl">
-                    <TabsList className="grid w-full grid-cols-4 h-14 bg-white shadow-sm border rounded-2xl p-1">
-                        <TabsTrigger value="appearance" className="rounded-xl font-black text-xs gap-2"><Palette className="h-4 w-4" /> المظهر</TabsTrigger>
-                        <TabsTrigger value="notifications" className="rounded-xl font-black text-xs gap-2"><Bell className="h-4 w-4" /> التنبيهات</TabsTrigger>
-                        <TabsTrigger value="links" className="rounded-xl font-black text-xs gap-2"><Share2 className="h-4 w-4" /> الروابط</TabsTrigger>
-                        <TabsTrigger value="config" className="rounded-xl font-black text-xs gap-2"><Info className="h-4 w-4" /> عام</TabsTrigger>
-                    </TabsList>
+                    <ScrollArea className="w-full">
+                        <TabsList className="flex w-full min-w-max bg-white shadow-sm border rounded-2xl p-1 h-14">
+                            <TabsTrigger value="appearance" className="rounded-xl font-black text-xs gap-2 px-6"><Palette className="h-4 w-4" /> المظهر</TabsTrigger>
+                            <TabsTrigger value="notifications" className="rounded-xl font-black text-xs gap-2 px-6"><Bell className="h-4 w-4" /> التنبيهات</TabsTrigger>
+                            <TabsTrigger value="links" className="rounded-xl font-black text-xs gap-2 px-6"><Share2 className="h-4 w-4" /> الروابط</TabsTrigger>
+                            <TabsTrigger value="config" className="rounded-xl font-black text-xs gap-2 px-6"><Info className="h-4 w-4" /> عام</TabsTrigger>
+                        </TabsList>
+                        <ScrollBar orientation="horizontal" className="hidden" />
+                    </ScrollArea>
 
                     <TabsContent value="appearance">
                         <Card className="rounded-[2.5rem] p-8 border-none shadow-xl">
@@ -688,12 +701,9 @@ function SettingsLinkCard({ title, icon: Icon, path }: { title: string, icon: an
         <Card className="rounded-[2.5rem] p-6 border-none shadow-lg">
             <CardHeader className="px-0 pt-0"><CardTitle className="text-sm flex items-center justify-between"><div className="flex items-center gap-2"><Icon className="h-5 w-5 text-primary" /> {title}</div><Switch checked={enabled} onCheckedChange={setEnabled} /></CardTitle></CardHeader>
             <div className="space-y-4">
-                <Input value={val} onChange={(e) => setVal(e.target.value)} placeholder="أدخل الرابط هنا (https://...)" className="font-mono text-xs text-left" dir="ltr" />
+                <Input value={val} onChange={(e) => setVal(e.target.value)} placeholder="أدخل الرابط هنا" className="font-mono text-xs text-left" dir="ltr" />
                 <Button onClick={save} className="w-full rounded-xl font-black h-11">تحديث الإعدادات</Button>
             </div>
         </Card>
     );
 }
-
-// Utility for fetching single documents inside the settings
-import { useDoc } from '@/firebase';
