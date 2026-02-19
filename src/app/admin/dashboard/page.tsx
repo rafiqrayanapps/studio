@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -34,11 +35,13 @@ import {
     Tag,
     DollarSign,
     Check,
-    Zap
+    Zap,
+    ChevronUp,
+    ChevronDown
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, doc, setDoc, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, doc, setDoc, where, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 
@@ -222,7 +225,8 @@ export default function AdminDashboard() {
   const onAddItem = async (values: z.infer<typeof itemSchema>) => {
     if (!firestore || !selectedCategoryId) return;
     try {
-      const itemData = { ...values, createdAt: serverTimestamp(), status: isAdmin ? 'approved' : 'pending' };
+      const nextOrder = (currentItems?.length || 0) > 0 ? Math.max(...currentItems!.map(i => i.order || 0)) + 1 : 0;
+      const itemData = { ...values, order: nextOrder, createdAt: serverTimestamp(), status: isAdmin ? 'approved' : 'pending' };
       await addDocumentNonBlocking(collection(firestore, 'categories', selectedCategoryId, 'items'), itemData);
       toast({ title: isAdmin ? "تمت إضافة المحتوى بنجاح" : "تم إرسال المحتوى للمراجعة" });
       itemForm.reset({ ...itemForm.getValues(), title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', isNew: false });
@@ -234,16 +238,44 @@ export default function AdminDashboard() {
   const onUpdateCategory = async (values: z.infer<typeof categorySchema>) => {
       if (!firestore) return;
       try {
-          const catId = (editingCategory?.id && editingCategory.id !== '') ? editingCategory.id : doc(collection(firestore, 'categories')).id;
+          const isNew = !editingCategory?.id || editingCategory.id === '';
+          const catId = isNew ? doc(collection(firestore, 'categories')).id : editingCategory.id;
+          const finalOrder = isNew ? (categories?.length || 0) : values.order;
+
           await setDoc(doc(firestore, 'categories', catId), {
               ...values,
+              order: finalOrder,
               parentId: null,
-              createdAt: (editingCategory?.createdAt && editingCategory.id !== '') ? editingCategory.createdAt : serverTimestamp()
+              createdAt: !isNew ? editingCategory.createdAt : serverTimestamp()
           }, { merge: true });
           toast({ title: "تم حفظ القسم بنجاح" });
           setEditingCategory(null);
       } catch (e) {
           toast({ title: "فشل حفظ القسم", variant: "destructive" });
+      }
+  };
+
+  const moveItemInFirestore = async (list: any[], index: number, direction: 'up' | 'down', path: string[]) => {
+      if (!firestore) return;
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= list.length) return;
+
+      const item1 = list[index];
+      const item2 = list[newIndex];
+
+      const batch = writeBatch(firestore);
+      const ref1 = doc(firestore, ...path, item1.id);
+      const ref2 = doc(firestore, ...path, item2.id);
+
+      // Swap orders
+      batch.update(ref1, { order: newIndex });
+      batch.update(ref2, { order: index });
+
+      try {
+          await batch.commit();
+          toast({ title: "تم تحديث الترتيب" });
+      } catch (e) {
+          toast({ title: "فشل الترتيب", variant: "destructive" });
       }
   };
 
@@ -431,11 +463,21 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {categories?.map(cat => (
+                    {categories?.map((cat, idx) => (
                         <Card key={cat.id} className={`overflow-hidden border-2 transition-all duration-300 ${cat.isUnderMaintenance ? 'border-orange-500/30 bg-orange-50/10' : 'border-primary/5'}`}>
                             <CardHeader className="p-6 bg-muted/20 flex-row justify-between items-start space-y-0">
                                 <div className="space-y-1">
-                                    <CardTitle className="text-xl font-black">{cat.name}</CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-xl font-black">{cat.name}</CardTitle>
+                                        <div className="flex flex-col gap-0.5">
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-primary/10" disabled={idx === 0} onClick={() => moveItemInFirestore(categories, idx, 'up', ['categories'])}>
+                                                <ChevronUp className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-primary/10" disabled={idx === (categories?.length || 0) - 1} onClick={() => moveItemInFirestore(categories, idx, 'down', ['categories'])}>
+                                                <ChevronDown className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <Badge variant="outline" className="text-[9px] font-bold h-5 uppercase">نمط: {cat.displayStyle}</Badge>
                                         <Badge variant={cat.visibility === 'pro' ? 'default' : 'secondary'} className="text-[9px] font-bold h-5">{cat.visibility === 'pro' ? 'برو' : 'عام'}</Badge>
@@ -524,9 +566,8 @@ export default function AdminDashboard() {
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4">
                                             <FormField control={itemForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام (للجميع)</SelectItem><SelectItem value="pro">برو (مشتركين فقط)</SelectItem></SelectContent></Select></FormItem>)} />
-                                            <FormField control={itemForm.control} name="order" render={({ field }) => (<FormItem><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
                                         </div>
 
                                         <FormField control={itemForm.control} name="isNew" render={({ field }) => (
@@ -559,8 +600,16 @@ export default function AdminDashboard() {
                         <CardContent className="p-8 pt-0">
                             <ScrollArea className="h-[750px] pr-4 -mr-4">
                                 <div className="space-y-4">
-                                    {isLoadingItems ? <Loader2 className="animate-spin mx-auto mt-20 text-primary" /> : currentItems?.length === 0 ? <p className="text-center py-20 text-muted-foreground font-bold">لا يوجد محتوى في هذا القسم حالياً</p> : currentItems?.map(item => (
+                                    {isLoadingItems ? <Loader2 className="animate-spin mx-auto mt-20 text-primary" /> : currentItems?.length === 0 ? <p className="text-center py-20 text-muted-foreground font-bold">لا يوجد محتوى في هذا القسم حالياً</p> : currentItems?.map((item, idx) => (
                                         <div key={item.id} className="flex items-center gap-4 p-4 bg-card rounded-[1.5rem] border shadow-sm group hover:border-primary/30 transition-all">
+                                            <div className="flex flex-col gap-1 pr-2 border-l ml-2">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-primary/10" disabled={idx === 0} onClick={() => moveItemInFirestore(currentItems, idx, 'up', ['categories', selectedCategoryId, 'items'])}>
+                                                    <ChevronUp className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-primary/10" disabled={idx === (currentItems?.length || 0) - 1} onClick={() => moveItemInFirestore(currentItems, idx, 'down', ['categories', selectedCategoryId, 'items'])}>
+                                                    <ChevronDown className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                             <div className="h-16 w-16 rounded-2xl bg-muted overflow-hidden border-2 border-muted flex-shrink-0 relative">
                                                 {item.imageUrl && <img src={item.imageUrl} className="object-cover h-full w-full" />}
                                                 {item.isNew && <div className="absolute inset-0 bg-primary/20 animate-pulse" />}
@@ -572,7 +621,7 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <Badge variant={item.status === 'pending' ? 'destructive' : 'secondary'} className="text-[8px] font-bold h-4">{item.status === 'pending' ? 'قيد المراجعة' : 'نشط ومفعل'}</Badge>
-                                                    <Badge variant="outline" className="text-[8px] font-bold h-4">الترتيب: {item.order}</Badge>
+                                                    <Badge variant="outline" className="text-[8px] font-bold h-4">الترتيب: {idx}</Badge>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -806,9 +855,8 @@ export default function AdminDashboard() {
                       <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
                       <FormField control={catForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel className="font-black flex items-center gap-2"><FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (اختياري)</FormLabel><FormControl><Input {...field} placeholder="مثال: PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl><FormDescription className="text-[10px]">تظهر للمستخدمين في الصفحة الرئيسية.</FormDescription></FormItem>)} />
                       <FormField control={catForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel className="font-black">نمط العرض الافتراضي</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="style1">تحميل (أفقي)</SelectItem><SelectItem value="style3">برومبت (بطاقات)</SelectItem><SelectItem value="style4">فيديو (عرض فيديو)</SelectItem><SelectItem value="style5">معرض (Style 5)</SelectItem><SelectItem value="style6">موقع إلكتروني (Style 6)</SelectItem></SelectContent></Select></FormItem>)} />
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                           <FormField control={catForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو</SelectItem></SelectContent></Select></FormItem>)} />
-                          <FormField control={catForm.control} name="order" render={({ field }) => (<FormItem><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
                       </div>
                       <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20">حفظ القسم الآن</Button></DialogFooter>
                   </form>
@@ -851,7 +899,6 @@ export default function AdminDashboard() {
                       <FormField control={paymentForm.control} name="link" render={({ field }) => (<FormItem><FormLabel className="font-black">الرابط أو النص المعروض</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>)} />
                       <div className="grid grid-cols-2 gap-4">
                           <FormField control={paymentForm.control} name="country" render={({ field }) => (<FormItem><FormLabel className="font-black">الدولة المستهدفة</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="ALL">الكل (Global)</SelectItem><SelectItem value="SA">السعودية (SA)</SelectItem><SelectItem value="YE">اليمن (YE)</SelectItem></SelectContent></Select></FormItem>)} />
-                          <FormField control={paymentForm.control} name="order" render={({ field }) => (<FormItem><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
                       </div>
                       <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 font-black text-lg rounded-2xl shadow-xl shadow-primary/20">تأكيد الإعدادات</Button></DialogFooter>
                   </form>
