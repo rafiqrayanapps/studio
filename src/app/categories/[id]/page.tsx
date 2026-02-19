@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, increment } from 'firebase/firestore';
 import type { Category, ContentItem, ReferralConfig } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Settings2, Coins, Cpu, Hammer } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Settings2, Coins, Cpu, Hammer, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,8 +42,6 @@ export default function CategoryPage() {
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
-      // Note: Strict ordering might hide items without the 'order' field. 
-      // We keep it but ensure filtering logic is robust.
       return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
   }, [firestore, id]);
   const { data: rawItems, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
@@ -63,7 +61,6 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
-    // If Admin, show everything. If not, only show approved status.
     const viewableItems = isAdmin 
         ? rawItems 
         : rawItems.filter(item => item.status === 'approved' || item.status === undefined);
@@ -262,6 +259,47 @@ export default function CategoryPage() {
             {typedItems.map((item) => (
                 <div key={item.id} className="h-full"><Style3Item item={item} /></div>
             ))}
+          </div>
+        );
+      case 'style6':
+        return (
+          <div className="grid grid-cols-1 gap-8">
+            {typedItems.map((item) => {
+              const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
+              return (
+                <Card key={item.id} className="overflow-hidden group hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-none bg-card shadow-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-12">
+                    {/* Thumbnail */}
+                    <div className="md:col-span-5 relative aspect-[16/10] overflow-hidden bg-muted group-hover:scale-105 transition-transform duration-700">
+                        {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
+                        {isLocked && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center"><Lock className="h-10 w-10 text-white opacity-50" /></div>}
+                        <FavoriteButton item={item} />
+                    </div>
+                    {/* Content */}
+                    <div className="md:col-span-7 p-8 flex flex-col justify-center space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-2xl font-black tracking-tight">{item.title}</h3>
+                            {isLocked && <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 px-3 py-1">برو</Badge>}
+                        </div>
+                        {item.instructions && (
+                            <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3 font-medium">
+                                {item.instructions}
+                            </p>
+                        )}
+                        <div className="pt-2">
+                            <Button 
+                                className="rounded-2xl px-8 h-12 font-black transition-all hover:gap-3" 
+                                onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
+                            >
+                                {isLocked ? (userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? <Coins className="ml-2 h-4 w-4" /> : <Lock className="ml-2 h-4 w-4" />) : <ExternalLink className="ml-2 h-4 w-4" />}
+                                {isLocked ? (userProfile && userProfile.points >= (refConfig?.pointsPerUnlock || 5) ? 'فتح بالنقاط' : 'ترقية للزيارة') : 'زيارة الموقع'}
+                            </Button>
+                        </div>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
           </div>
         );
       default:

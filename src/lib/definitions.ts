@@ -1,4 +1,4 @@
-export type DisplayStyle = 'style1' | 'style2' | 'style3' | 'style4' | 'style5';
+export type DisplayStyle = 'style1' | 'style2' | 'style3' | 'style4' | 'style5' | 'style6';
 
 export interface Category {
   id: string;

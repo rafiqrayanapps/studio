@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -30,7 +29,11 @@ import {
     Eye,
     Hammer,
     MonitorSmartphone,
-    FileCode
+    FileCode,
+    ExternalLink,
+    Tag,
+    DollarSign,
+    Check
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -54,14 +57,14 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescri
 import DynamicIcon from '@/components/ui/dynamic-icon';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, RequestDesignConfig, Notification, PaymentMethod } from '@/lib/definitions';
+import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, RequestDesignConfig, Notification, PaymentMethod, PricingPlan } from '@/lib/definitions';
 import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 
 // Schemas
 const itemSchema = z.object({
   title: z.string().min(2, "العنوان مطلوب"),
   imageUrl: z.string().url("رابط الصورة غير صالح"),
-  displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5']).default('style1'),
+  displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5', 'style6']).default('style1'),
   downloadUrl: z.string().optional(),
   prompt: z.string().optional(),
   instructions: z.string().optional(),
@@ -72,7 +75,7 @@ const itemSchema = z.object({
 
 const categorySchema = z.object({
     name: z.string().min(2, "الاسم مطلوب"),
-    displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5']),
+    displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5', 'style6']),
     visibility: z.enum(['public', 'pro']),
     order: z.number().default(0),
     isUnderMaintenance: z.boolean().default(false),
@@ -100,6 +103,19 @@ const paymentMethodSchema = z.object({
     enabled: z.boolean().default(true),
 });
 
+const pricingPlanSchema = z.object({
+    name: z.string().min(2, "اسم الباقة مطلوب"),
+    price: z.string().min(1, "السعر مطلوب"),
+    currency: z.string().default('ر.س'),
+    frequency: z.string().optional(),
+    description: z.string().optional(),
+    features: z.string().describe("المميزات (افصل بينها بفاصلة)"),
+    isFeatured: z.boolean().default(false),
+    order: z.number().default(0),
+    enabled: z.boolean().default(true),
+    link: z.string().optional(),
+});
+
 export default function AdminDashboard() {
   const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
@@ -109,6 +125,7 @@ export default function AdminDashboard() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
+  const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -130,6 +147,9 @@ export default function AdminDashboard() {
 
   const paymentsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'paymentMethods'), orderBy('order', 'asc')) : null, [firestore]);
   const { data: paymentMethods } = useCollection<PaymentMethod>(paymentsQuery);
+
+  const plansQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pricingPlans'), orderBy('order', 'asc')) : null, [firestore]);
+  const { data: pricingPlans } = useCollection<PricingPlan>(plansQuery);
 
   const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
@@ -171,6 +191,11 @@ export default function AdminDashboard() {
   const paymentForm = useForm<z.infer<typeof paymentMethodSchema>>({
       resolver: zodResolver(paymentMethodSchema),
       defaultValues: { name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', order: 0, enabled: true }
+  });
+
+  const planForm = useForm<z.infer<typeof pricingPlanSchema>>({
+      resolver: zodResolver(pricingPlanSchema),
+      defaultValues: { name: '', price: '', currency: 'ر.س', frequency: '', description: '', features: '', isFeatured: false, order: 0, enabled: true, link: '' }
   });
 
   useEffect(() => {
@@ -217,6 +242,24 @@ export default function AdminDashboard() {
           setEditingCategory(null);
       } catch (e) {
           toast({ title: "فشل حفظ القسم", variant: "destructive" });
+      }
+  };
+
+  const onUpdatePlan = async (values: z.infer<typeof pricingPlanSchema>) => {
+      if (!firestore) return;
+      try {
+          const planId = (editingPlan?.id && editingPlan.id !== '') ? editingPlan.id : doc(collection(firestore, 'pricingPlans')).id;
+          const featuresArray = values.features.split(',').map(f => f.trim()).filter(f => f !== '');
+          
+          await setDoc(doc(firestore, 'pricingPlans', planId), {
+              ...values,
+              features: featuresArray
+          }, { merge: true });
+          
+          toast({ title: "تم حفظ الباقة بنجاح" });
+          setEditingPlan(null);
+      } catch (e) {
+          toast({ title: "فشل حفظ الباقة", variant: "destructive" });
       }
   };
 
@@ -299,6 +342,7 @@ export default function AdminDashboard() {
     { id: 'categories', label: 'الأقسام والصيانة', icon: Layers },
     { id: 'items', label: 'إدارة المحتوى', icon: Plus },
     ...(isAdmin ? [
+        { id: 'plans', label: 'باقات الاشتراك', icon: Tag },
         { id: 'review', label: 'طلبات المراجعة', icon: ShieldCheck, badge: reviewItems.length },
         { id: 'notifications', label: 'الإشعارات العامة', icon: Bell },
         { id: 'payments', label: 'طرق الدفع', icon: CreditCard },
@@ -443,10 +487,11 @@ export default function AdminDashboard() {
                                         <Select value={itemForm.watch('displayStyle')} onValueChange={(val: any) => itemForm.setValue('displayStyle', val)}>
                                             <SelectTrigger className="h-14 rounded-2xl border-2 focus:ring-primary/20"><SelectValue /></SelectTrigger>
                                             <SelectContent className="rounded-2xl">
-                                                <SelectItem value="style1" className="font-bold py-3">نمط التحميل (Style 1)</SelectItem>
-                                                <SelectItem value="style3" className="font-bold py-3">نمط البرومبت (Style 3)</SelectItem>
-                                                <SelectItem value="style4" className="font-bold py-3">نمط الفيديو (Style 4)</SelectItem>
-                                                <SelectItem value="style5" className="font-bold py-3">نمط المعرض (Style 5)</SelectItem>
+                                                <SelectItem value="style1" className="font-bold py-3">تحميل (Style 1)</SelectItem>
+                                                <SelectItem value="style3" className="font-bold py-3">برومبت (Style 3)</SelectItem>
+                                                <SelectItem value="style4" className="font-bold py-3">فيديو (Style 4)</SelectItem>
+                                                <SelectItem value="style5" className="font-bold py-3">معرض (Style 5)</SelectItem>
+                                                <SelectItem value="style6" className="font-bold py-3">نمط الموقع (Style 6)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -469,6 +514,12 @@ export default function AdminDashboard() {
                                                 </div>
                                             )}
                                             {itemForm.watch('displayStyle') === 'style4' && <FormField control={itemForm.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">رابط الفيديو (YouTube)</FormLabel><FormControl><Input {...field} className="h-11 rounded-xl bg-background" placeholder="https://youtube.com/..." /></FormControl></FormItem>)} />}
+                                            {itemForm.watch('displayStyle') === 'style6' && (
+                                                <div className="space-y-4">
+                                                    <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">رابط الموقع</FormLabel><FormControl><Input {...field} className="h-11 rounded-xl bg-background" placeholder="https://example.com" /></FormControl></FormItem>)} />
+                                                    <FormField control={itemForm.control} name="instructions" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">وصف قصير للموقع</FormLabel><FormControl><Textarea {...field} className="h-20 rounded-xl bg-background" placeholder="اكتب وصفاً جذاباً هنا..." /></FormControl></FormItem>)} />
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex gap-4">
@@ -518,7 +569,65 @@ export default function AdminDashboard() {
                 </div>
             </TabsContent>
 
-            {/* Other Tabs (Review, Notifications, etc.) simplified for UX */}
+            {/* Pricing Plans Tab */}
+            {isAdmin && (
+                <TabsContent value="plans" className="m-0 space-y-8 animate-in fade-in duration-500">
+                    <div className="flex justify-between items-center">
+                        <div className="space-y-1">
+                            <h2 className="text-3xl font-black">باقات الاشتراك</h2>
+                            <p className="text-muted-foreground text-sm">أضف وتحكم في خطط الاشتراك التي تظهر للمستخدمين.</p>
+                        </div>
+                        <Button size="lg" className="rounded-2xl h-14 px-8 font-black shadow-xl shadow-primary/20" onClick={() => { planForm.reset({ name: '', price: '', currency: 'ر.س', frequency: '', description: '', features: '', isFeatured: false, order: 0, enabled: true, link: '' }); setEditingPlan({ id: '' } as any); }}>
+                            <Plus className="ml-2 h-5 w-5" /> إضافة باقة جديدة
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {pricingPlans?.map(plan => (
+                            <Card key={plan.id} className={`overflow-hidden border-2 transition-all ${plan.isFeatured ? 'border-primary shadow-xl scale-[1.02]' : 'border-border shadow-sm'}`}>
+                                <CardHeader className="p-6 pb-4">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <CardTitle className="text-xl font-black">{plan.name}</CardTitle>
+                                            <CardDescription className="line-clamp-1">{plan.description}</CardDescription>
+                                        </div>
+                                        {plan.isFeatured && <Badge className="bg-yellow-500 text-white font-bold">الأكثر تميزاً</Badge>}
+                                    </div>
+                                    <div className="mt-4 flex items-baseline gap-1">
+                                        <span className="text-3xl font-black text-primary">{plan.price}</span>
+                                        <span className="text-sm font-bold text-muted-foreground">{plan.currency}</span>
+                                        {plan.frequency && <span className="text-xs text-muted-foreground">{plan.frequency}</span>}
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="px-6 py-4 border-t bg-muted/10">
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground">المميزات المدرجة:</p>
+                                        <ul className="space-y-1.5">
+                                            {plan.features.slice(0, 3).map((feat, i) => (
+                                                <li key={i} className="flex items-center gap-2 text-xs font-bold">
+                                                    <Check className="h-3 w-3 text-green-500" />
+                                                    <span className="truncate">{feat}</span>
+                                                </li>
+                                            ))}
+                                            {plan.features.length > 3 && <li className="text-[10px] text-primary font-black">+ {plan.features.length - 3} مميزات أخرى</li>}
+                                        </ul>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="p-3 border-t flex gap-2">
+                                    <Button variant="outline" className="flex-1 text-xs font-bold h-10 rounded-xl" onClick={() => { setEditingPlan(plan); planForm.reset({ ...plan, features: plan.features.join(', ') }); }}>
+                                        <Edit2 className="ml-2 h-4 w-4" /> تعديل
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive rounded-xl hover:bg-destructive/10" onClick={() => confirm("حذف الباقة؟") && deleteDocumentNonBlocking(doc(firestore!, 'pricingPlans', plan.id))}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </TabsContent>
+            )}
+
+            {/* Other Tabs (Review, Notifications, etc.) */}
             {isAdmin && (
                 <>
                     <TabsContent value="review" className="space-y-8 m-0 animate-in fade-in duration-500">
@@ -677,12 +786,37 @@ export default function AdminDashboard() {
                   <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-6">
                       <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
                       <FormField control={catForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel className="font-black flex items-center gap-2"><FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (اختياري)</FormLabel><FormControl><Input {...field} placeholder="مثال: PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl><FormDescription className="text-[10px]">تظهر للمستخدمين في الصفحة الرئيسية.</FormDescription></FormItem>)} />
-                      <FormField control={catForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel className="font-black">نمط العرض الافتراضي</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="style1">تحميل (أفقي)</SelectItem><SelectItem value="style3">برومبت (بطاقات)</SelectItem><SelectItem value="style4">فيديو (عرض فيديو)</SelectItem><SelectItem value="style5">معرض (Style 5)</SelectItem></SelectContent></Select></FormItem>)} />
+                      <FormField control={catForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel className="font-black">نمط العرض الافتراضي</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="style1">تحميل (أفقي)</SelectItem><SelectItem value="style3">برومبت (بطاقات)</SelectItem><SelectItem value="style4">فيديو (عرض فيديو)</SelectItem><SelectItem value="style5">معرض (Style 5)</SelectItem><SelectItem value="style6">موقع إلكتروني (Style 6)</SelectItem></SelectContent></Select></FormItem>)} />
                       <div className="grid grid-cols-2 gap-4">
                           <FormField control={catForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو</SelectItem></SelectContent></Select></FormItem>)} />
                           <FormField control={catForm.control} name="order" render={({ field }) => (<FormItem><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
                       </div>
                       <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20">حفظ القسم الآن</Button></DialogFooter>
+                  </form>
+              </Form>
+          </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingPlan} onOpenChange={(open) => !open && setEditingPlan(null)}>
+          <DialogContent dir="rtl" className="max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
+              <DialogHeader className="mb-6">
+                  <DialogTitle className="text-2xl font-black">{(editingPlan?.id && editingPlan.id !== '') ? "تعديل الباقة" : "إضافة باقة جديدة"}</DialogTitle>
+                  <DialogDescription className="font-bold text-muted-foreground">أدخل تفاصيل خطة الاشتراك وأسعارها.</DialogDescription>
+              </DialogHeader>
+              <Form {...planForm}>
+                  <form onSubmit={planForm.handleSubmit(onUpdatePlan)} className="space-y-5">
+                      <FormField control={planForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم الباقة</FormLabel><FormControl><Input {...field} placeholder="مثال: اشتراك برو السنوي" className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <div className="grid grid-cols-2 gap-4">
+                          <FormField control={planForm.control} name="price" render={({ field }) => (<FormItem><FormLabel className="font-black">السعر</FormLabel><FormControl><Input {...field} placeholder="مثال: 99" className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                          <FormField control={planForm.control} name="currency" render={({ field }) => (<FormItem><FormLabel className="font-black">العملة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      </div>
+                      <FormField control={planForm.control} name="features" render={({ field }) => (<FormItem><FormLabel className="font-black">المميزات (افصل بفاصلة ,)</FormLabel><FormControl><Textarea {...field} placeholder="تحميل غير محدود, دعم فني, وصول مبكر..." className="h-24 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={planForm.control} name="link" render={({ field }) => (<FormItem><FormLabel className="font-black">رابط الدفع الخارجي (اختياري)</FormLabel><FormControl><Input {...field} placeholder="https://..." className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border">
+                          <span className="font-black text-sm">تمييز كباقة مختارة (Featured)</span>
+                          <Switch checked={planForm.watch('isFeatured')} onCheckedChange={(val) => planForm.setValue('isFeatured', val)} />
+                      </div>
+                      <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 font-black text-lg rounded-2xl shadow-xl shadow-primary/20">حفظ الباقة</Button></DialogFooter>
                   </form>
               </Form>
           </DialogContent>
