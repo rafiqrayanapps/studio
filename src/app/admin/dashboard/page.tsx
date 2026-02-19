@@ -416,7 +416,7 @@ export default function AdminDashboard() {
                 </TabsContent>
             )}
 
-            {isAdmin && ( activeTab === 'review' && (
+            {isAdmin && (
                 <TabsContent value="review" className="m-0 space-y-6">
                     <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">طلبات المراجعة ({reviewItems.length})</h2></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -437,7 +437,7 @@ export default function AdminDashboard() {
                         ))}
                     </div>
                 </TabsContent>
-            ))}
+            )}
 
             {isAdmin && (
                 <TabsContent value="settings" className="space-y-6 m-0">
@@ -469,6 +469,7 @@ export default function AdminDashboard() {
                                 <div className="flex items-center justify-between p-3 bg-muted rounded-xl"><span>تفعيل الزر</span><Switch checked={reqDesignConfig?.enabled || false} onCheckedChange={(val) => updateConfig('requestDesign', { enabled: val })} /></div>
                                 <div className="space-y-2"><label className="text-xs font-bold">رابط الطلب (واتساب/فورم):</label><Input value={reqDesignConfig?.url || ''} onChange={(e) => updateConfig('requestDesign', { url: e.target.value })} /></div>
                             </CardContent>
+                        </Card>
 
                         {/* Referral System Settings */}
                         <Card>
