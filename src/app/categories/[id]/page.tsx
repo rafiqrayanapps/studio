@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 export default function CategoryPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = params?.id as string;
   const firestore = useFirestore();
   
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -36,12 +36,12 @@ export default function CategoryPage() {
   const [showUnlockDialog, setShowUnlockDialog] = useState<{item: WithId<ContentItem>, cost: number} | null>(null);
 
   const { categoryMap, isLoadingCategories: areAllCategoriesLoading } = useCategories();
-  const category = useMemo(() => categoryMap.get(id), [categoryMap, id]);
+  const category = useMemo(() => id ? categoryMap.get(id) : null, [categoryMap, id]);
 
   const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
   const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
 
-  // Fetch all items without strict orderBy to avoid filtering out items missing the field
+  // Fetch items without strict orderBy to prevent hiding items missing the field
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
       return query(collection(firestore, 'categories', id, 'items'));
@@ -65,15 +65,12 @@ export default function CategoryPage() {
     if (!rawItems) return [];
     
     // 1. Filter by visibility/status
-    // Normal users see 'approved' OR items with no status field (legacy).
-    // Admin/Editor see everything.
     const viewableItems = (isAdmin || isEditor)
         ? rawItems 
         : rawItems.filter(item => 
             item.status === 'approved' || 
-            item.status === undefined || 
-            item.status === null || 
-            (typeof item.status === 'string' && item.status.length === 0)
+            !item.status || 
+            (typeof item.status === 'string' && item.status.trim() === '')
           );
         
     // 2. Filter by search term
@@ -81,7 +78,7 @@ export default function CategoryPage() {
         (item.title || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // 3. Sort in-memory to ensure items without 'order' still show up at the end
+    // 3. Sort in-memory to handle missing 'order' field
     return [...searchedItems].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   }, [rawItems, searchTerm, isAdmin, isEditor]);
 
@@ -134,7 +131,6 @@ export default function CategoryPage() {
   );
 
   const renderContent = () => {
-    // Both Admins and Editors can bypass maintenance mode to test/preview content
     if (category?.isUnderMaintenance && !isAdmin && !isEditor) {
        return (
          <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-4 shadow-2xl border border-primary/10 overflow-hidden relative min-h-[500px]">
@@ -298,14 +294,12 @@ export default function CategoryPage() {
               return (
                 <Card key={item.id} className="overflow-hidden group hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-none bg-card shadow-lg relative">
                   <div className="grid grid-cols-1 md:grid-cols-12">
-                    {/* Thumbnail */}
                     <div className="md:col-span-5 relative aspect-[16/10] overflow-hidden bg-muted group-hover:scale-105 transition-transform duration-700">
                         {item.isNew && <NewBadge />}
                         {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
                         {isLocked && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center"><Lock className="h-10 w-10 text-white opacity-50" /></div>}
                         <FavoriteButton item={item} />
                     </div>
-                    {/* Content */}
                     <div className="md:col-span-7 p-8 flex flex-col justify-center space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-2xl font-black tracking-tight">{item.title}</h3>
@@ -395,7 +389,6 @@ export default function CategoryPage() {
 
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
       
-      {/* Modal for image preview */}
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
           <DialogHeader className="sr-only">

@@ -123,7 +123,6 @@ export default function AdminDashboard() {
   const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
   const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const categoriesQuery = useMemoFirebase(() => {
       if (!firestore) return null;
@@ -438,7 +437,7 @@ export default function AdminDashboard() {
                         <h2 className="text-3xl font-black tracking-tighter">الأقسام والصيانة</h2>
                         <p className="text-muted-foreground text-sm">تحكم في حالة الأقسام وتفعيل وضع الصيانة الفوري.</p>
                     </div>
-                    {isAdmin && (
+                    {(isAdmin || isEditor) && (
                         <Button 
                             size="lg" 
                             className="rounded-2xl h-14 px-8 font-black shadow-xl shadow-primary/20" 
@@ -1073,8 +1072,18 @@ export default function AdminDashboard() {
               </DialogHeader>
               <Form {...catForm}>
                   <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-6">
-                      <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
-                      <FormField control={catForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel className="font-black">صيغ الملفات (اختياري)</FormLabel><FormControl><Input {...field} placeholder="PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={catForm.control} name="name" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-black">اسم القسم</FormLabel>
+                              <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                          </FormItem>
+                      )} />
+                      <FormField control={catForm.control} name="fileTypes" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-black">صيغ الملفات (اختياري)</FormLabel>
+                              <FormControl><Input {...field} placeholder="PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl>
+                          </FormItem>
+                      )} />
                       <FormField control={catForm.control} name="displayStyle" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-black">نمط العرض</FormLabel>
@@ -1110,15 +1119,39 @@ export default function AdminDashboard() {
 
       <Dialog open={!!editingPlan} onOpenChange={(open) => !open && setEditingPlan(null)}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
-              <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">{(editingPlan?.id) ? "تعديل الباقة" : "إضافة باقة جديدة"}</DialogTitle></DialogHeader>
+              <DialogHeader className="mb-6">
+                  <DialogTitle className="text-2xl font-black">
+                      {(editingPlan?.id) ? "تعديل الباقة" : "إضافة باقة جديدة"}
+                  </DialogTitle>
+              </DialogHeader>
               <Form {...planForm}>
                   <form onSubmit={planForm.handleSubmit(onUpdatePlan)} className="space-y-5">
-                      <FormField control={planForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم الباقة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={planForm.control} name="name" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-black">اسم الباقة</FormLabel>
+                              <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                          </FormItem>
+                      )} />
                       <div className="grid grid-cols-2 gap-4">
-                          <FormField control={planForm.control} name="price" render={({ field }) => (<FormItem><FormLabel className="font-black">السعر</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
-                          <FormField control={planForm.control} name="currency" render={({ field }) => (<FormItem><FormLabel className="font-black">العملة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                          <FormField control={planForm.control} name="price" render={({ field }) => (
+                              <FormItem>
+                                  <FormLabel className="font-black">السعر</FormLabel>
+                                  <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                              </FormItem>
+                          )} />
+                          <FormField control={planForm.control} name="currency" render={({ field }) => (
+                              <FormItem>
+                                  <FormLabel className="font-black">العملة</FormLabel>
+                                  <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                              </FormItem>
+                          )} />
                       </div>
-                      <FormField control={planForm.control} name="features" render={({ field }) => (<FormItem><FormLabel className="font-black">المميزات (افصل بفاصلة)</FormLabel><FormControl><Textarea {...field} className="h-24 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={planForm.control} name="features" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-black">المميزات (افصل بفاصلة)</FormLabel>
+                              <FormControl><Textarea {...field} className="h-24 rounded-xl" /></FormControl>
+                          </FormItem>
+                      )} />
                       <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 font-black rounded-2xl">حفظ الباقة</Button></DialogFooter>
                   </form>
               </Form>
@@ -1130,9 +1163,24 @@ export default function AdminDashboard() {
               <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">إعداد طريقة الدفع</DialogTitle></DialogHeader>
               <Form {...paymentForm}>
                   <form onSubmit={paymentForm.handleSubmit(onUpdatePayment)} className="space-y-5">
-                      <FormField control={paymentForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">الاسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
-                      <FormField control={paymentForm.control} name="icon" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم الأيقونة (Lucide)</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>)} />
-                      <FormField control={paymentForm.control} name="link" render={({ field }) => (<FormItem><FormLabel className="font-black">الرابط أو النص</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>)} />
+                      <FormField control={paymentForm.control} name="name" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-black">الاسم</FormLabel>
+                              <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                          </FormItem>
+                      )} />
+                      <FormField control={paymentForm.control} name="icon" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-black">الأيقونة (Lucide)</FormLabel>
+                              <FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl>
+                          </FormItem>
+                      )} />
+                      <FormField control={paymentForm.control} name="link" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-black">الرابط أو النص</FormLabel>
+                              <FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl>
+                          </FormItem>
+                      )} />
                       <FormField control={paymentForm.control} name="country" render={({ field }) => (
                           <FormItem>
                               <FormLabel className="font-black">الدولة</FormLabel>
@@ -1157,7 +1205,12 @@ export default function AdminDashboard() {
               <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black">إضافة مستخدم يدوياً</DialogTitle></DialogHeader>
               <Form {...userForm}>
                   <form onSubmit={userForm.handleSubmit(onAddUser)} className="space-y-6">
-                      <FormField control={userForm.control} name="email" render={({ field }) => (<FormItem><FormLabel className="font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
+                      <FormField control={userForm.control} name="email" render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-black">البريد الإلكتروني</FormLabel>
+                              <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                          </FormItem>
+                      )} />
                       <FormField control={userForm.control} name="role" render={({ field }) => (
                           <FormItem>
                               <FormLabel className="font-black">الصلاحية</FormLabel>
