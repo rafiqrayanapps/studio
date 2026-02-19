@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -32,7 +31,9 @@ import {
     Key,
     Globe,
     ExternalLink,
-    Wallet
+    Wallet,
+    ShieldCheck,
+    UserCog
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking, useDoc } from '@/firebase';
@@ -152,9 +153,6 @@ export default function AdminDashboard() {
   const paymentsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'paymentMethods'), orderBy('order', 'asc')) : null, [firestore]);
   const { data: payments } = useCollection<PaymentMethod>(paymentsQuery);
 
-  const notificationsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc')) : null, [firestore]);
-  const { data: notifications } = useCollection<Notification>(notificationsQuery);
-
   // Forms
   const catForm = useForm<z.infer<typeof categorySchema>>({
       resolver: zodResolver(categorySchema),
@@ -251,6 +249,22 @@ export default function AdminDashboard() {
           toast({ title: "تم حفظ وسيلة الدفع" });
           setEditingPayment(null);
           paymentForm.reset();
+      } catch (e) { toast({ title: "خطأ في الحفظ", variant: "destructive" }); }
+  };
+
+  const onSavePlan = async (values: z.infer<typeof planSchema>) => {
+      if (!firestore) return;
+      try {
+          const planId = editingPlan?.id || doc(collection(firestore, 'pricingPlans')).id;
+          const featuresArray = values.features.split(',').map(f => f.trim()).filter(f => f !== "");
+          await setDoc(doc(firestore, 'pricingPlans', planId), {
+              ...values,
+              features: featuresArray,
+              order: editingPlan ? editingPlan.order : (plans?.length || 0)
+          }, { merge: true });
+          toast({ title: "تم حفظ الباقة بنجاح" });
+          setEditingPlan(null);
+          planForm.reset();
       } catch (e) { toast({ title: "خطأ في الحفظ", variant: "destructive" }); }
   };
 
@@ -362,6 +376,7 @@ export default function AdminDashboard() {
                                                     <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
                                                     <SelectContent className="rounded-xl">
                                                         <SelectItem value="style1">تحميل (Style 1)</SelectItem>
+                                                        <SelectItem value="style2">نمط بديل (Style 2)</SelectItem>
                                                         <SelectItem value="style3">برومبت (Style 3)</SelectItem>
                                                         <SelectItem value="style4">فيديو (Style 4)</SelectItem>
                                                         <SelectItem value="style5">معرض (Style 5)</SelectItem>
@@ -399,7 +414,7 @@ export default function AdminDashboard() {
                                             <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (<FormItem><FormLabel className="text-xs font-black">الرابط (تحميل/زيارة)</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>)} />
                                             <div className="flex gap-4 pt-2">
                                                 <FormField control={itemForm.control} name="visibility" render={({ field }) => (
-                                                    <FormItem className="flex-1"><FormLabel className="text-xs font-black">الوصول</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">مجاني</SelectItem><SelectItem value="pro">برو</SelectItem></SelectContent></Select></FormItem>
+                                                    <FormItem className="flex-1"><FormLabel className="text-xs font-black">الوصول</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">مجاني</SelectItem><SelectItem value="pro">برو</SelectItem></Select></FormItem>
                                                 )} />
                                                 <FormField control={itemForm.control} name="isNew" render={({ field }) => (
                                                     <FormItem className="flex flex-col justify-end p-2 border rounded-xl bg-muted/30"><div className="flex items-center gap-2"><span className="text-[10px] font-black">جديد</span><Switch checked={field.value} onCheckedChange={field.onChange} /></div></FormItem>
@@ -563,15 +578,38 @@ export default function AdminDashboard() {
 
                     <TabsContent value="users" className="space-y-6">
                         <div className="flex items-center justify-between">
-                            <h3 className="font-black text-lg">أكواد تفعيل البرو</h3>
+                            <h3 className="font-black text-lg">إدارة صلاحيات المستخدمين</h3>
                             <Dialog open={isAddingWhitelist} onOpenChange={setIsAddingWhitelist}>
-                                <DialogTrigger asChild><Button className="rounded-xl font-black"><UserPlus className="ml-2 h-4 w-4" /> مستخدم جديد</Button></DialogTrigger>
+                                <DialogTrigger asChild><Button className="rounded-xl font-black"><UserPlus className="ml-2 h-4 w-4" /> إضافة مستخدم</Button></DialogTrigger>
                                 <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
-                                    <DialogHeader><DialogTitle className="font-black">إضافة مستخدم للبرو</DialogTitle></DialogHeader>
+                                    <DialogHeader><DialogTitle className="font-black">إضافة مستخدم وتحديد صلاحياته</DialogTitle></DialogHeader>
                                     <Form {...whitelistForm}><form onSubmit={whitelistForm.handleSubmit(onSaveWhitelist)} className="space-y-4 pt-4">
                                         <FormField control={whitelistForm.control} name="email" render={({ field }) => (<FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} className="text-left" dir="ltr" /></FormControl></FormItem>)} />
-                                        <FormField control={whitelistForm.control} name="activationCode" render={({ field }) => (<FormItem><FormLabel className="text-xs font-black">كود التفعيل</FormLabel><div className="flex gap-2"><FormControl><Input {...field} className="text-center font-mono font-black" dir="ltr" /></FormControl><Button type="button" variant="secondary" onClick={generateRandomCode}><Key className="h-4 w-4" /></Button></div></FormItem>)} />
-                                        <Button type="submit" className="w-full h-14 rounded-2xl font-black">تفعيل وحفظ</Button>
+                                        
+                                        <FormField control={whitelistForm.control} name="role" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs font-black">الصلاحية</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="اختر دور المستخدم" /></SelectTrigger></FormControl>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="pro">عضو برو (Pro)</SelectItem>
+                                                        <SelectItem value="editor">محرر (Editor)</SelectItem>
+                                                        <SelectItem value="admin">مدير (Admin)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        )} />
+
+                                        <FormField control={whitelistForm.control} name="activationCode" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs font-black">كود التفعيل</FormLabel>
+                                                <div className="flex gap-2">
+                                                    <FormControl><Input {...field} className="text-center font-mono font-black" dir="ltr" /></FormControl>
+                                                    <Button type="button" variant="secondary" onClick={generateRandomCode}><Key className="h-4 w-4" /></Button>
+                                                </div>
+                                            </FormItem>
+                                        )} />
+                                        <Button type="submit" className="w-full h-14 rounded-2xl font-black">حفظ وإضافة للملفات</Button>
                                     </form></Form>
                                 </DialogContent>
                             </Dialog>
@@ -581,7 +619,16 @@ export default function AdminDashboard() {
                                 <div className="divide-y">
                                     {whitelist?.map((entry) => (
                                         <div key={entry.email} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
-                                            <div><p className="font-black text-sm">{entry.email}</p><p className="text-[10px] text-muted-foreground flex items-center gap-1"><Key className="h-3 w-3" /> {entry.activationCode}</p></div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-primary/10 p-2 rounded-lg"><UserCog className="h-5 w-5 text-primary" /></div>
+                                                <div>
+                                                    <p className="font-black text-sm">{entry.email}</p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <Badge variant="outline" className="text-[8px] uppercase">{entry.role}</Badge>
+                                                        <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Key className="h-3 w-3" /> {entry.activationCode}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <div className="flex items-center gap-3">
                                                 <Badge variant={entry.isActivated ? "default" : "outline"} className={entry.isActivated ? "bg-green-500" : ""}>{entry.isActivated ? 'مفعل' : 'بانتظار التفعيل'}</Badge>
                                                 {isAdmin && <Button variant="ghost" size="icon" className="text-destructive" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'whitelist', entry.email))}><Trash2 className="h-4 w-4" /></Button>}
@@ -604,7 +651,7 @@ export default function AdminDashboard() {
                                         <FormField control={paymentForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="text-xs font-black">اسم الوسيلة (مثلاً: الراجحي)</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                                         <FormField control={paymentForm.control} name="icon" render={({ field }) => (<FormItem><FormLabel className="text-xs font-black">اسم الأيقونة (Lucide)</FormLabel><FormControl><Input {...field} placeholder="Wallet, CreditCard, Send..." /></FormControl></FormItem>)} />
                                         <FormField control={paymentForm.control} name="link" render={({ field }) => (<FormItem><FormLabel className="text-xs font-black">الرابط أو رقم الحساب</FormLabel><FormControl><Input {...field} className="text-left" dir="ltr" /></FormControl></FormItem>)} />
-                                        <FormField control={paymentForm.control} name="country" render={({ field }) => (<FormItem><FormLabel className="text-xs font-black">الدولة المستهدفة</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="ALL">الكل</SelectItem><SelectItem value="SA">السعودية</SelectItem><SelectItem value="YE">اليمن</SelectItem></SelectContent></Select></FormItem>)} />
+                                        <FormField control={paymentForm.control} name="country" render={({ field }) => (<FormItem><FormLabel className="text-xs font-black">الدولة المستهدفة</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="ALL">الكل</SelectItem><SelectItem value="SA">السعودية</SelectItem><SelectItem value="YE">اليمن</SelectItem></Select></FormItem>)} />
                                         <div className="flex gap-4 p-3 bg-muted rounded-xl">
                                             <FormField control={paymentForm.control} name="isUrl" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between gap-2 space-y-0"><span className="text-[10px] font-black">رابط خارجي؟</span><Switch checked={field.value} onCheckedChange={field.onChange} /></FormItem>)} />
                                             <FormField control={paymentForm.control} name="enabled" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between gap-2 space-y-0"><span className="text-[10px] font-black">مفعلة</span><Switch checked={field.value} onCheckedChange={field.onChange} /></FormItem>)} />
@@ -664,9 +711,4 @@ function SettingsLinkCard({ title, icon: Icon, path }: { title: string, icon: an
                 <Button onClick={save} className="w-full rounded-xl font-black h-11">تحديث الإعدادات</Button>
             </div>
         </Card>
-    );
-}
-
-async function onSavePlan(values: any) {
-    // This is a placeholder for the form handler defined inside the component
 }
