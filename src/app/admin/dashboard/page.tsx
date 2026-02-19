@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -45,7 +46,6 @@ import { Switch } from '@/components/ui/switch';
 import type { Category, ContentItem, WhitelistEntry, ReferralConfig } from '@/lib/definitions';
 import { deleteUserAccount } from '@/lib/user-actions';
 
-// Content Item Schema
 const itemSchema = z.object({
   title: z.string().min(2, "العنوان مطلوب"),
   imageUrl: z.string().url("رابط الصورة غير صالح"),
@@ -60,7 +60,6 @@ const itemSchema = z.object({
 
 type ItemFormValues = z.infer<typeof itemSchema>;
 
-// Category Schema
 const categorySchema = z.object({
     name: z.string().min(2, "الاسم مطلوب"),
     displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5']),
@@ -80,7 +79,6 @@ export default function AdminDashboard() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
-  // Queries
   const categoriesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories'), orderBy('order', 'asc')) : null, [firestore]);
   const { data: categories } = useCollection<Category>(categoriesQuery);
 
@@ -99,7 +97,6 @@ export default function AdminDashboard() {
   const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
 
-  // Forms
   const itemForm = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
     defaultValues: {
@@ -126,7 +123,6 @@ export default function AdminDashboard() {
       }
   });
 
-  // Dynamic fields logic
   const selectedCatObj = useMemo(() => categories?.find(c => c.id === selectedCategoryId), [categories, selectedCategoryId]);
   const currentItemStyle = itemForm.watch('displayStyle');
 
@@ -376,7 +372,6 @@ export default function AdminDashboard() {
                                                     </FormItem>
                                                 )} />
                                                 
-                                                {/* Conditional Fields based on Style */}
                                                 {(currentItemStyle === 'style1' || currentItemStyle === 'style2') && (
                                                     <FormField control={itemForm.control} name="downloadUrl" render={({ field }) => (
                                                         <FormItem>
@@ -598,23 +593,21 @@ export default function AdminDashboard() {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="px-6 pb-6 border-t pt-6">
-                                    <Form {...itemForm}>
-                                        <form className="space-y-6 max-w-lg">
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                                <FormItem>
-                                                    <FormLabel>إحالات تفعيل "برو"</FormLabel>
-                                                    <FormControl><Input type="number" defaultValue={5} /></FormControl>
-                                                    <FormDescription>العدد المطلوب للترقية التلقائية.</FormDescription>
-                                                </FormItem>
-                                                <FormItem>
-                                                    <FormLabel>النقاط لكل إحالة</FormLabel>
-                                                    <FormControl><Input type="number" defaultValue={10} /></FormControl>
-                                                    <FormDescription>النقاط التي تضاف للرصيد.</FormDescription>
-                                                </FormItem>
+                                    <div className="space-y-6 max-w-lg">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <FormLabel>إحالات تفعيل "برو"</FormLabel>
+                                                <Input type="number" defaultValue={referralConfig?.requiredReferrals || 5} />
+                                                <FormDescription>العدد المطلوب للترقية التلقائية.</FormDescription>
                                             </div>
-                                            <Button type="button" className="w-full h-12 rounded-xl">حفظ الإعدادات</Button>
-                                        </form>
-                                    </Form>
+                                            <div className="space-y-2">
+                                                <FormLabel>النقاط لكل إحالة</FormLabel>
+                                                <Input type="number" defaultValue={referralConfig?.pointsPerReferral || 10} />
+                                                <FormDescription>النقاط التي تضاف للرصيد.</FormDescription>
+                                            </div>
+                                        </div>
+                                        <Button type="button" className="w-full h-12 rounded-xl">حفظ الإعدادات</Button>
+                                    </div>
                                 </AccordionContent>
                             </Card>
                         </AccordionItem>
@@ -625,7 +618,6 @@ export default function AdminDashboard() {
         </Tabs>
       </main>
 
-      {/* Edit Category Dialog */}
       <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
               <DialogHeader>

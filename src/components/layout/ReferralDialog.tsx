@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -126,6 +127,8 @@ function ReferralDialogContent() {
             setIsSubmitting(false);
         }
     };
+
+    if (!user || user.isAnonymous) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>

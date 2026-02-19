@@ -1,3 +1,4 @@
+
 'use client';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,6 @@ export default function UserProfileButton() {
         );
     }
 
-    // Handle Admin and Editor roles
     if (isAdmin || isEditor) {
         const roleLabel = isAdmin ? "حساب المدير" : "حساب المحرر";
         return (
@@ -65,7 +65,6 @@ export default function UserProfileButton() {
         )
     }
 
-    // Handle regular users (Pro or Free with data)
     if (user && !user.isAnonymous) {
         return (
             <>
@@ -125,7 +124,6 @@ export default function UserProfileButton() {
         );
     }
     
-    // Anonymous user or visitor
     return (
         <>
             <li>
