@@ -1,11 +1,9 @@
-
 'use client';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { Button } from '@/components/ui/button';
 import { SheetClose } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, ChevronLeft, LayoutDashboard, Coins } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
@@ -95,7 +93,7 @@ export default function UserProfileButton() {
                                 <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                             </div>
                         </Link>
-                    </ профилактика
+                    </SheetClose>
                 </li>
                 
                 <li>
