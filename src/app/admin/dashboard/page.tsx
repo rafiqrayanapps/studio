@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,18 +23,25 @@ import {
     LayoutGrid,
     Eye,
     ChevronLeft,
-    Monitor
+    ChevronRight,
+    Monitor,
+    Bell,
+    Share2,
+    Brush,
+    Palette,
+    Info,
+    Layout
 } from 'lucide-react';
 
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { collection, query, doc, setDoc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -43,8 +50,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import type { Category, ContentItem, PricingPlan } from '@/lib/definitions';
+import type { Category, ContentItem, PricingPlan, ThemeConfig, Notification, ShareLinkConfig, RequestDesignConfig, SubscriptionDialogConfig } from '@/lib/definitions';
 
 // Schemas
 const itemSchema = z.object({
@@ -67,6 +75,28 @@ const categorySchema = z.object({
     parentId: z.string().nullable().default(null),
 });
 
+const planSchema = z.object({
+    name: z.string().min(2, "الاسم مطلوب"),
+    price: z.string().min(1, "السعر مطلوب"),
+    currency: z.string().default("ر.س"),
+    frequency: z.string().optional(),
+    description: z.string().min(5, "الوصف مطلوب"),
+    features: z.string().describe("المميزات مفصولة بفاصلة"),
+    isFeatured: z.boolean().default(false),
+    enabled: z.boolean().default(true),
+    link: z.string().optional(),
+});
+
+const themeSchema = z.object({
+    primaryColor: z.string().regex(/^\d+\s\d+%\s\d+%$/, "صيغة HSL غير صحيحة (مثال: 350 72% 51%)"),
+    primaryColorDark: z.string().regex(/^\d+\s\d+%\s\d+%$/, "صيغة HSL غير صحيحة").optional(),
+});
+
+const notifySchema = z.object({
+    title: z.string().min(2, "العنوان مطلوب"),
+    description: z.string().min(5, "نص الإشعار مطلوب"),
+});
+
 export default function AdminDashboard() {
   const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
@@ -76,6 +106,7 @@ export default function AdminDashboard() {
   const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'settings'>('content');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
 
   // Categories Fetching
@@ -109,6 +140,14 @@ export default function AdminDashboard() {
       return [...rawItems].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   }, [rawItems]);
 
+  // Plans Fetching
+  const plansQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pricingPlans'), orderBy('order', 'asc')) : null, [firestore]);
+  const { data: plans } = useCollection<PricingPlan>(plansQuery);
+
+  // Notifications Fetching
+  const notificationsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc')) : null, [firestore]);
+  const { data: notifications } = useCollection<Notification>(notificationsQuery);
+
   // Forms
   const catForm = useForm<z.infer<typeof categorySchema>>({
       resolver: zodResolver(categorySchema),
@@ -118,6 +157,21 @@ export default function AdminDashboard() {
   const itemForm = useForm<z.infer<typeof itemSchema>>({
     resolver: zodResolver(itemSchema),
     defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', visibility: 'public', isNew: false }
+  });
+
+  const planForm = useForm<z.infer<typeof planSchema>>({
+      resolver: zodResolver(planSchema),
+      defaultValues: { name: '', price: '', currency: 'ر.س', features: '', isFeatured: false, enabled: true }
+  });
+
+  const themeForm = useForm<z.infer<typeof themeSchema>>({
+      resolver: zodResolver(themeSchema),
+      defaultValues: { primaryColor: '350 72% 51%', primaryColorDark: '350 72% 51%' }
+  });
+
+  const notifyForm = useForm<z.infer<typeof notifySchema>>({
+      resolver: zodResolver(notifySchema),
+      defaultValues: { title: '', description: '' }
   });
 
   // Handlers
@@ -157,6 +211,48 @@ export default function AdminDashboard() {
     } catch (e) {
       toast({ title: "خطأ في الإضافة", variant: "destructive" });
     }
+  };
+
+  const onSavePlan = async (values: z.infer<typeof planSchema>) => {
+      if (!firestore) return;
+      try {
+          const planId = editingPlan?.id || doc(collection(firestore, 'pricingPlans')).id;
+          const data = {
+              ...values,
+              features: values.features.split(',').map(f => f.trim()),
+              order: editingPlan ? editingPlan.order : (plans?.length || 0)
+          };
+          await setDoc(doc(firestore, 'pricingPlans', planId), data, { merge: true });
+          toast({ title: "تم حفظ الباقة بنجاح" });
+          setEditingPlan(null);
+          planForm.reset();
+      } catch (e) {
+          toast({ title: "خطأ في الحفظ", variant: "destructive" });
+      }
+  };
+
+  const onSendNotification = async (values: z.infer<typeof notifySchema>) => {
+      if (!firestore) return;
+      try {
+          await addDocumentNonBlocking(collection(firestore, 'notifications'), {
+              ...values,
+              createdAt: serverTimestamp()
+          });
+          toast({ title: "تم إرسال الإشعار بنجاح" });
+          notifyForm.reset();
+      } catch (e) {
+          toast({ title: "فشل الإرسال", variant: "destructive" });
+      }
+  };
+
+  const onSaveTheme = async (values: z.infer<typeof themeSchema>) => {
+      if (!firestore) return;
+      try {
+          await setDoc(doc(firestore, 'appConfig', 'theme'), values, { merge: true });
+          toast({ title: "تم تحديث ألوان الموقع" });
+      } catch (e) {
+          toast({ title: "خطأ في التحديث", variant: "destructive" });
+      }
   };
 
   const moveItem = async (list: any[], index: number, direction: 'up' | 'down', path: string[]) => {
@@ -219,7 +315,7 @@ export default function AdminDashboard() {
         {activeTool === 'content' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 
-                {/* Header Section */}
+                {/* Content Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -246,7 +342,7 @@ export default function AdminDashboard() {
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
-                                <DialogHeader><DialogTitle className="text-xl font-black">إعدادات القسم الجديد</DialogTitle></DialogHeader>
+                                <DialogHeader><DialogTitle className="text-xl font-black">إعدادات القسم</DialogTitle></DialogHeader>
                                 <Form {...catForm}>
                                     <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
                                         <FormField control={catForm.control} name="name" render={({ field }) => (
@@ -257,8 +353,8 @@ export default function AdminDashboard() {
                                         )} />
                                         <FormField control={catForm.control} name="fileTypes" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-xs font-black">الصيغ (اختياري)</FormLabel>
-                                                <FormControl><Input {...field} placeholder="PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl>
+                                                <FormLabel className="text-xs font-black">الصيغ (مثل: PSD, AI)</FormLabel>
+                                                <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
                                             </FormItem>
                                         )} />
                                         <FormField control={catForm.control} name="displayStyle" render={({ field }) => (
@@ -293,10 +389,6 @@ export default function AdminDashboard() {
                                     <DialogHeader><DialogTitle className="text-xl font-black">نشر محتوى جديد</DialogTitle></DialogHeader>
                                     <Form {...itemForm}>
                                         <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-4 pt-4">
-                                            <div className="bg-primary/5 p-3 rounded-xl border flex items-center justify-between mb-4">
-                                                <span className="text-[10px] font-black opacity-60">النمط المطبق: {currentCategory?.displayStyle}</span>
-                                                <Badge variant="outline" className="text-[10px]">{currentCategory?.displayStyle}</Badge>
-                                            </div>
                                             <FormField control={itemForm.control} name="title" render={({ field }) => (
                                                 <FormItem><FormLabel className="text-xs font-black">العنوان</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>
                                             )} />
@@ -306,12 +398,7 @@ export default function AdminDashboard() {
                                             
                                             {currentCategory?.displayStyle === 'style3' && (
                                                 <FormField control={itemForm.control} name="prompt" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-xs font-black">نص البرومبت</FormLabel><FormControl><Textarea {...field} className="rounded-xl font-mono text-xs" dir="ltr" /></FormControl></FormItem>
-                                                )} />
-                                            )}
-                                            {currentCategory?.displayStyle === 'style4' && (
-                                                <FormField control={itemForm.control} name="videoUrl" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-xs font-black">رابط يوتيوب</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>
+                                                    <FormItem><FormLabel className="text-xs font-black">البرومبت</FormLabel><FormControl><Textarea {...field} className="rounded-xl font-mono text-xs" dir="ltr" /></FormControl></FormItem>
                                                 )} />
                                             )}
                                             
@@ -351,7 +438,6 @@ export default function AdminDashboard() {
                 </div>
 
                 {!selectedParentId ? (
-                    /* Main Categories Grid */
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {mainCategories.map((cat, idx) => (
                             <Card key={cat.id} className="rounded-[2.5rem] border-none shadow-xl shadow-gray-200/50 overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
@@ -368,24 +454,8 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="p-6 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className={cn("p-2 rounded-xl", cat.isUnderMaintenance ? "bg-orange-100 text-orange-600" : "bg-green-100 text-green-600")}>
-                                                {cat.isUnderMaintenance ? <Hammer className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black">حالة القسم</p>
-                                                <p className="text-[9px] text-muted-foreground font-medium">{cat.isUnderMaintenance ? 'تحت الصيانة' : 'نشط حالياً'}</p>
-                                            </div>
-                                        </div>
-                                        <Switch checked={cat.isUnderMaintenance} onCheckedChange={(v) => updateDocumentNonBlocking(doc(firestore!, 'categories', cat.id), { isUnderMaintenance: v })} />
-                                    </div>
-                                </CardContent>
                                 <CardFooter className="p-4 bg-muted/30 flex gap-2">
-                                    <Button className="flex-1 rounded-xl font-black h-11 text-xs" onClick={() => setSelectedParentId(cat.id)}>
-                                        إدارة القسم <ChevronLeft className="mr-2 h-4 w-4" />
-                                    </Button>
+                                    <Button className="flex-1 rounded-xl font-black h-11 text-xs" onClick={() => setSelectedParentId(cat.id)}>إدارة القسم <ChevronLeft className="mr-2 h-4 w-4" /></Button>
                                     <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-primary hover:bg-primary/10" onClick={() => { setEditingCategory(cat); catForm.reset(cat); }}><Edit2 className="h-4 w-4" /></Button>
                                     {isAdmin && (
                                         <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-destructive hover:bg-destructive/10" onClick={() => confirm("حذف القسم؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', cat.id))}><Trash2 className="h-4 w-4" /></Button>
@@ -395,30 +465,16 @@ export default function AdminDashboard() {
                         ))}
                     </div>
                 ) : (
-                    /* Detailed Category Management */
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        
-                        {/* Sub-categories Column */}
                         <div className="lg:col-span-4 space-y-6">
-                            <div className="flex items-center justify-between px-2">
-                                <h3 className="font-black text-sm flex items-center gap-2 text-primary">
-                                    <Layers className="h-4 w-4" /> الأقسام الفرعية
-                                </h3>
-                                <Badge variant="secondary" className="font-bold">{subCategories.length}</Badge>
-                            </div>
-                            
+                            <h3 className="font-black text-sm flex items-center gap-2 text-primary px-2"><Layers className="h-4 w-4" /> الأقسام الفرعية</h3>
                             <div className="space-y-3">
                                 {subCategories.length === 0 ? (
-                                    <div className="text-center py-12 bg-white rounded-[2rem] border-2 border-dashed opacity-40">
-                                        <p className="text-xs font-bold">لا توجد أقسام فرعية</p>
-                                    </div>
+                                    <div className="text-center py-12 bg-white rounded-[2rem] border-2 border-dashed opacity-40"><p className="text-xs font-bold">لا توجد أقسام فرعية</p></div>
                                 ) : (
-                                    subCategories.map((sub, idx) => (
+                                    subCategories.map((sub) => (
                                         <div key={sub.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border group">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-secondary p-2 rounded-lg"><LayoutGrid className="h-4 w-4 opacity-40" /></div>
-                                                <span className="font-black text-sm">{sub.name}</span>
-                                            </div>
+                                            <span className="font-black text-sm">{sub.name}</span>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setEditingCategory(sub); catForm.reset(sub); }}><Edit2 className="h-3.5 w-3.5" /></Button>
                                                 {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', sub.id))}><Trash2 className="h-3.5 w-3.5" /></Button>}
@@ -429,22 +485,12 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/* Items Column */}
                         <div className="lg:col-span-8 space-y-6">
-                            <div className="flex items-center justify-between px-2">
-                                <h3 className="font-black text-sm flex items-center gap-2 text-primary">
-                                    <Send className="h-4 w-4" /> المحتوى الحالي
-                                </h3>
-                                <Badge variant="secondary" className="font-bold">{currentItems.length} منشور</Badge>
-                            </div>
-
+                            <h3 className="font-black text-sm flex items-center gap-2 text-primary px-2"><Send className="h-4 w-4" /> المحتوى الحالي</h3>
                             <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white">
                                 <ScrollArea className="h-[600px]">
                                     {currentItems.length === 0 ? (
-                                        <div className="text-center py-32 opacity-20">
-                                            <Send className="h-16 w-16 mx-auto mb-4" />
-                                            <p className="font-black">لم يتم إضافة محتوى بعد</p>
-                                        </div>
+                                        <div className="text-center py-32 opacity-20"><Send className="h-16 w-16 mx-auto mb-4" /><p className="font-black">لم يتم إضافة محتوى بعد</p></div>
                                     ) : (
                                         <div className="divide-y">
                                             {currentItems.map((item, idx) => (
@@ -480,16 +526,138 @@ export default function AdminDashboard() {
         )}
 
         {activeTool === 'plans' && (
-            <div className="animate-in fade-in zoom-in-95 duration-500 text-center py-20 opacity-40">
-                <CreditCard className="h-20 w-20 mx-auto mb-4" />
-                <h3 className="text-2xl font-black">إدارة الباقات قيد التطوير</h3>
+            <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-black">باقات الاشتراك</h2>
+                        <p className="text-xs text-muted-foreground font-medium">إدارة خطط الأسعار والترقية للأعضاء</p>
+                    </div>
+                    <Dialog open={!!editingPlan} onOpenChange={(o) => !o && setEditingPlan(null)}>
+                        <DialogTrigger asChild>
+                            <Button size="lg" className="rounded-2xl font-black px-6 shadow-xl shadow-primary/20" onClick={() => {
+                                planForm.reset({ name: '', price: '', currency: 'ر.س', features: '', isFeatured: false, enabled: true });
+                                setEditingPlan({ id: '' } as any);
+                            }}>
+                                <Plus className="ml-2 h-5 w-5" /> باقة جديدة
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
+                            <DialogHeader><DialogTitle className="text-xl font-black">إعدادات الباقة</DialogTitle></DialogHeader>
+                            <Form {...planForm}>
+                                <form onSubmit={planForm.handleSubmit(onSavePlan)} className="space-y-4 pt-4">
+                                    <FormField control={planForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">اسم الباقة</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField control={planForm.control} name="price" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">السعر</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                        <FormField control={planForm.control} name="currency" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">العملة</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                    </div>
+                                    <FormField control={planForm.control} name="description" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">وصف قصير</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                                    <FormField control={planForm.control} name="features" render={({ field }) => (<FormItem><FormLabel className="font-black text-xs">المميزات (مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)} />
+                                    <div className="flex gap-4 p-3 bg-muted rounded-xl">
+                                        <FormField control={planForm.control} name="isFeatured" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between space-y-0 gap-2"><span className="text-xs font-black">باقة مميزة</span><Switch checked={field.value} onCheckedChange={field.onChange} /></FormItem>)} />
+                                        <FormField control={planForm.control} name="enabled" render={({ field }) => (<FormItem className="flex-1 flex items-center justify-between space-y-0 gap-2"><span className="text-xs font-black">مفعلة</span><Switch checked={field.value} onCheckedChange={field.onChange} /></FormItem>)} />
+                                    </div>
+                                    <Button type="submit" className="w-full h-14 rounded-2xl font-black">حفظ الباقة</Button>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {plans?.map((plan) => (
+                        <Card key={plan.id} className={cn("rounded-[2.5rem] border-2 transition-all", plan.isFeatured ? "border-primary shadow-lg" : "border-transparent")}>
+                            <CardHeader>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <CardTitle className="font-black">{plan.name}</CardTitle>
+                                        <p className="text-3xl font-black text-primary mt-2">{plan.price} <span className="text-sm opacity-60">{plan.currency}</span></p>
+                                    </div>
+                                    <Badge variant={plan.enabled ? "default" : "secondary"}>{plan.enabled ? 'نشطة' : 'متوقفة'}</Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <ul className="space-y-2">
+                                    {plan.features.map((f, i) => <li key={i} className="flex items-center gap-2 text-xs font-medium"><CheckCircle className="h-3 w-3 text-green-500" /> {f}</li>)}
+                                </ul>
+                            </CardContent>
+                            <CardFooter className="flex gap-2 bg-muted/20 p-4">
+                                <Button variant="ghost" size="sm" className="flex-1 font-black rounded-xl" onClick={() => { setEditingPlan(plan); planForm.reset({ ...plan, features: plan.features.join(', ') }); }}><Edit2 className="h-4 w-4 ml-2" /> تعديل</Button>
+                                {isAdmin && <Button variant="ghost" size="sm" className="text-destructive font-black rounded-xl" onClick={() => confirm("حذف الباقة؟") && deleteDocumentNonBlocking(doc(firestore!, 'pricingPlans', plan.id))}><Trash2 className="h-4 w-4" /></Button>}
+                            </CardFooter>
+                        </Card>
+                    ))}
+                </div>
             </div>
         )}
 
         {activeTool === 'settings' && (
-            <div className="animate-in fade-in zoom-in-95 duration-500 text-center py-20 opacity-40">
-                <Settings className="h-20 w-20 mx-auto mb-4" />
-                <h3 className="text-2xl font-black">الإعدادات العامة قيد التطوير</h3>
+            <div className="animate-in fade-in duration-500">
+                <Tabs defaultValue="appearance" className="w-full space-y-8" dir="rtl">
+                    <TabsList className="grid w-full grid-cols-4 h-14 bg-white shadow-sm border rounded-2xl p-1">
+                        <TabsTrigger value="appearance" className="rounded-xl font-black text-xs gap-2"><Palette className="h-4 w-4" /> المظهر</TabsTrigger>
+                        <TabsTrigger value="notifications" className="rounded-xl font-black text-xs gap-2"><Bell className="h-4 w-4" /> التنبيهات</TabsTrigger>
+                        <TabsTrigger value="links" className="rounded-xl font-black text-xs gap-2"><Share2 className="h-4 w-4" /> الروابط</TabsTrigger>
+                        <TabsTrigger value="config" className="rounded-xl font-black text-xs gap-2"><Info className="h-4 w-4" /> عام</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="appearance">
+                        <Card className="rounded-[2.5rem] p-8 border-none shadow-xl">
+                            <CardHeader className="px-0"><CardTitle className="flex items-center gap-3"><Palette className="h-6 w-6 text-primary" /> ألوان الموقع</CardTitle><CardDescription>تحكم في الهوية البصرية للتطبيق</CardDescription></CardHeader>
+                            <Form {...themeForm}>
+                                <form onSubmit={themeForm.handleSubmit(onSaveTheme)} className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <FormField control={themeForm.control} name="primaryColor" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="font-black">اللون الأساسي (الفاتح)</FormLabel>
+                                                <FormControl><div className="flex gap-2"><Input {...field} className="font-mono text-left" dir="ltr" /><div className="h-10 w-10 rounded-xl border shrink-0 shadow-sm" style={{ backgroundColor: `hsl(${field.value})` }} /></div></FormControl>
+                                                <FormDescription className="text-[10px]">بصيغة HSL: Hue Saturation% Lightness%</FormDescription>
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={themeForm.control} name="primaryColorDark" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="font-black">اللون الأساسي (الليلي)</FormLabel>
+                                                <FormControl><div className="flex gap-2"><Input {...field} className="font-mono text-left" dir="ltr" /><div className="h-10 w-10 rounded-xl border shrink-0 bg-black shadow-sm" style={{ backgroundColor: `hsl(${field.value})` }} /></div></FormControl>
+                                            </FormItem>
+                                        )} />
+                                    </div>
+                                    <Button type="submit" className="h-14 px-8 rounded-2xl font-black shadow-lg shadow-primary/20">حفظ الألوان الجديدة</Button>
+                                </form>
+                            </Form>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="notifications" className="space-y-8">
+                        <Card className="rounded-[2.5rem] p-8 border-none shadow-xl">
+                            <CardHeader className="px-0"><CardTitle className="flex items-center gap-3"><Bell className="h-6 w-6 text-primary" /> إرسال إشعار عام</CardTitle><CardDescription>سيصل هذا الإشعار لكافة المستخدمين في التطبيق</CardDescription></CardHeader>
+                            <Form {...notifyForm}>
+                                <form onSubmit={notifyForm.handleSubmit(onSendNotification)} className="space-y-4">
+                                    <FormField control={notifyForm.control} name="title" render={({ field }) => (<FormItem><FormLabel className="font-black">عنوان الإشعار</FormLabel><FormControl><Input {...field} placeholder="مثال: تحديث جديد متوفر" /></FormControl></FormItem>)} />
+                                    <FormField control={notifyForm.control} name="description" render={({ field }) => (<FormItem><FormLabel className="font-black">نص الإشعار</FormLabel><FormControl><Textarea {...field} placeholder="اكتب تفاصيل التحديث هنا..." rows={4} /></FormControl></FormItem>)} />
+                                    <Button type="submit" className="h-14 px-8 rounded-2xl font-black shadow-lg shadow-primary/20"><Send className="h-4 w-4 ml-2" /> إرسال الآن</Button>
+                                </form>
+                            </Form>
+                        </Card>
+
+                        <div className="space-y-4">
+                            <h3 className="font-black text-sm px-2">الإشعارات السابقة</h3>
+                            <div className="grid grid-cols-1 gap-3">
+                                {notifications?.map((notif) => (
+                                    <div key={notif.id} className="bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm">
+                                        <div><p className="font-black text-sm">{notif.title}</p><p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{notif.description}</p></div>
+                                        {isAdmin && <Button variant="ghost" size="icon" className="text-destructive h-9 w-9 rounded-xl" onClick={() => confirm("حذف الإشعار؟") && deleteDocumentNonBlocking(doc(firestore!, 'notifications', notif.id))}><Trash2 className="h-4 w-4" /></Button>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="links">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <SettingsLinkCard title="رابط طلب تصميم" icon={Brush} path="appConfig/requestDesign" />
+                            <SettingsLinkCard title="رابط مشاركة التطبيق" icon={Share2} path="appConfig/shareLink" />
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </div>
         )}
 
@@ -497,3 +665,35 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+function SettingsLinkCard({ title, icon: Icon, path }: { title: string, icon: any, path: string }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const docRef = useMemoFirebase(() => firestore ? doc(firestore, ...path.split('/')) : null, [firestore, path]);
+    const { data } = useDoc<any>(docRef);
+    const [val, setVal] = useState('');
+    const [enabled, setEnabled] = useState(false);
+
+    useEffect(() => { if (data) { setVal(data.url || ''); setEnabled(data.enabled || false); } }, [data]);
+
+    const save = async () => {
+        if (!firestore) return;
+        try {
+            await setDoc(doc(firestore, ...path.split('/')), { url: val, enabled }, { merge: true });
+            toast({ title: "تم الحفظ بنجاح" });
+        } catch (e) { toast({ title: "خطأ في الحفظ", variant: "destructive" }); }
+    };
+
+    return (
+        <Card className="rounded-[2.5rem] p-6 border-none shadow-lg">
+            <CardHeader className="px-0 pt-0"><CardTitle className="text-sm flex items-center justify-between"><div className="flex items-center gap-2"><Icon className="h-5 w-5 text-primary" /> {title}</div><Switch checked={enabled} onCheckedChange={setEnabled} /></CardTitle></CardHeader>
+            <div className="space-y-4">
+                <Input value={val} onChange={(e) => setVal(e.target.value)} placeholder="أدخل الرابط هنا (https://...)" className="font-mono text-xs text-left" dir="ltr" />
+                <Button onClick={save} className="w-full rounded-xl font-black h-11">تحديث الإعدادات</Button>
+            </div>
+        </Card>
+    );
+}
+
+// Utility for fetching single documents inside the settings
+import { useDoc } from '@/firebase';
