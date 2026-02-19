@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, increment } from 'firebase/firestore';
 import type { Category, ContentItem, ReferralConfig } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Settings2, Coins, Cpu, Hammer, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Settings2, Coins, Cpu, Hammer, ExternalLink, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,7 @@ import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
+import { Badge } from '@/components/ui/badge';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -107,6 +108,13 @@ export default function CategoryPage() {
     >
         <Heart className={cn("h-4 w-4 text-white", isFavorite(item.id) && "fill-white")} />
     </button>
+  );
+
+  const NewBadge = () => (
+      <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg z-20 flex items-center gap-1 animate-pulse">
+          <Sparkles className="h-3 w-3" />
+          <span>جديد</span>
+      </div>
   );
 
   const renderContent = () => {
@@ -198,7 +206,8 @@ export default function CategoryPage() {
               <div key={item.id} className="flex flex-col text-center group relative gap-y-3">
                 <h3 className="font-bold text-base text-card-foreground min-h-[2.5rem] flex items-center justify-center">{item.title}</h3>
                 <div className="relative cursor-pointer aspect-square w-full" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {isLocked && <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 z-10"><Crown className="h-3 w-3" /> برو</div>}
+                    {item.isNew && <NewBadge />}
+                    {isLocked && <div className={cn("absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 z-10", item.isNew && "top-8")}><Crown className="h-3 w-3" /> برو</div>}
                     {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover rounded-lg shadow-md" />}
                     <FavoriteButton item={item} />
                 </div>
@@ -226,7 +235,8 @@ export default function CategoryPage() {
                     <CardContent className="p-4 flex flex-col flex-1 gap-4">
                         <h3 className="font-bold text-xl text-center">{item.title}</h3>
                         <div className="relative cursor-pointer w-full rounded-xl overflow-hidden aspect-video bg-muted">
-                            {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10" />}
+                            {item.isNew && <NewBadge />}
+                            {isLocked && <Crown className={cn("absolute top-2 right-2 h-5 w-5 text-yellow-400 z-10", item.isNew && "top-8")} />}
                             {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" onClick={() => !isLocked && item.imageUrl && setSelectedImage(item.imageUrl)} />}
                             <FavoriteButton item={item} />
                         </div>
@@ -267,10 +277,11 @@ export default function CategoryPage() {
             {typedItems.map((item) => {
               const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
               return (
-                <Card key={item.id} className="overflow-hidden group hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-none bg-card shadow-lg">
+                <Card key={item.id} className="overflow-hidden group hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-none bg-card shadow-lg relative">
                   <div className="grid grid-cols-1 md:grid-cols-12">
                     {/* Thumbnail */}
                     <div className="md:col-span-5 relative aspect-[16/10] overflow-hidden bg-muted group-hover:scale-105 transition-transform duration-700">
+                        {item.isNew && <NewBadge />}
                         {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
                         {isLocked && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center"><Lock className="h-10 w-10 text-white opacity-50" /></div>}
                         <FavoriteButton item={item} />

@@ -33,7 +33,8 @@ import {
     ExternalLink,
     Tag,
     DollarSign,
-    Check
+    Check,
+    Zap
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -71,6 +72,7 @@ const itemSchema = z.object({
   videoUrl: z.string().optional(),
   visibility: z.enum(['public', 'pro']),
   order: z.number().default(0),
+  isNew: z.boolean().default(false),
 });
 
 const categorySchema = z.object({
@@ -170,7 +172,7 @@ export default function AdminDashboard() {
   // Forms
   const itemForm = useForm<z.infer<typeof itemSchema>>({
     resolver: zodResolver(itemSchema),
-    defaultValues: { title: '', imageUrl: '', displayStyle: 'style1', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', visibility: 'public', order: 0 }
+    defaultValues: { title: '', imageUrl: '', displayStyle: 'style1', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', visibility: 'public', order: 0, isNew: false }
   });
 
   const catForm = useForm<z.infer<typeof categorySchema>>({
@@ -223,7 +225,7 @@ export default function AdminDashboard() {
       const itemData = { ...values, createdAt: serverTimestamp(), status: isAdmin ? 'approved' : 'pending' };
       await addDocumentNonBlocking(collection(firestore, 'categories', selectedCategoryId, 'items'), itemData);
       toast({ title: isAdmin ? "تمت إضافة المحتوى بنجاح" : "تم إرسال المحتوى للمراجعة" });
-      itemForm.reset({ ...itemForm.getValues(), title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '' });
+      itemForm.reset({ ...itemForm.getValues(), title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', isNew: false });
     } catch (e) {
       toast({ title: "فشل في إضافة المحتوى", variant: "destructive" });
     }
@@ -522,10 +524,23 @@ export default function AdminDashboard() {
                                             )}
                                         </div>
 
-                                        <div className="flex gap-4">
-                                            <FormField control={itemForm.control} name="visibility" render={({ field }) => (<FormItem className="flex-1"><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام (للجميع)</SelectItem><SelectItem value="pro">برو (مشتركين فقط)</SelectItem></SelectContent></Select></FormItem>)} />
-                                            <FormField control={itemForm.control} name="order" render={({ field }) => (<FormItem className="w-28"><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={itemForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام (للجميع)</SelectItem><SelectItem value="pro">برو (مشتركين فقط)</SelectItem></SelectContent></Select></FormItem>)} />
+                                            <FormField control={itemForm.control} name="order" render={({ field }) => (<FormItem><FormLabel className="font-black">الترتيب</FormLabel><FormControl><Input type="number" {...field} className="h-12 rounded-xl" onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl></FormItem>)} />
                                         </div>
+
+                                        <FormField control={itemForm.control} name="isNew" render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-xl border p-4 shadow-sm bg-muted/10">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel className="text-sm font-black">تمييز كمنشور جديد</FormLabel>
+                                                    <FormDescription className="text-[10px]">تظهر شارة "جديد" للمستخدمين على هذا العنصر.</FormDescription>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )} />
+
                                         <Button type="submit" className="w-full h-16 text-lg font-black rounded-3xl shadow-xl shadow-primary/20" disabled={itemForm.formState.isSubmitting}>{itemForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : (isAdmin ? "نشر المحتوى فوراً" : "إرسال للمراجعة")}</Button>
                                     </form>
                                 </Form>
@@ -546,11 +561,15 @@ export default function AdminDashboard() {
                                 <div className="space-y-4">
                                     {isLoadingItems ? <Loader2 className="animate-spin mx-auto mt-20 text-primary" /> : currentItems?.length === 0 ? <p className="text-center py-20 text-muted-foreground font-bold">لا يوجد محتوى في هذا القسم حالياً</p> : currentItems?.map(item => (
                                         <div key={item.id} className="flex items-center gap-4 p-4 bg-card rounded-[1.5rem] border shadow-sm group hover:border-primary/30 transition-all">
-                                            <div className="h-16 w-16 rounded-2xl bg-muted overflow-hidden border-2 border-muted flex-shrink-0">
+                                            <div className="h-16 w-16 rounded-2xl bg-muted overflow-hidden border-2 border-muted flex-shrink-0 relative">
                                                 {item.imageUrl && <img src={item.imageUrl} className="object-cover h-full w-full" />}
+                                                {item.isNew && <div className="absolute inset-0 bg-primary/20 animate-pulse" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-black text-sm truncate">{item.title}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-black text-sm truncate">{item.title}</p>
+                                                    {item.isNew && <Badge className="bg-green-500 text-white text-[8px] font-black h-4">جديد</Badge>}
+                                                </div>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <Badge variant={item.status === 'pending' ? 'destructive' : 'secondary'} className="text-[8px] font-bold h-4">{item.status === 'pending' ? 'قيد المراجعة' : 'نشط ومفعل'}</Badge>
                                                     <Badge variant="outline" className="text-[8px] font-bold h-4">الترتيب: {item.order}</Badge>
@@ -710,10 +729,10 @@ export default function AdminDashboard() {
                             <Card className="rounded-[2.5rem] shadow-lg border-none">
                                 <CardHeader className="p-8"><CardTitle className="flex items-center gap-3 font-black"><Gift className="h-6 w-6 text-primary" /> نظام المكافآت</CardTitle><CardDescription>إعداد قواعد النقاط والترقية التلقائية لـ برو.</CardDescription></CardHeader>
                                 <CardContent className="p-8 pt-0 grid grid-cols-2 gap-6">
-                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">إحالات للترقية</label><Input type="number" value={refConfig?.requiredReferrals || 5} onChange={(e) => updateConfig('referral', { requiredReferrals: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
-                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">نقاط كل إحالة</label><Input type="number" value={refConfig?.pointsPerReferral || 10} onChange={(e) => updateConfig('referral', { pointsPerReferral: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
+                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">نقاط ترقية برو</label><Input type="number" value={refConfig?.pointsForProUpgrade || 500} onChange={(e) => updateConfig('referral', { pointsForProUpgrade: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
+                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">نقاط كل إحالة</label><Input type="number" value={refConfig?.pointsPerReferral || 50} onChange={(e) => updateConfig('referral', { pointsPerReferral: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
+                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">نقاط توليد كود</label><Input type="number" value={refConfig?.pointsToGenerateCode || 200} onChange={(e) => updateConfig('referral', { pointsToGenerateCode: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
                                     <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">نقاط فتح ملف</label><Input type="number" value={refConfig?.pointsPerUnlock || 5} onChange={(e) => updateConfig('referral', { pointsPerUnlock: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
-                                    <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-tight">فاصل الجوائز</label><Input type="number" value={refConfig?.rewardInterval || 5} onChange={(e) => updateConfig('referral', { rewardInterval: parseInt(e.target.value) })} className="h-12 rounded-xl" /></div>
                                 </CardContent>
                             </Card>
 

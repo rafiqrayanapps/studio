@@ -28,7 +28,6 @@ export function useUserProfile() {
     useEffect(() => {
         if (!isAuthLoading && !user && !isLoggingOut && auth) {
             signInAnonymously(auth).catch(err => {
-                // If this fails, typically Anonymous auth is disabled in Firebase Console
                 console.warn("Anonymous auth restricted. Please enable it in Firebase Console if needed.", err);
             });
         }
@@ -51,7 +50,7 @@ export function useUserProfile() {
                         displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
                         subscriptionTier: 'free',
                         createdAt: serverTimestamp(),
-                        points: 1, 
+                        points: 0, 
                         referralCode: tempReferralCode,
                         referralCount: 0,
                         unlockedProCodes: [],
@@ -119,13 +118,13 @@ export function useUserProfile() {
         user, 
         userProfile: userProfile || (user && tempReferralCode ? { 
             referralCode: tempReferralCode, 
-            points: userProfile?.points ?? 1, 
+            points: userProfile?.points ?? 0, 
             subscriptionTier: 'free' 
         } as any : null), 
         isPro, 
         isAdmin, 
         isEditor,
-        points: userProfile?.points ?? (user ? 1 : 0),
+        points: userProfile?.points ?? 0,
         isLoading: finalLoading
     };
 }

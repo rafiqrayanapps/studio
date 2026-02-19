@@ -26,6 +26,7 @@ export interface ContentItem {
   appVersion?: string;
   visibility: 'public' | 'pro';
   status?: 'pending' | 'approved';
+  isNew?: boolean;
 }
 
 export interface SubscriptionDialogConfig {
@@ -56,6 +57,8 @@ export interface ReferralConfig {
   rewardInterval: number; 
   pointsPerReferral: number;
   pointsPerUnlock: number;
+  pointsForProUpgrade: number;
+  pointsToGenerateCode: number;
 }
 
 export interface Notification {
