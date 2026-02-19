@@ -19,7 +19,6 @@ export function useUserProfile() {
     useEffect(() => {
         getDeviceFingerprint().then(fp => {
             setDeviceFingerprint(fp);
-            // Stable code based on fingerprint but random-like
             const stableSuffix = fp.substring(0, 4).toUpperCase();
             setTempReferralCode(`RF-${stableSuffix}`);
         });
@@ -28,7 +27,10 @@ export function useUserProfile() {
     // Auto sign-in anonymously if no user session exists
     useEffect(() => {
         if (!isAuthLoading && !user && !isLoggingOut && auth) {
-            signInAnonymously(auth).catch(err => console.error("Anonymous auth failed:", err));
+            signInAnonymously(auth).catch(err => {
+                // If this fails, typically Anonymous auth is disabled in Firebase Console
+                console.warn("Anonymous auth restricted. Please enable it in Firebase Console if needed.", err);
+            });
         }
     }, [user, isAuthLoading, auth, isLoggingOut]);
 
@@ -39,30 +41,28 @@ export function useUserProfile() {
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-    // If a user exists but has no profile document, create one
+    // Create user profile if it doesn't exist
     useEffect(() => {
-        if (firestore && user && !isProfileLoading && deviceFingerprint && tempReferralCode) {
-            const createOrUpdateProfile = async () => {
+        if (firestore && user && !isProfileLoading && deviceFingerprint && tempReferralCode && !userProfile) {
+            const createProfile = async () => {
                 try {
-                    if (!userProfile) {
-                        await setDoc(doc(firestore, 'users', user.uid), {
-                            email: user.email || '',
-                            displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
-                            subscriptionTier: 'free',
-                            createdAt: serverTimestamp(),
-                            points: 1, // Welcome point
-                            referralCode: tempReferralCode,
-                            referralCount: 0,
-                            unlockedProCodes: [],
-                            referredBy: null,
-                            deviceFingerprint: deviceFingerprint
-                        });
-                    }
+                    await setDoc(doc(firestore, 'users', user.uid), {
+                        email: user.email || '',
+                        displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
+                        subscriptionTier: 'free',
+                        createdAt: serverTimestamp(),
+                        points: 1, 
+                        referralCode: tempReferralCode,
+                        referralCount: 0,
+                        unlockedProCodes: [],
+                        referredBy: null,
+                        deviceFingerprint: deviceFingerprint
+                    });
                 } catch (err) {
-                    console.error("Failed to manage user profile:", err);
+                    console.error("Failed to auto-create user profile:", err);
                 }
             };
-            createOrUpdateProfile();
+            createProfile();
         }
     }, [firestore, user, isProfileLoading, userProfile, deviceFingerprint, tempReferralCode]);
 
@@ -73,7 +73,7 @@ export function useUserProfile() {
 
     const { data: whitelistEntry, isLoading: isWhitelistLoading } = useDoc<WhitelistEntry>(whitelistRef);
     
-    // Security: Single Device Enforcement (Robust checking)
+    // Security: Single Device Enforcement
     useEffect(() => {
         if (!firestore || !user || !whitelistEntry || isLoggingOut || !whitelistRef) return;
 
@@ -86,9 +86,7 @@ export function useUserProfile() {
                 
                 if (fingerprints.length > 0) {
                     const latestFingerprint = fingerprints[fingerprints.length - 1];
-                    // Only kick if mismatch and not the latest authorized fingerprint
                     if (latestFingerprint !== currentFingerprint && fingerprints.includes(currentFingerprint)) {
-                        // This device was authorized but isn't the LATEST anymore.
                         console.warn("Session started on another device. Signing out...");
                         setIsLoggingOut(true);
                         await auth.signOut();
@@ -115,7 +113,6 @@ export function useUserProfile() {
         return false;
     }, [isAdmin, isEditor, userProfile]);
     
-    // Crucial: isLoading must only be false when all relevant auth data is checked
     const finalLoading = isAuthLoading || (user && isProfileLoading && !tempReferralCode) || (!!user?.email && isWhitelistLoading);
 
     return { 

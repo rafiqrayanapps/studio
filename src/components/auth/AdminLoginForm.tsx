@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, ShieldAlert, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Loader2, Mail, Lock, ShieldAlert, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
@@ -65,19 +65,10 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
             const currentFingerprint = await getDeviceFingerprint();
 
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
-                // Security: Update fingerprint for admin to prevent kicks
                 await updateDoc(whitelistRef, { 
                     deviceFingerprints: arrayUnion(currentFingerprint) 
                 });
                 router.push('/admin/dashboard');
-                return;
-            }
-            
-            if (whitelistData.role === 'pro') {
-                await updateDoc(whitelistRef, { 
-                    deviceFingerprints: arrayUnion(currentFingerprint) 
-                });
-                router.push('/home');
                 return;
             }
         }
@@ -89,6 +80,8 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
       if (e instanceof FirebaseError) {
         if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
           description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+        } else if (e.code === 'auth/admin-restricted-operation') {
+          description = "تنبيه أمان: يرجى تفعيل 'Email/Password' وإضافة النطاق الحالي لـ 'Authorized Domains' في Firebase Console.";
         }
       } else {
         description = e.message;
@@ -150,7 +143,6 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
@@ -162,9 +154,9 @@ export default function AdminLoginForm({ title, description }: AdminLoginFormPro
             />
             
             {error && (
-                <div className="flex items-center justify-center gap-2 text-destructive pt-2 text-sm">
-                    <ShieldAlert className="h-5 w-5" />
-                    <p className="font-semibold">{error}</p>
+                <div className="bg-destructive/10 p-4 rounded-xl border border-destructive/20 flex gap-3 items-start animate-in fade-in slide-in-from-top-2">
+                    <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    <p className="text-xs font-bold text-destructive leading-relaxed">{error}</p>
                 </div>
             )}
           </CardContent>

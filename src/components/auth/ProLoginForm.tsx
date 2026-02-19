@@ -9,11 +9,11 @@ import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, ShieldAlert } from 'lucide-react';
+import { Loader2, Mail, Lock, ShieldAlert, AlertCircle } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
-import { doc, getDoc, getDocs, query, collection, where, limit, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import type { WhitelistEntry } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 
@@ -50,8 +50,6 @@ export default function ProLoginForm() {
             throw new Error("خدمة قاعدة البيانات غير متاحة.");
         }
 
-        // --- Standard Login ---
-        // If admins exist, check the user's role from the whitelist.
         const whitelistRef = doc(firestore, 'whitelist', email);
         const whitelistSnap = await getDoc(whitelistRef);
 
@@ -72,7 +70,6 @@ export default function ProLoginForm() {
             }
         }
 
-        // Default redirect for Pro users or any other authenticated user
         router.push('/home');
 
     } catch (e: any) {
@@ -80,6 +77,8 @@ export default function ProLoginForm() {
       if (e instanceof FirebaseError) {
         if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
           description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+        } else if (e.code === 'auth/admin-restricted-operation') {
+          description = "خطأ أمان: يرجى تفعيل 'Email/Password' في Firebase Console وإضافة هذا النطاق لـ 'Authorized Domains'.";
         }
       } else {
         description = e.message;
@@ -133,14 +132,14 @@ export default function ProLoginForm() {
             />
             
             {error && (
-                <div className="flex items-center justify-center gap-2 text-destructive pt-2 text-sm">
-                    <ShieldAlert className="h-5 w-5" />
-                    <p className="font-semibold">{error}</p>
+                <div className="bg-destructive/10 p-4 rounded-xl border border-destructive/20 flex gap-3 items-start">
+                    <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    <p className="text-xs font-bold text-destructive leading-relaxed">{error}</p>
                 </div>
             )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full h-12" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
             </Button>
           </CardFooter>
