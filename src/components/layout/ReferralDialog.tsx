@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -128,7 +127,7 @@ function ReferralDialogContent() {
         }
     };
 
-    if (!user || user.isAnonymous) return null;
+    if (!user) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>

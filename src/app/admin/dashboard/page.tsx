@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -43,7 +42,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 import type { Category, ContentItem, WhitelistEntry, ReferralConfig } from '@/lib/definitions';
 import { deleteUserAccount } from '@/lib/user-actions';
@@ -308,6 +307,10 @@ export default function AdminDashboard() {
                   <Button variant="ghost" size="icon"><Menu className="h-6 w-6" /></Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-64 p-0">
+                  <SheetHeader className="sr-only">
+                      <SheetTitle>قائمة التحكم</SheetTitle>
+                      <SheetDescription>خيارات إدارة الموقع للمسؤولين</SheetDescription>
+                  </SheetHeader>
                   <div className="flex flex-col h-full bg-card">
                       <div className="p-6 border-b flex flex-col items-center gap-2">
                           <h1 className="font-bold text-lg">قائمة التحكم</h1>

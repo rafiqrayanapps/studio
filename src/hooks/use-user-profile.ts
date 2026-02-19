@@ -73,7 +73,7 @@ export function useUserProfile() {
 
     const { data: whitelistEntry, isLoading: isWhitelistLoading } = useDoc<WhitelistEntry>(whitelistRef);
     
-    // Security: Single Device Enforcement
+    // Security: Single Device Enforcement (Robust checking)
     useEffect(() => {
         if (!firestore || !user || !whitelistEntry || isLoggingOut || !whitelistRef) return;
 
@@ -82,8 +82,12 @@ export function useUserProfile() {
                 const data = snapshot.data() as WhitelistEntry;
                 const currentFingerprint = await getDeviceFingerprint();
                 
-                if (data.deviceFingerprints && data.deviceFingerprints.length > 0) {
-                    const latestFingerprint = data.deviceFingerprints[data.deviceFingerprints.length - 1];
+                // Compatibility: Check both deviceFingerprints (array) and deviceFingerprint (string)
+                const fingerprints = data.deviceFingerprints || (data.deviceFingerprint ? [data.deviceFingerprint] : []);
+                
+                if (fingerprints.length > 0) {
+                    const latestFingerprint = fingerprints[fingerprints.length - 1];
+                    // Only kick if we have a mismatch AND the current device is NOT the latest
                     if (latestFingerprint !== currentFingerprint) {
                         console.warn("Session started on another device. Signing out...");
                         setIsLoggingOut(true);
@@ -115,7 +119,7 @@ export function useUserProfile() {
         user, 
         userProfile: userProfile || (user && tempReferralCode ? { 
             referralCode: tempReferralCode, 
-            points: 1, 
+            points: userProfile?.points ?? 1, 
             subscriptionTier: 'free' 
         } as any : null), 
         isPro, 
