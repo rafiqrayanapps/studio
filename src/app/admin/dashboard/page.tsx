@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -852,12 +851,64 @@ export default function AdminDashboard() {
               </DialogHeader>
               <Form {...catForm}>
                   <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-6">
-                      <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>)} />
-                      <FormField control={catForm.control} name="fileTypes" render={({ field }) => (<FormItem><FormLabel className="font-black flex items-center gap-2"><FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (اختياري)</FormLabel><FormControl><Input {...field} placeholder="مثال: PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl><FormDescription className="text-[10px]">تظهر للمستخدمين في الصفحة الرئيسية.</FormDescription></FormItem>)} />
-                      <FormField control={catForm.control} name="displayStyle" render={({ field }) => (<FormItem><FormLabel className="font-black">نمط العرض الافتراضي</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="style1">تحميل (أفقي)</SelectItem><SelectItem value="style3">برومبت (بطاقات)</SelectItem><SelectItem value="style4">فيديو (عرض فيديو)</SelectItem><SelectItem value="style5">معرض (Style 5)</SelectItem><SelectItem value="style6">موقع إلكتروني (Style 6)</SelectItem></Select></FormItem>)} />
-                      <div className="grid grid-cols-1 gap-4">
-                          <FormField control={catForm.control} name="visibility" render={({ field }) => (<FormItem><FormLabel className="font-black">مستوى الظهور</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو</SelectItem></Select></FormItem>)} />
-                      </div>
+                      <FormField 
+                        control={catForm.control} 
+                        name="name" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-black">اسم القسم</FormLabel>
+                            <FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl>
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={catForm.control} 
+                        name="fileTypes" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-black flex items-center gap-2">
+                              <FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (اختياري)
+                            </FormLabel>
+                            <FormControl><Input {...field} placeholder="مثال: PSD, AI, PNG" className="h-12 rounded-xl" /></FormControl>
+                            <FormDescription className="text-[10px]">تظهر للمستخدمين في الصفحة الرئيسية.</FormDescription>
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={catForm.control} 
+                        name="displayStyle" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-black">نمط العرض الافتراضي</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent className="rounded-xl">
+                                <SelectItem value="style1">تحميل (أفقي)</SelectItem>
+                                <SelectItem value="style3">برومبت (بطاقات)</SelectItem>
+                                <SelectItem value="style4">فيديو (عرض فيديو)</SelectItem>
+                                <SelectItem value="style5">معرض (Style 5)</SelectItem>
+                                <SelectItem value="style6">موقع إلكتروني (Style 6)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={catForm.control} 
+                        name="visibility" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-black">مستوى الظهور</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent className="rounded-xl">
+                                <SelectItem value="public">عام</SelectItem>
+                                <SelectItem value="pro">برو</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )} 
+                      />
                       <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20">حفظ القسم الآن</Button></DialogFooter>
                   </form>
               </Form>

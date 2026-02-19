@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -135,7 +134,8 @@ export default function CategoryPage() {
   );
 
   const renderContent = () => {
-    if (category?.isUnderMaintenance && !isAdmin) {
+    // Both Admins and Editors can bypass maintenance mode to test/preview content
+    if (category?.isUnderMaintenance && !isAdmin && !isEditor) {
        return (
          <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-4 shadow-2xl border border-primary/10 overflow-hidden relative min-h-[500px]">
             <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
