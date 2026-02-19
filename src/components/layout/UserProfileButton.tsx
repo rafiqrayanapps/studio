@@ -3,7 +3,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { Button } from '@/components/ui/button';
 import { SheetClose } from '@/components/ui/sheet';
 import Link from 'next/link';
-import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, ChevronLeft, LayoutDashboard } from 'lucide-react';
+import { Crown, Loader2, LogOut, Shield, User as UserIcon, Key, ChevronLeft, LayoutDashboard, Coins } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -65,12 +65,8 @@ export default function UserProfileButton() {
         )
     }
 
-    // Handle regular Pro users
-    if (isPro) {
-        const subscriptionEndDate = userProfile?.subscriptionEndDate
-            ? safeFormatFirebaseTimestamp(userProfile.subscriptionEndDate)
-            : 'دائمة';
-
+    // Handle regular users (Pro or Free with data)
+    if (user && !user.isAnonymous) {
         return (
             <>
                 <li className="px-3 pt-4 mt-2 border-t">
@@ -83,8 +79,8 @@ export default function UserProfileButton() {
                         </Avatar>
                         <div className="flex-1">
                             <p className="font-semibold text-sm truncate">{userProfile?.displayName || user?.email}</p>
-                            <p className="text-xs text-muted-foreground">
-                                الاشتراك ينتهي: <strong>{subscriptionEndDate}</strong>
+                            <p className="text-[10px] text-muted-foreground">
+                                {isPro ? 'عضوية برو نشطة' : 'عضوية عادية'}
                             </p>
                         </div>
                     </div>
@@ -95,6 +91,19 @@ export default function UserProfileButton() {
                             <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
                                 <span className="font-semibold text-lg">إدارة الحساب</span>
                                 <UserIcon className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        </Link>
+                    </SheetClose>
+                </li>
+                <li>
+                    <SheetClose asChild>
+                        <Link href="/login?tab=convert" className="block group">
+                            <div className="flex items-center justify-between p-3 rounded-lg group-hover:bg-secondary">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-lg">تحويل النقاط</span>
+                                    <Coins className="h-4 w-4 text-primary" />
+                                </div>
+                                <ChevronLeft className="h-5 w-5 text-muted-foreground" />
                             </div>
                         </Link>
                     </SheetClose>
@@ -116,7 +125,7 @@ export default function UserProfileButton() {
         );
     }
     
-    // Free user or visitor
+    // Anonymous user or visitor
     return (
         <>
             <li>

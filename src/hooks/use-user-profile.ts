@@ -19,7 +19,9 @@ export function useUserProfile() {
     useEffect(() => {
         getDeviceFingerprint().then(fp => {
             setDeviceFingerprint(fp);
-            setTempReferralCode(fp.substring(0, 6).toUpperCase());
+            // Stable code based on fingerprint but random-like
+            const stableSuffix = fp.substring(0, 4).toUpperCase();
+            setTempReferralCode(`RF-${stableSuffix}`);
         });
     }, []);
 
@@ -37,31 +39,22 @@ export function useUserProfile() {
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-    // If a user exists but has no profile document or missing referralCode, create/update one
+    // If a user exists but has no profile document, create one
     useEffect(() => {
-        if (firestore && user && !isProfileLoading && deviceFingerprint) {
+        if (firestore && user && !isProfileLoading && deviceFingerprint && tempReferralCode) {
             const createOrUpdateProfile = async () => {
                 try {
-                    const code = deviceFingerprint.substring(0, 6).toUpperCase();
-
                     if (!userProfile) {
-                        // Create initial profile for anonymous or new user
                         await setDoc(doc(firestore, 'users', user.uid), {
                             email: user.email || '',
                             displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
                             subscriptionTier: 'free',
                             createdAt: serverTimestamp(),
                             points: 1, // Welcome point
-                            referralCode: code,
+                            referralCode: tempReferralCode,
                             referralCount: 0,
                             unlockedProCodes: [],
                             referredBy: null,
-                            deviceFingerprint: deviceFingerprint
-                        });
-                    } else if (!userProfile.referralCode) {
-                        // Update existing profile if code is missing
-                        await updateDoc(doc(firestore, 'users', user.uid), {
-                            referralCode: code,
                             deviceFingerprint: deviceFingerprint
                         });
                     }
@@ -71,7 +64,7 @@ export function useUserProfile() {
             };
             createOrUpdateProfile();
         }
-    }, [firestore, user, isProfileLoading, userProfile, deviceFingerprint]);
+    }, [firestore, user, isProfileLoading, userProfile, deviceFingerprint, tempReferralCode]);
 
     const whitelistRef = useMemoFirebase(
         () => (firestore && user?.email ? doc(firestore, 'whitelist', user.email.toLowerCase()) : null),
@@ -129,7 +122,6 @@ export function useUserProfile() {
         isAdmin, 
         isEditor,
         points: userProfile?.points ?? (user ? 1 : 0),
-        // Important: Wait for whitelist loading to prevent premature redirects in admin layout
         isLoading: isAuthLoading || (user && isProfileLoading && !tempReferralCode) || (user?.email ? isWhitelistLoading : false)
     };
 }

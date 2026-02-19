@@ -78,6 +78,7 @@ export interface UserProfile {
   points: number;
   unlockedProCodes: string[];
   referredBy?: string | null;
+  deviceFingerprint?: string;
 }
 
 export interface WhitelistEntry {
