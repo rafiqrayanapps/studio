@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -23,7 +24,9 @@ import {
     Palette,
     BellRing,
     MousePointer2,
-    Gift
+    Gift,
+    Bell,
+    Send
 } from 'lucide-react';
 
 import { useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -46,8 +49,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
-import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, RequestDesignConfig } from '@/lib/definitions';
+import type { Category, ContentItem, WhitelistEntry, ReferralConfig, ThemeConfig, SubscriptionDialogConfig, RequestDesignConfig, Notification } from '@/lib/definitions';
 import { deleteUserAccount } from '@/lib/user-actions';
+import { safeFormatFirebaseTimestamp } from '@/lib/date-utils';
 
 // Schemas
 const itemSchema = z.object({
@@ -76,8 +80,13 @@ const userWhitelistSchema = z.object({
     activationCode: z.string().optional(),
 });
 
+const notificationSchema = z.object({
+    title: z.string().min(2, "العنوان مطلوب"),
+    description: z.string().min(5, "الوصف مطلوب"),
+});
+
 export default function AdminDashboard() {
-  const { isAdmin, isLoading: isUserLoading } = useUserProfile();
+  const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
@@ -99,6 +108,9 @@ export default function AdminDashboard() {
       return query(collection(firestore, 'categories', selectedCategoryId, 'items'), orderBy('order', 'asc'));
   }, [firestore, selectedCategoryId]);
   const { data: currentItems, isLoading: isLoadingItems } = useCollection<ContentItem>(itemsQuery);
+
+  const notificationsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc')) : null, [firestore]);
+  const { data: notifications } = useCollection<Notification>(notificationsQuery);
 
   const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
@@ -130,6 +142,11 @@ export default function AdminDashboard() {
   const userForm = useForm<z.infer<typeof userWhitelistSchema>>({
       resolver: zodResolver(userWhitelistSchema),
       defaultValues: { email: '', role: 'pro', activationCode: '' }
+  });
+
+  const notifForm = useForm<z.infer<typeof notificationSchema>>({
+      resolver: zodResolver(notificationSchema),
+      defaultValues: { title: '', description: '' }
   });
 
   useEffect(() => {
@@ -203,10 +220,24 @@ export default function AdminDashboard() {
       }
   };
 
-  const updateConfig = async (collection: string, data: any) => {
+  const onSendNotification = async (values: z.infer<typeof notificationSchema>) => {
       if (!firestore) return;
       try {
-          await setDoc(doc(firestore, 'appConfig', collection), data, { merge: true });
+          await addDocumentNonBlocking(collection(firestore, 'notifications'), {
+              ...values,
+              createdAt: serverTimestamp()
+          });
+          toast({ title: "تم إرسال الإشعار بنجاح" });
+          notifForm.reset();
+      } catch (e) {
+          toast({ title: "فشل إرسال الإشعار", variant: "destructive" });
+      }
+  };
+
+  const updateConfig = async (collectionName: string, data: any) => {
+      if (!firestore) return;
+      try {
+          await setDoc(doc(firestore, 'appConfig', collectionName), data, { merge: true });
           toast({ title: "تم تحديث الإعدادات بنجاح" });
       } catch (e) {
           toast({ title: "فشل التحديث", variant: "destructive" });
@@ -218,6 +249,7 @@ export default function AdminDashboard() {
     { id: 'items', label: 'المحتوى', icon: Plus },
     ...(isAdmin ? [
         { id: 'review', label: 'المراجعة', icon: ShieldCheck, badge: reviewItems.length },
+        { id: 'notifications', label: 'الإشعارات', icon: Bell },
         { id: 'users', label: 'المستخدمين', icon: Users },
         { id: 'settings', label: 'الإعدادات', icon: Settings }
     ] : [])
@@ -254,7 +286,10 @@ export default function AdminDashboard() {
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="h-6 w-6" /></Button></SheetTrigger>
               <SheetContent side="right" className="w-64 p-0">
-                  <SheetHeader className="sr-only"><SheetTitle>القائمة</SheetTitle><SheetDescription>التنقل</SheetDescription></SheetHeader>
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>القائمة الرئيسية</SheetTitle>
+                    <SheetDescription>روابط التنقل الرئيسية في لوحة التحكم</SheetDescription>
+                  </SheetHeader>
                   <div className="flex flex-col h-full bg-card">
                       <div className="p-6 border-b text-center"><h1 className="font-bold text-lg">التحكم</h1></div>
                       <nav className="flex-1 p-4 space-y-2">
@@ -329,6 +364,82 @@ export default function AdminDashboard() {
             </TabsContent>
 
             {isAdmin && (
+                <TabsContent value="notifications" className="space-y-6 m-0">
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <Card className="xl:col-span-2">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><BellRing className="h-5 w-5 text-primary" /> إرسال تنبيه جديد</CardTitle>
+                                <CardDescription>سيظهر هذا التنبيه لجميع مستخدمي التطبيق فوراً.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Form {...notifForm}>
+                                    <form onSubmit={notifForm.handleSubmit(onSendNotification)} className="space-y-4">
+                                        <FormField control={notifForm.control} name="title" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>عنوان التنبيه</FormLabel>
+                                                <FormControl><Input {...field} placeholder="مثال: تم إضافة ملحقات جديدة!" /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={notifForm.control} name="description" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>نص التنبيه</FormLabel>
+                                                <FormControl><Textarea {...field} placeholder="اكتب تفاصيل التنبيه هنا..." className="h-32" /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <Button type="submit" className="w-full h-12" disabled={notifForm.formState.isSubmitting}>
+                                            {notifForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : <><Send className="ml-2 h-4 w-4" /> إرسال التنبيه الآن</>}
+                                        </Button>
+                                    </form>
+                                </Form>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader><CardTitle className="text-lg">الإشعارات السابقة</CardTitle></CardHeader>
+                            <CardContent>
+                                <ScrollArea className="h-[500px]">
+                                    <div className="space-y-3">
+                                        {notifications?.map(notif => (
+                                            <div key={notif.id} className="p-3 bg-muted/40 rounded-xl space-y-1 relative group">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive absolute top-2 left-2 opacity-0 group-hover:opacity-100" onClick={() => deleteDocumentNonBlocking(doc(firestore!, 'notifications', notif.id))}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                                <p className="text-sm font-bold pl-6">{notif.title}</p>
+                                                <p className="text-[10px] text-muted-foreground line-clamp-2">{notif.description}</p>
+                                                <p className="text-[8px] text-primary/60 pt-1">{safeFormatFirebaseTimestamp(notif.createdAt)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+            )}
+
+            {isAdmin && ( activeTab === 'review' && (
+                <TabsContent value="review" className="m-0 space-y-6">
+                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">طلبات المراجعة ({reviewItems.length})</h2></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {isLoadingReview ? <Loader2 className="animate-spin mx-auto mt-10" /> : reviewItems.map(item => (
+                            <Card key={item.id} className="overflow-hidden">
+                                <div className="aspect-video relative bg-muted">
+                                    {item.imageUrl && <img src={item.imageUrl} className="object-cover w-full h-full" />}
+                                </div>
+                                <CardHeader className="p-4">
+                                    <CardTitle className="text-lg">{item.title}</CardTitle>
+                                    <CardDescription>النمط: {item.displayStyle} | القسم: {categories?.find(c => c.id === item.categoryId)?.name}</CardDescription>
+                                </CardHeader>
+                                <CardFooter className="p-4 border-t gap-2">
+                                    <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateDocumentNonBlocking(doc(firestore!, 'categories', item.categoryId, 'items', item.id), { status: 'approved' })}><CheckCircle className="ml-2 h-4 w-4" /> قبول</Button>
+                                    <Button variant="destructive" onClick={() => confirm("رفض وحذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', item.categoryId, 'items', item.id))}>حذف</Button>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </TabsContent>
+            ))}
+
+            {isAdmin && (
                 <TabsContent value="settings" className="space-y-6 m-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Theme Settings */}
@@ -358,7 +469,6 @@ export default function AdminDashboard() {
                                 <div className="flex items-center justify-between p-3 bg-muted rounded-xl"><span>تفعيل الزر</span><Switch checked={reqDesignConfig?.enabled || false} onCheckedChange={(val) => updateConfig('requestDesign', { enabled: val })} /></div>
                                 <div className="space-y-2"><label className="text-xs font-bold">رابط الطلب (واتساب/فورم):</label><Input value={reqDesignConfig?.url || ''} onChange={(e) => updateConfig('requestDesign', { url: e.target.value })} /></div>
                             </CardContent>
-                        </Card>
 
                         {/* Referral System Settings */}
                         <Card>
@@ -393,7 +503,10 @@ export default function AdminDashboard() {
       {/* Dialogs */}
       <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
-              <DialogHeader><DialogTitle>{editingCategory?.id ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle><DialogDescription>أدخل بيانات القسم لإدارته في الموقع الرئيسي.</DialogDescription></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>{editingCategory?.id ? "تعديل القسم" : "إضافة قسم جديد"}</DialogTitle>
+                <DialogDescription>أدخل بيانات القسم لإدارته في الموقع الرئيسي.</DialogDescription>
+              </DialogHeader>
               <Form {...catForm}>
                   <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-4">
                       <FormField control={catForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>اسم القسم</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
@@ -411,7 +524,10 @@ export default function AdminDashboard() {
 
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogContent dir="rtl" className="max-w-md rounded-[2rem]">
-              <DialogHeader><DialogTitle>إضافة مستخدم يدوياً</DialogTitle><DialogDescription>امنح صلاحيات الوصول والاشتراك للمستخدمين عبر بريدهم.</DialogDescription></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>إضافة مستخدم يدوياً</DialogTitle>
+                <DialogDescription>امنح صلاحيات الوصول والاشتراك للمستخدمين عبر بريدهم.</DialogDescription>
+              </DialogHeader>
               <Form {...userForm}>
                   <form onSubmit={userForm.handleSubmit(onAddUser)} className="space-y-4">
                       <FormField control={userForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>البريد الإلكتروني</FormLabel><FormControl><Input {...field} placeholder="example@mail.com" /></FormControl><FormMessage /></FormItem>)} />
