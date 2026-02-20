@@ -126,7 +126,11 @@ const AudioPlayerRow = ({
             } catch (err) {
                 console.error("Fav Playback start failed:", err);
                 setLoadError(true);
-                toast({ title: "فشل تشغيل الملف", variant: "destructive" });
+                toast({ 
+                    title: "فشل تشغيل الملف", 
+                    description: "تأكد من إعدادات المشاركة للملف في Google Drive.",
+                    variant: "destructive" 
+                });
             }
         }
     };

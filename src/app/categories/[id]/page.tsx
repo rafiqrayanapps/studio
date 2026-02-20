@@ -133,7 +133,7 @@ const AudioPlayerRow = ({
                 setLoadError(true);
                 toast({ 
                     title: "خطأ في التشغيل", 
-                    description: "قد يكون الملف محمياً أو الرابط غير صالح حالياً.",
+                    description: "تأكد أن الملف عام ومتاح للجميع في Google Drive.",
                     variant: "destructive" 
                 });
             }

@@ -14,17 +14,14 @@ export function getDirectDriveLink(url: string | undefined): string {
   
   const cleanUrl = url.trim();
 
-  // Regular expressions to match Google Drive file IDs
-  const driveRegex = /\/file\/d\/([^\/\?]+)/;
-  const driveIdMatch = cleanUrl.match(driveRegex);
+  // Robust regex to extract Google Drive File ID
+  // Matches IDs in: /file/d/[ID]/..., /file/d/[ID], /open?id=[ID], /uc?id=[ID]
+  const driveIdMatch = cleanUrl.match(/\/d\/([-\w]+)/) || cleanUrl.match(/[?&]id=([-\w]+)/);
   
-  const idParamRegex = /[?&]id=([^&]+)/;
-  const idParamMatch = cleanUrl.match(idParamRegex);
-
-  const fileId = driveIdMatch?.[1] || idParamMatch?.[1];
+  const fileId = driveIdMatch?.[1];
 
   if (fileId && (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com'))) {
-    // export=media is generally better for streaming in audio tags than export=download
+    // export=media is essential for direct streaming in audio tags
     return `https://drive.google.com/uc?id=${fileId}&export=media`;
   }
   
