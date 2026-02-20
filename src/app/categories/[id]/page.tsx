@@ -19,7 +19,6 @@ import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -176,38 +175,36 @@ export default function CategoryPage() {
                     {displayStyle === 'style3' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden bg-card border-none shadow-xl rounded-[2.5rem] relative">
-                                    <CardContent className="p-6 space-y-4">
-                                        <h3 className="font-black text-lg text-center text-primary">{item.title}</h3>
-                                        <div className="relative aspect-video rounded-3xl overflow-hidden bg-muted group">
-                                            {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
-                                            <button className="absolute top-3 left-3 z-10 h-9 w-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-colors hover:bg-primary" onClick={() => toggleFavorite(item)}>
-                                                <Heart className={cn("h-4 w-4 text-white", isFavorite(item.id) && "fill-white")} />
-                                            </button>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">البرومبت:</p>
-                                            <Textarea readOnly value={item.prompt || ''} className="h-24 bg-muted/50 border-none rounded-2xl text-xs font-mono" dir="ltr" />
-                                        </div>
-                                        <div className="flex gap-3">
+                                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
+                                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-muted group shadow-xl">
+                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
+                                        <button className="absolute top-3 left-3 z-10 h-9 w-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-colors hover:bg-primary" onClick={() => toggleFavorite(item)}>
+                                            <Heart className={cn("h-4 w-4 text-white", isFavorite(item.id) && "fill-white")} />
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2 px-2">
+                                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">البرومبت:</p>
+                                        <Textarea readOnly value={item.prompt || ''} className="h-24 bg-muted/50 border-none rounded-2xl text-xs font-mono" dir="ltr" />
+                                    </div>
+                                    <div className="flex gap-3 px-2">
+                                        <Button 
+                                            className="flex-1 h-14 rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
+                                            onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ"}); } })}
+                                        >
+                                            <Copy className="ml-2 h-5 w-5" /> نسخ البرومبت
+                                        </Button>
+                                        {item.downloadUrl && (
                                             <Button 
-                                                className="flex-1 h-14 rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
-                                                onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ"}); } })}
+                                                variant="outline" 
+                                                className="h-14 w-14 rounded-2xl border-2 hover:bg-primary/10 transition-all border-primary/20"
+                                                onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}
                                             >
-                                                <Copy className="ml-2 h-5 w-5" /> نسخ البرومبت
+                                                <Download className="h-6 w-6 text-primary" />
                                             </Button>
-                                            {item.downloadUrl && (
-                                                <Button 
-                                                    variant="outline" 
-                                                    className="h-14 w-14 rounded-2xl border-2 hover:bg-primary/10 transition-all border-primary/20"
-                                                    onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}
-                                                >
-                                                    <Download className="h-6 w-6 text-primary" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                        )}
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     ) : displayStyle === 'style4' ? (
@@ -328,13 +325,12 @@ export default function CategoryPage() {
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1">جديد</span>}
                                     </div>
                                     
-                                    <div className="relative aspect-video w-full rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                    <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                                         {item.imageUrl && (
-                                            <Image 
+                                            <img 
                                                 src={item.imageUrl} 
                                                 alt={item.title} 
-                                                fill 
-                                                className="object-cover group-hover:scale-110 transition-transform duration-1000" 
+                                                className="w-full h-auto group-hover:scale-110 transition-transform duration-1000" 
                                             />
                                         )}
                                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">

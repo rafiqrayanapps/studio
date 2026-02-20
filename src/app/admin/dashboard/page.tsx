@@ -268,6 +268,10 @@ export default function AdminDashboard() {
       }
   };
 
+  const handleBack = () => {
+      setSelectedParentId(currentCategory?.parentId || null);
+  };
+
   if (isUserLoading) {
       return (
           <div className="flex h-screen items-center justify-center bg-background">
@@ -331,7 +335,7 @@ export default function AdminDashboard() {
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             {selectedParentId && (
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setSelectedParentId(null)}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleBack}>
                                     <ChevronRight className="h-5 w-5" />
                                 </Button>
                             )}
@@ -552,7 +556,8 @@ export default function AdminDashboard() {
                                                     {sub.isUnderMaintenance && <span className="text-[8px] text-yellow-600 font-bold flex items-center gap-1"><Hammer className="h-2 w-2" /> تحت الصيانة</span>}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center gap-1">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => setSelectedParentId(sub.id)} title="إدارة هذا القسم الفرعي"><Layers className="h-3.5 w-3.5" /></Button>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setEditingCategory(sub); catForm.reset(sub); }}><Edit2 className="h-3.5 w-3.5" /></Button>
                                                 {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', sub.id))}><Trash2 className="h-3.5 w-3.5" /></Button>}
                                             </div>
@@ -562,7 +567,7 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                         <div className="lg:col-span-8 space-y-6">
-                            <h3 className="font-black text-sm flex items-center gap-2 text-primary px-2"><Send className="h-4 w-4" /> المحتوى</h3>
+                            <h3 className="font-black text-sm flex items-center gap-2 text-primary px-2"><Send className="h-4 w-4" /> المحتوى في {currentCategory?.name}</h3>
                             <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white">
                                 <ScrollArea className="h-[600px]">
                                     {currentItems.length === 0 ? (
