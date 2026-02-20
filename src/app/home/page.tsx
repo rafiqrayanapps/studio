@@ -62,7 +62,7 @@ function HomeContent() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input 
                         placeholder="ابحث عن القسم..." 
-                        className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-2xl focus:ring-4 focus:ring-primary/10 transition-all" 
+                        className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-base shadow-2xl focus:ring-4 focus:ring-primary/10 transition-all" 
                         value={searchTerm} 
                         onChange={(e) => setSearchTerm(e.target.value)} 
                     />
@@ -79,8 +79,8 @@ function HomeContent() {
         ) : (
           <div className="space-y-4">
             <div className="flex justify-between items-center px-1 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <p className="text-muted-foreground text-sm font-medium">{mainCategories.length} قسم متوفر</p>
-                {isPro && <div className="flex items-center gap-1 text-xs text-yellow-600 font-bold bg-yellow-50 px-2 py-1 rounded-full border border-yellow-100">
+                <p className="text-muted-foreground text-xs font-medium">{mainCategories.length} قسم متوفر</p>
+                {isPro && <div className="flex items-center gap-1 text-[10px] text-yellow-600 font-bold bg-yellow-50 px-2 py-1 rounded-full border border-yellow-100">
                     <Sparkles className="h-3 w-3" />
                     عضوية برو نشطة
                 </div>}
@@ -118,7 +118,7 @@ function HomeContent() {
                         </div>
                     )}
 
-                    <p className="font-bold text-lg relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{cat.name}</p>
+                    <p className="font-bold text-sm relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{cat.name}</p>
                   </div>
                 </div>
               )})}

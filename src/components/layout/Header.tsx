@@ -169,8 +169,8 @@ const HeaderComponent = ({
 
           {/* Center: Title */}
           <div className="flex flex-col text-center">
-            { title && <h1 className="text-2xl font-bold">{title}</h1> }
-            {subtitle && <p className="text-sm opacity-80">{subtitle}</p>}
+            { title && <h1 className="text-xl font-bold">{title}</h1> }
+            {subtitle && <p className="text-xs opacity-80">{subtitle}</p>}
           </div>
 
           {/* Left Side: Points & Referral Dialog Trigger */}

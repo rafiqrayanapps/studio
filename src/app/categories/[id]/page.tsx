@@ -172,7 +172,7 @@ const AudioPlayerRow = ({
                 </div>
 
                 <div className="flex-1 min-w-0 text-center">
-                    <p className={cn("font-black text-lg truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
+                    <p className={cn("font-black text-base truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
                     <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
                         {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {duration ? `${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}` : '--:--'}
                     </p>
@@ -331,8 +331,8 @@ export default function CategoryPage() {
                     <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Live Updates</span>
                 </div>
-                <h3 className="font-black text-4xl text-foreground tracking-tight leading-tight">نطور من أجلك</h3>
-                <p className="text-muted-foreground text-base max-w-xs mx-auto leading-relaxed font-bold opacity-80">
+                <h3 className="font-black text-3xl text-foreground tracking-tight leading-tight">نطور من أجلك</h3>
+                <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed font-bold opacity-80">
                     المهندس يعمل الآن على إضافة لمسات إبداعية لهذا القسم. سنكون جاهزين قريباً جداً!
                 </p>
             </div>
@@ -340,7 +340,7 @@ export default function CategoryPage() {
                 <Button 
                     variant="default" 
                     onClick={() => router.back()} 
-                    className="w-full rounded-2xl h-16 font-black text-xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all group"
+                    className="w-full rounded-2xl h-16 font-black text-lg shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all group"
                 >
                     <ArrowLeft className="ml-3 h-7 w-7 group-hover:-translate-x-1 transition-transform" /> العودة للرئيسية
                 </Button>
@@ -356,7 +356,7 @@ export default function CategoryPage() {
     if (!showSkeleton && filteredItems.length === 0 && currentSubCategories.length === 0) return (
         <div className="text-center py-20 text-muted-foreground bg-card rounded-[2.5rem] mt-4 shadow-sm border border-dashed">
             <Search className="h-16 w-16 mx-auto mb-4 opacity-20" />
-            <p className="text-xl font-black">لا يوجد محتوى متاح حالياً.</p>
+            <p className="text-lg font-black">لا يوجد محتوى متاح حالياً.</p>
         </div>
     );
 
@@ -376,7 +376,7 @@ export default function CategoryPage() {
                                         <button 
                                             key={sub.id} 
                                             onClick={() => handleSubCategoryClick(sub)}
-                                            className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-black whitespace-nowrap border border-primary/10 hover:bg-primary/90 transition-all active:scale-95 relative shadow-lg"
+                                            className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-black whitespace-nowrap border border-primary/10 hover:bg-primary/90 transition-all active:scale-95 relative shadow-lg text-sm"
                                         >
                                             {sub.name}
                                             {isLocked && <Crown className="absolute -top-1 -right-1 h-4 w-4 text-yellow-300 fill-yellow-300 drop-shadow-md" />}
@@ -413,7 +413,7 @@ export default function CategoryPage() {
                                                     {sub.fileTypes}
                                                 </div>
                                             )}
-                                            <p className="font-bold text-lg relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{sub.name}</p>
+                                            <p className="font-bold text-base relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{sub.name}</p>
                                         </div>
                                     </div>
                                 );
@@ -443,7 +443,7 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
+                                    <h3 className="font-black text-lg text-center text-primary px-4">{item.title}</h3>
                                     <div 
                                         className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
                                         onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
@@ -465,7 +465,7 @@ export default function CategoryPage() {
                                     </div>
                                     <div className="flex gap-3 px-2">
                                         <Button 
-                                            className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all" 
+                                            className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-base" 
                                             onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ بنجاح"}); } })}
                                         >
                                             نسخ البرومبت
@@ -488,7 +488,7 @@ export default function CategoryPage() {
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-6 duration-700 relative">
                                     <div className="text-center px-4 relative">
-                                        <h3 className="font-black text-2xl mb-1 tracking-tight">{item.title}</h3>
+                                        <h3 className="font-black text-xl mb-1 tracking-tight">{item.title}</h3>
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse bg-green-50 px-3 py-0.5 rounded-full border border-green-100">جديد</span>}
                                     </div>
                                     <div className="relative aspect-video bg-black overflow-hidden rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
@@ -507,7 +507,7 @@ export default function CategoryPage() {
                                         {item.visibility === 'pro' && !isPro && !isAdmin && !isEditor && <div className="absolute top-6 left-6 bg-yellow-500 text-white p-2 rounded-full shadow-2xl border-2 border-white/20"><Crown className="h-5 w-5" /></div>}
                                     </div>
                                     <div className="px-6 text-center">
-                                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed font-bold opacity-70">{item.instructions || 'شاهد شرح المحتوى بالفيديو للحصول على أفضل النتائج.'}</p>
+                                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-bold opacity-70">{item.instructions || 'شاهد شرح المحتوى بالفيديو للحصول على أفضل النتائج.'}</p>
                                     </div>
                                 </div>
                             ))}
@@ -528,7 +528,7 @@ export default function CategoryPage() {
                                                 </button>
                                             </div>
                                             <div className="flex-1 pt-2">
-                                                <h3 className="text-3xl font-black leading-tight text-foreground">{item.title}</h3>
+                                                <h3 className="text-xl font-black leading-tight text-foreground">{item.title}</h3>
                                                 {item.appVersion && (
                                                     <span className="inline-flex items-center gap-1.5 mt-2 px-4 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-black border border-primary/10">
                                                         <Sparkles className="h-3 w-3" />
@@ -540,7 +540,7 @@ export default function CategoryPage() {
                                         {item.instructions && (
                                             <div className="mb-10 animate-in fade-in slide-in-from-right-4 duration-500">
                                                 <div className="p-6 rounded-[2rem] bg-card/30 border border-white/10 shadow-inner">
-                                                    <p className="text-sm text-foreground/70 font-bold leading-relaxed">{item.instructions}</p>
+                                                    <p className="text-xs text-foreground/70 font-bold leading-relaxed">{item.instructions}</p>
                                                 </div>
                                             </div>
                                         )}
@@ -562,7 +562,7 @@ export default function CategoryPage() {
                                             </div>
                                         )}
                                         <Button 
-                                            className="w-full h-20 rounded-[2.2rem] font-black text-xl shadow-[0_15px_40px_rgba(var(--primary),0.3)] hover:shadow-[0_20px_50px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-95 transition-all bg-primary relative overflow-hidden group/btn"
+                                            className="w-full h-20 rounded-[2.2rem] font-black text-lg shadow-[0_15px_40px_rgba(var(--primary),0.3)] hover:shadow-[0_20px_50px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-95 transition-all bg-primary relative overflow-hidden group/btn"
                                             onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
                                         >
                                             <Download className="ml-3 h-7 w-7 group-hover/btn:translate-y-1 transition-transform relative z-10" />
@@ -578,8 +578,8 @@ export default function CategoryPage() {
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-5 group animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                                     <div className="text-center px-4 relative">
-                                        <h3 className="font-black text-2xl tracking-tight mb-1">{item.title}</h3>
-                                        <p className="text-sm text-muted-foreground font-bold opacity-60">{item.instructions || 'تصفح الموقع الإلكتروني وتعرف على المزيد.'}</p>
+                                        <h3 className="font-black text-xl tracking-tight mb-1">{item.title}</h3>
+                                        <p className="text-xs text-muted-foreground font-bold opacity-60">{item.instructions || 'تصفح الموقع الإلكتروني وتعرف على المزيد.'}</p>
                                     </div>
                                     <div className="relative aspect-video w-full rounded-[3rem] overflow-hidden shadow-2xl group cursor-pointer border-4 border-white/10" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />}
@@ -594,7 +594,7 @@ export default function CategoryPage() {
                                         </div>
                                     </div>
                                     <div className="px-2 mt-2">
-                                        <Button className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>زيارة الموقع الآن</Button>
+                                        <Button className="w-full rounded-[2rem] font-black h-16 text-lg shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>زيارة الموقع الآن</Button>
                                     </div>
                                 </div>
                             ))}
@@ -604,7 +604,7 @@ export default function CategoryPage() {
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                                     <div className="text-center px-4 relative">
-                                        <h3 className="font-black text-2xl text-foreground tracking-tight">{item.title}</h3>
+                                        <h3 className="font-black text-xl text-foreground tracking-tight">{item.title}</h3>
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1 uppercase tracking-tighter">New Update</span>}
                                     </div>
                                     <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.1)] group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
@@ -620,7 +620,7 @@ export default function CategoryPage() {
                                         </div>
                                     </div>
                                     <div className="px-2">
-                                        <Button className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all relative overflow-hidden group" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                        <Button className="w-full rounded-[2rem] font-black h-16 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all relative overflow-hidden group" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                             <Download className="ml-3 h-6 w-6 relative z-10 group-hover:translate-y-1 transition-transform" />
                                             <span className="relative z-10">تحميل</span>
                                             <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
@@ -633,7 +633,7 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-2 gap-x-6 gap-y-12">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    <h3 className="font-black text-base text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
+                                    <h3 className="font-black text-sm text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
                                     <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />}
                                         <button 
@@ -647,7 +647,7 @@ export default function CategoryPage() {
                                         </div>
                                         {item.isNew && <div className="absolute top-3 right-3 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full z-10 shadow-lg">جديد</div>}
                                     </div>
-                                    <Button className="w-full rounded-[1.5rem] h-14 font-black shadow-xl shadow-primary/10 hover:scale-[1.05] active:scale-90 transition-all relative overflow-hidden group" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                    <Button className="w-full rounded-[1.5rem] h-14 font-black shadow-xl shadow-primary/10 hover:scale-[1.05] active:scale-90 transition-all relative overflow-hidden group text-sm" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                         <Download className="ml-2 h-5 w-5 relative z-10 group-hover:translate-y-0.5 transition-transform" />
                                         <span className="relative z-10">تحميل</span>
                                         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
@@ -672,7 +672,7 @@ export default function CategoryPage() {
               <div className="pb-4 px-6">
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input placeholder="ابحث في هذا القسم..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-2xl focus:ring-4 focus:ring-primary/10 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Input placeholder="ابحث في هذا القسم..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-base shadow-2xl focus:ring-4 focus:ring-primary/10 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -681,7 +681,7 @@ export default function CategoryPage() {
         {!showSkeleton && !category ? (
             <div className="text-center text-destructive p-12 bg-destructive/10 rounded-[2.5rem] mt-4 space-y-4">
                 <X className="mx-auto h-12 w-12" />
-                <h3 className="font-black text-xl">عفواً، لم نجد هذا القسم</h3>
+                <h3 className="font-black text-lg">عفواً، لم نجد هذا القسم</h3>
                 <Button variant="outline" onClick={() => router.push('/home')} className="rounded-xl border-2">العودة للرئيسية</Button>
             </div>
         ) : showSkeleton ? (
