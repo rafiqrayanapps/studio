@@ -212,30 +212,30 @@ export default function CategoryPage() {
                             ))}
                         </div>
                     ) : displayStyle === 'style5' ? (
-                        <div className="space-y-8">
+                        <div className="space-y-10">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[3rem] border-none shadow-2xl bg-card">
+                                <Card key={item.id} className="overflow-hidden rounded-[3rem] border-none bg-primary/5">
                                     <div className="p-8">
                                         <div className="flex items-center gap-5 mb-6">
                                             <div className="h-20 w-20 rounded-[1.5rem] bg-muted relative overflow-hidden shrink-0 shadow-inner border-2 border-primary/5">
                                                 {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-2xl font-black">{item.title}</h3>
+                                            <div className="flex-1">
+                                                <h3 className="text-2xl font-black leading-snug">{item.title}</h3>
                                                 {item.appVersion && (
-                                                    <span className="inline-block mt-1 px-3 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">
+                                                    <span className="inline-block mt-1 px-3 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-black">
                                                         إصدار: {item.appVersion}
                                                     </span>
                                                 )}
                                             </div>
-                                            <button className="h-10 w-10 bg-muted rounded-2xl flex items-center justify-center transition-all hover:bg-primary/10" onClick={() => toggleFavorite(item)}>
+                                            <button className="h-10 w-10 bg-background/50 rounded-2xl flex items-center justify-center transition-all hover:bg-primary/10 shadow-sm" onClick={() => toggleFavorite(item)}>
                                                 <Heart className={cn("h-5 w-5 text-muted-foreground", isFavorite(item.id) && "text-primary fill-primary")} />
                                             </button>
                                         </div>
 
                                         {item.instructions && (
-                                            <div className="mb-6">
-                                                <div className="p-5 rounded-3xl bg-primary/5 border border-primary/10">
+                                            <div className="mb-8">
+                                                <div className="p-5 rounded-3xl bg-background/40 border border-primary/5 backdrop-blur-sm">
                                                     <p className="text-sm text-foreground/80 font-medium leading-relaxed">
                                                         {item.instructions}
                                                     </p>
@@ -244,21 +244,20 @@ export default function CategoryPage() {
                                         )}
 
                                         {item.screenshots && item.screenshots.length > 0 && (
-                                            <div className="mb-8">
-                                                <ScrollArea className="w-full">
-                                                    <div className="flex gap-4 pb-4">
+                                            <div className="mb-10 -mx-2">
+                                                <div className="overflow-x-auto no-scrollbar pb-2">
+                                                    <div className="flex gap-5 px-2">
                                                         {item.screenshots.map((shot, idx) => (
                                                             <div 
                                                                 key={idx} 
-                                                                className="relative h-64 w-36 rounded-2xl overflow-hidden bg-muted shrink-0 shadow-md cursor-zoom-in group"
+                                                                className="relative h-[380px] w-[210px] rounded-[2rem] overflow-hidden bg-muted shrink-0 shadow-xl cursor-zoom-in group border-4 border-background/20"
                                                                 onClick={() => setSelectedImage(shot)}
                                                             >
                                                                 <Image src={shot} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                                                             </div>
                                                         ))}
                                                     </div>
-                                                    <ScrollBar orientation="horizontal" />
-                                                </ScrollArea>
+                                                </div>
                                             </div>
                                         )}
 
