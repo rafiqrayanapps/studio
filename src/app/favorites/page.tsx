@@ -54,6 +54,7 @@ const AudioPlayerRow = ({
             audioRef.current.load();
             setLoadError(false);
             setCurrentTime(0);
+            if (isPlaying) setIsPlaying(false);
         }
     }, [directAudioUrl]);
 

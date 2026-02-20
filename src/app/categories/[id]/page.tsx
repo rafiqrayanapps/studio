@@ -48,12 +48,15 @@ const AudioPlayerRow = ({
 
     const directAudioUrl = useMemo(() => getDirectDriveLink(item.audioUrl), [item.audioUrl]);
 
-    // Force reload when URL changes
     useEffect(() => {
         if (audioRef.current) {
             audioRef.current.load();
             setLoadError(false);
             setCurrentTime(0);
+            if (isPlaying) {
+                setIsPlaying(false);
+                if (activeId === item.id) onPlay(null);
+            }
         }
     }, [directAudioUrl]);
 
@@ -79,7 +82,7 @@ const AudioPlayerRow = ({
         };
         const onError = () => {
             const error = audio.error;
-            console.error("Audio Load Error Details:", {
+            console.error("Audio Playback Error:", {
                 title: item.title,
                 code: error?.code,
                 message: error?.message,
@@ -92,8 +95,8 @@ const AudioPlayerRow = ({
             
             if (activeId === item.id) {
                 toast({
-                    title: "تعذر تشغيل الصوت",
-                    description: "تأكد من أن الملف عام (Public) في Google Drive وأن الرابط صحيح.",
+                    title: "تنبيه: فشل تشغيل الصوت",
+                    description: "تأكد من أن الملف عام (Public) في Google Drive وأن الرابط صحيح ومباشر.",
                     variant: "destructive"
                 });
             }
@@ -126,11 +129,11 @@ const AudioPlayerRow = ({
                 setIsPlaying(true);
                 onPlay(item.id);
             } catch (err) {
-                console.error("Playback start failed:", err);
+                console.error("Manual playback failed:", err);
                 setLoadError(true);
                 toast({ 
                     title: "خطأ في التشغيل", 
-                    description: "الملف قد يكون كبيراً جداً للتشغيل المباشر أو محمي.",
+                    description: "قد يكون الملف محمياً أو الرابط غير صالح حالياً.",
                     variant: "destructive" 
                 });
             }
