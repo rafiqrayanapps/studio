@@ -1,7 +1,6 @@
 'use client';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
@@ -284,13 +283,6 @@ export default function CategoryPage() {
       }
   };
 
-  const filteredItems = useMemo(() => {
-    if (!rawItems) return [];
-    const viewableItems = (isAdmin || isEditor) ? rawItems : rawItems.filter(item => !item.status || item.status === 'approved');
-    const searchedItems = viewableItems.filter((item) => (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
-    return searchedItems;
-  }, [rawItems, searchTerm, isAdmin, isEditor]);
-
   const handleAction = (item: WithId<any>, action: () => void) => {
       const isLocked = item.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
       if (isLocked) {
@@ -309,6 +301,13 @@ export default function CategoryPage() {
           router.push(`/categories/${sub.id}`);
       }
   };
+
+  const filteredItems = useMemo(() => {
+    if (!rawItems) return [];
+    const viewableItems = (isAdmin || isEditor) ? rawItems : rawItems.filter(item => !item.status || item.status === 'approved');
+    const searchedItems = viewableItems.filter((item) => (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
+    return searchedItems;
+  }, [rawItems, searchTerm, isAdmin, isEditor]);
 
   const isMaintenanceOn = category?.isUnderMaintenance && !isAdmin && !isEditor;
   
@@ -490,7 +489,7 @@ export default function CategoryPage() {
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse bg-green-50 px-3 py-0.5 rounded-full border border-green-100">جديد</span>}
                                     </div>
                                     <div className="relative aspect-video bg-black overflow-hidden rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover opacity-80 group-hover:scale-110 transition-transform duration-1000" />}
+                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-1000" />}
                                         <button 
                                             className="absolute top-4 left-4 z-20 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
                                             onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
@@ -517,7 +516,7 @@ export default function CategoryPage() {
                                     <div className="p-8 sm:p-10">
                                         <div className="flex items-start gap-6 mb-8">
                                             <div className="h-24 w-24 rounded-[2.2rem] bg-card relative overflow-hidden shrink-0 shadow-2xl border-4 border-white/10 group-hover/card:scale-105 transition-transform duration-500">
-                                                {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
+                                                {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />}
                                                 <button 
                                                     className="absolute top-2 left-2 z-20 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
                                                     onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
@@ -555,7 +554,7 @@ export default function CategoryPage() {
                                                                     incrementInteraction();
                                                                 }}
                                                             >
-                                                                <Image src={shot} alt="" fill className="object-cover group-hover/img:scale-110 transition-transform duration-1000" />
+                                                                <img src={shot} alt="" className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-1000" />
                                                             </div>
                                                         ))}
                                                     </div>
@@ -583,7 +582,7 @@ export default function CategoryPage() {
                                         <p className="text-xs text-muted-foreground font-bold opacity-60">{item.instructions || 'تصفح الموقع الإلكتروني وتعرف على المزيد.'}</p>
                                     </div>
                                     <div className="relative aspect-video w-full rounded-[3rem] overflow-hidden shadow-2xl group cursor-pointer border-4 border-white/10" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />}
+                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />}
                                         <button 
                                             className="absolute top-4 left-4 z-20 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
                                             onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
@@ -642,7 +641,7 @@ export default function CategoryPage() {
                                         if (item.imageUrl) setSelectedImage(item.imageUrl);
                                         incrementInteraction();
                                     }}>
-                                        {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />}
+                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />}
                                         <button 
                                             className="absolute top-3 left-3 z-10 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
                                             onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}

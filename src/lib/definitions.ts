@@ -63,6 +63,13 @@ export interface AdsConfig {
   rewardedEnabled: boolean;
   rewardedPlacement: string;
   interstitialFrequency: number;
+  // Manual Ad Fallbacks
+  manualAdsEnabled: boolean;
+  manualBannerImg?: string;
+  manualBannerLink?: string;
+  manualInterstitialImg?: string;
+  manualInterstitialLink?: string;
+  manualRewardedImg?: string;
 }
 
 export interface ReferralConfig {

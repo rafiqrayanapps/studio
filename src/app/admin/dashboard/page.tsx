@@ -18,6 +18,7 @@ import {
     CreditCard,
     ArrowRight,
     ChevronLeft,
+    ChevronRight,
     Monitor,
     Bell,
     Palette,
@@ -737,8 +738,8 @@ export default function AdminDashboard() {
                     <TabsContent value="ads">
                         <Card className="rounded-[2.5rem] p-8 border-none shadow-xl">
                             <CardHeader className="px-0">
-                                <CardTitle className="flex items-center gap-3"><Play className="h-6 w-6 text-primary" /> إعدادات Unity Ads</CardTitle>
-                                <p className="text-xs text-muted-foreground mt-1">تحكم في إعلانات التطبيق ونظام المكافآت.</p>
+                                <CardTitle className="flex items-center gap-3"><Play className="h-6 w-6 text-primary" /> إعدادات الإعلانات</CardTitle>
+                                <p className="text-xs text-muted-foreground mt-1">تحكم في Unity Ads أو الإعلانات اليدوية الاحتياطية للمواقع.</p>
                             </CardHeader>
                             <FormAdsControl />
                         </Card>
@@ -900,10 +901,16 @@ function FormAdsControl() {
         interstitialPlacement: 'video',
         rewardedEnabled: false,
         rewardedPlacement: 'rewardedVideo',
-        interstitialFrequency: 6
+        interstitialFrequency: 6,
+        manualAdsEnabled: false,
+        manualBannerImg: '',
+        manualBannerLink: '',
+        manualInterstitialImg: '',
+        manualInterstitialLink: '',
+        manualRewardedImg: ''
     });
 
-    useEffect(() => { if (ads) setConfig(ads); }, [ads]);
+    useEffect(() => { if (ads) setConfig({...config, ...ads}); }, [ads]);
 
     const save = async () => {
         await setDoc(adsRef!, config, { merge: true });
@@ -911,51 +918,68 @@ function FormAdsControl() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
                 <div className="space-y-0.5">
                     <p className="text-sm font-black">تفعيل الإعلانات بالكامل</p>
-                    <p className="text-[10px] text-muted-foreground">تعطيل هذا الخيار يوقف جميع أنواع الإعلانات في التطبيق.</p>
+                    <p className="text-[10px] text-muted-foreground">تعطيل هذا الخيار يوقف جميع الإعلانات (يونتي واليدوية).</p>
                 </div>
                 <Switch checked={config.enabled} onCheckedChange={v => setConfig({...config, enabled: v})} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <label className="text-xs font-black">Unity Game ID</label>
-                    <Input value={config.gameId} onChange={e => setConfig({...config, gameId: e.target.value})} dir="ltr" />
+            <div className="space-y-4">
+                <h4 className="font-black text-xs text-primary px-1">إعدادات Unity Ads (للتطبيقات)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-black">Unity Game ID</label>
+                        <Input value={config.gameId} onChange={e => setConfig({...config, gameId: e.target.value})} dir="ltr" />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-black">تكرار الإعلانات البينية (كل X منشور)</label>
+                        <Input type="number" value={config.interstitialFrequency} onChange={e => setConfig({...config, interstitialFrequency: parseInt(e.target.value)})} dir="ltr" />
+                    </div>
                 </div>
-                <div className="space-y-2">
-                    <label className="text-xs font-black">تكرار الإعلانات البينية (كل X منشور)</label>
-                    <Input type="number" value={config.interstitialFrequency} onChange={e => setConfig({...config, interstitialFrequency: parseInt(e.target.value)})} dir="ltr" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="p-4 space-y-4">
+                        <div className="flex items-center justify-between"><p className="text-xs font-black">إعلان بانر</p><Switch checked={config.bannerEnabled} onCheckedChange={v => setConfig({...config, bannerEnabled: v})} /></div>
+                        <Input placeholder="Placement ID" value={config.bannerPlacement} onChange={e => setConfig({...config, bannerPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
+                    </Card>
+                    <Card className="p-4 space-y-4">
+                        <div className="flex items-center justify-between"><p className="text-xs font-black">إعلان بيني</p><Switch checked={config.interstitialEnabled} onCheckedChange={v => setConfig({...config, interstitialEnabled: v})} /></div>
+                        <Input placeholder="Placement ID" value={config.interstitialPlacement} onChange={e => setConfig({...config, interstitialPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
+                    </Card>
+                    <Card className="p-4 space-y-4">
+                        <div className="flex items-center justify-between"><p className="text-xs font-black">إعلان مكافأة</p><Switch checked={config.rewardedEnabled} onCheckedChange={v => setConfig({...config, rewardedEnabled: v})} /></div>
+                        <Input placeholder="Placement ID" value={config.rewardedPlacement} onChange={e => setConfig({...config, rewardedPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
+                    </Card>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <p className="text-xs font-black">إعلان بانر (Banner)</p>
-                        <Switch checked={config.bannerEnabled} onCheckedChange={v => setConfig({...config, bannerEnabled: v})} />
+            <div className="space-y-4 border-t pt-6">
+                <div className="flex items-center justify-between">
+                    <h4 className="font-black text-xs text-orange-600 px-1">إعدادات الإعلانات اليدوية (للمتصفحات والمواقع)</h4>
+                    <Switch checked={config.manualAdsEnabled} onCheckedChange={v => setConfig({...config, manualAdsEnabled: v})} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-2xl border">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground">إعلان البانر اليدوي</p>
+                        <Input placeholder="رابط صورة البانر (Horizontal)" value={config.manualBannerImg} onChange={e => setConfig({...config, manualBannerImg: e.target.value})} dir="ltr" className="text-xs" />
+                        <Input placeholder="رابط النقر" value={config.manualBannerLink} onChange={e => setConfig({...config, manualBannerLink: e.target.value})} dir="ltr" className="text-xs" />
                     </div>
-                    <Input placeholder="Placement ID" value={config.bannerPlacement} onChange={e => setConfig({...config, bannerPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
-                </Card>
-                <Card className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <p className="text-xs font-black">إعلان بيني (Interstitial)</p>
-                        <Switch checked={config.interstitialEnabled} onCheckedChange={v => setConfig({...config, interstitialEnabled: v})} />
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-2xl border">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground">الإعلان البيني اليدوي</p>
+                        <Input placeholder="رابط صورة الإعلان (Vertical/Square)" value={config.manualInterstitialImg} onChange={e => setConfig({...config, manualInterstitialImg: e.target.value})} dir="ltr" className="text-xs" />
+                        <Input placeholder="رابط النقر" value={config.manualInterstitialLink} onChange={e => setConfig({...config, manualInterstitialLink: e.target.value})} dir="ltr" className="text-xs" />
                     </div>
-                    <Input placeholder="Placement ID" value={config.interstitialPlacement} onChange={e => setConfig({...config, interstitialPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
-                </Card>
-                <Card className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <p className="text-xs font-black">إعلان مكافأة (Rewarded)</p>
-                        <Switch checked={config.rewardedEnabled} onCheckedChange={v => setConfig({...config, rewardedEnabled: v})} />
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-2xl border">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground">إعلان المكافأة اليدوي</p>
+                        <Input placeholder="رابط صورة الإعلان" value={config.manualRewardedImg} onChange={e => setConfig({...config, manualRewardedImg: e.target.value})} dir="ltr" className="text-xs" />
+                        <p className="text-[9px] text-muted-foreground italic">سيظهر كصورة مع عداد تنازلي لمدة 10 ثوانٍ قبل منح النقاط.</p>
                     </div>
-                    <Input placeholder="Placement ID" value={config.rewardedPlacement} onChange={e => setConfig({...config, rewardedPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
-                </Card>
+                </div>
             </div>
 
-            <Button onClick={save} className="w-full h-14 rounded-2xl font-black">حفظ إعدادات الإعلانات</Button>
+            <Button onClick={save} className="w-full h-14 rounded-2xl font-black shadow-xl shadow-primary/20">حفظ كافة إعدادات الإعلانات</Button>
         </div>
     );
 }

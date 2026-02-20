@@ -15,7 +15,6 @@ export default function UnityBannerAd() {
     
     if (!unityAds) return;
 
-    // Clear previous banner if any
     bannerRef.current.innerHTML = '';
     
     try {
@@ -28,15 +27,22 @@ export default function UnityBannerAd() {
 
   if (!config?.enabled || !config.bannerEnabled) return null;
 
+  const showManual = config.manualAdsEnabled && config.manualBannerImg;
+
   return (
-    <div className="fixed bottom-28 left-0 right-0 flex justify-center pointer-events-none z-40">
+    <div className="fixed bottom-24 left-0 right-0 flex justify-center pointer-events-none z-40 px-4">
         <div 
             id="unity-banner-placement" 
             ref={bannerRef}
-            className="w-full max-w-sm h-12 bg-muted/50 backdrop-blur-sm pointer-events-auto rounded-lg overflow-hidden border flex items-center justify-center text-[10px] text-muted-foreground font-bold shadow-lg"
+            className="w-full max-w-sm min-h-12 bg-muted/50 backdrop-blur-sm pointer-events-auto rounded-xl overflow-hidden border flex items-center justify-center shadow-lg"
         >
-            {/* Banner renders here */}
-            إعلان جاري التحميل...
+            {showManual && bannerRef.current?.innerHTML === '' ? (
+                <a href={config.manualBannerLink || '#'} target="_blank" rel="noopener noreferrer" className="w-full h-full">
+                    <img src={config.manualBannerImg} alt="Ad" className="w-full h-auto object-cover max-h-16" />
+                </a>
+            ) : (
+                <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest p-2">إعلان</span>
+            )}
         </div>
     </div>
   );
