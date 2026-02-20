@@ -29,14 +29,26 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
     script.src = 'https://web-sdk.unityads.unity3d.com/v1/UnityAds.js';
     script.async = true;
     script.onload = () => {
-      if ((window as any).UnityAds) {
-        (window as any).UnityAds.init(config.gameId, false, () => {
-          console.log('Unity Ads Initialized');
-          setIsInitialized(true);
-        }, (err: any) => {
-          console.error('Unity Ads Init Error:', err);
-        });
+      const unityAds = (window as any).UnityAds;
+      if (unityAds) {
+        // Use standard initialization for Web SDK
+        try {
+            unityAds.init(config.gameId, false, {
+                onComplete: () => {
+                    console.log('Unity Ads Initialized Successfully');
+                    setIsInitialized(true);
+                },
+                onFailed: (error: any, message: any) => {
+                    console.error('Unity Ads Init Failed:', error, message);
+                }
+            });
+        } catch (e) {
+            console.error('Unity Ads SDK call error:', e);
+        }
       }
+    };
+    script.onerror = () => {
+        console.error('Failed to load Unity Ads script. AdBlocker might be active.');
     };
     document.head.appendChild(script);
 
@@ -48,27 +60,36 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
   const showInterstitial = () => {
     if (!isInitialized || !config?.interstitialEnabled) return;
     const placement = config.interstitialPlacement || 'video';
-    (window as any).UnityAds.show(placement);
+    const unityAds = (window as any).UnityAds;
+    if (unityAds && unityAds.isReady(placement)) {
+        unityAds.show(placement);
+    }
   };
 
   const showRewarded = (onComplete: () => void) => {
-    if (!isInitialized || !config?.rewardedEnabled) {
+    const unityAds = (window as any).UnityAds;
+    if (!isInitialized || !config?.rewardedEnabled || !unityAds) {
         // Fallback for dev or when disabled
         onComplete();
         return;
     }
     const placement = config.rewardedPlacement || 'rewardedVideo';
-    (window as any).UnityAds.show(placement, {
-      onComplete: () => {
-        onComplete();
-      },
-      onSkipped: () => {
-        console.log('Ad Skipped');
-      },
-      onError: (err: any) => {
-        console.error('Ad Error:', err);
-      }
-    });
+    
+    if (unityAds.isReady(placement)) {
+        unityAds.show(placement, {
+          onComplete: () => {
+            onComplete();
+          },
+          onSkipped: () => {
+            console.log('Ad Skipped');
+          },
+          onError: (err: any) => {
+            console.error('Ad Error:', err);
+          }
+        });
+    } else {
+        toast({ title: "الإعلان غير جاهز", description: "يرجى المحاولة مرة أخرى بعد قليل." });
+    }
   };
 
   return (

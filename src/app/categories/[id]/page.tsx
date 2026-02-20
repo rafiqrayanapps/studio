@@ -151,7 +151,7 @@ const AudioPlayerRow = ({
                 </div>
 
                 <div className="flex-1 min-w-0 text-center">
-                    <p className={cn("font-black text-base truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
+                    <p className={cn("font-black text-sm truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
                     <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
                         {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {duration ? `${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}` : '--:--'}
                     </p>
@@ -326,7 +326,7 @@ export default function CategoryPage() {
                     <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Live Updates</span>
                 </div>
-                <h3 className="font-black text-2xl text-foreground tracking-tight leading-tight">نطور من أجلك</h3>
+                <h3 className="font-black text-xl text-foreground tracking-tight leading-tight">نطور من أجلك</h3>
                 <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed font-bold opacity-80">
                     المهندس يعمل الآن على إضافة لمسات إبداعية لهذا القسم. سنكون جاهزين قريباً جداً!
                 </p>
@@ -438,7 +438,7 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    <h3 className="font-black text-lg text-center text-primary px-4">{item.title}</h3>
+                                    <h3 className="font-black text-sm text-center text-primary px-4">{item.title}</h3>
                                     <div 
                                         className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
                                         onClick={() => {
@@ -463,7 +463,7 @@ export default function CategoryPage() {
                                     </div>
                                     <div className="flex gap-3 px-2">
                                         <Button 
-                                            className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-base" 
+                                            className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm" 
                                             onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ بنجاح"}); } })}
                                         >
                                             نسخ البرومبت
@@ -563,7 +563,7 @@ export default function CategoryPage() {
                                             </div>
                                         )}
                                         <Button 
-                                            className="w-full h-20 rounded-[2.2rem] font-black text-lg shadow-[0_15px_40px_rgba(var(--primary),0.3)] hover:shadow-[0_20px_50px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-95 transition-all bg-primary relative overflow-hidden group/btn"
+                                            className="w-full h-16 rounded-[2.2rem] font-black text-lg shadow-[0_15px_40px_rgba(var(--primary),0.3)] hover:shadow-[0_20px_50px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-95 transition-all bg-primary relative overflow-hidden group/btn"
                                             onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
                                         >
                                             <Download className="ml-3 h-7 w-7 group-hover/btn:translate-y-1 transition-transform relative z-10" />
@@ -706,7 +706,7 @@ export default function CategoryPage() {
           </button>
           {selectedImage && (
             <div className="relative w-full h-[85vh]">
-                <Image src={selectedImage} alt="" fill className="object-contain" />
+                <img src={selectedImage} alt="" className="w-full h-full object-contain" />
             </div>
           )}
         </DialogContent>

@@ -252,7 +252,7 @@ export default function FavoritesPage() {
     if (style === 'style3') {
         return (
             <div key={item.id} className="flex flex-col gap-4 animate-in fade-in duration-500">
-                <h3 className="font-black text-lg text-center text-primary px-4">{item.title}</h3>
+                <h3 className="font-black text-sm text-center text-primary px-4">{item.title}</h3>
                 <div 
                     className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
                     onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
@@ -269,7 +269,7 @@ export default function FavoritesPage() {
                 </div>
                 <div className="flex gap-3 px-2">
                     <Button 
-                        className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 text-base" 
+                        className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 text-sm" 
                         onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ"}); } })}
                     >
                         نسخ البرومبت
@@ -294,7 +294,7 @@ export default function FavoritesPage() {
                 <div className="text-center px-4 relative">
                     <h3 className="font-black text-xl mb-1 tracking-tight">{item.title}</h3>
                 </div>
-                <div className="relative aspect-video bg-black overflow-hidden rounded-[3rem] shadow-2xl cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
+                <div className="relative aspect-video bg-black overflow-hidden rounded-[3rem] shadow-2xl cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.downloadUrl, '_blank'))}>
                     {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover opacity-80" />}
                     <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -428,7 +428,7 @@ export default function FavoritesPage() {
           </button>
           {selectedImage && (
             <div className="relative w-full h-[85vh]">
-                <Image src={selectedImage} alt="Preview" fill className="object-contain" />
+                <img src={selectedImage} alt="Preview" className="w-full h-full object-contain" />
             </div>
           )}
         </DialogContent>
