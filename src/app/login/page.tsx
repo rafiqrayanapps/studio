@@ -9,7 +9,7 @@ import ConversionForm from '@/components/auth/ConversionForm';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { ShieldCheck, Crown, Coins, Loader2, UserPlus, LogIn } from 'lucide-react';
+import { ShieldCheck, Crown, Coins, Loader2, UserPlus, LogIn, Lock } from 'lucide-react';
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -21,6 +21,8 @@ function LoginContent() {
           setActiveTab('convert');
       } else if (tab === 'signup') {
           setActiveTab('signup');
+      } else if (tab === 'admin') {
+          setActiveTab('admin');
       }
   }, [searchParams]);
 
@@ -36,20 +38,20 @@ function LoginContent() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
             <TabsList className="grid w-full grid-cols-4 h-14 bg-card shadow-sm rounded-2xl p-1 border">
-                <TabsTrigger value="pro" className="rounded-xl gap-1.5 text-xs font-bold">
+                <TabsTrigger value="pro" className="rounded-xl gap-1.5 text-[10px] font-bold">
                     <LogIn className="h-3.5 w-3.5" />
                     <span>دخول</span>
                 </TabsTrigger>
-                <TabsTrigger value="signup" className="rounded-xl gap-1.5 text-xs font-bold">
+                <TabsTrigger value="signup" className="rounded-xl gap-1.5 text-[10px] font-bold">
                     <UserPlus className="h-3.5 w-3.5" />
                     <span>حساب جديد</span>
                 </TabsTrigger>
-                <TabsTrigger value="convert" className="rounded-xl gap-1.5 text-xs font-bold">
+                <TabsTrigger value="convert" className="rounded-xl gap-1.5 text-[10px] font-bold">
                     <Coins className="h-3.5 w-3.5" />
                     <span>تحويل</span>
                 </TabsTrigger>
-                <TabsTrigger value="admin" className="rounded-xl gap-1.5 text-xs font-bold">
-                    <ShieldCheck className="h-3.5 w-3.5" />
+                <TabsTrigger value="admin" className="rounded-xl gap-1.5 text-[10px] font-bold">
+                    <Lock className="h-3.5 w-3.5" />
                     <span>إدارة</span>
                 </TabsTrigger>
             </TabsList>
