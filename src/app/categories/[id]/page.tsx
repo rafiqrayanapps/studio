@@ -450,7 +450,7 @@ export default function CategoryPage() {
                                     >
                                         {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-500" />}
                                         <button 
-                                            className="absolute top-3 left-3 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg active:scale-90"
+                                            className="absolute top-4 left-4 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg active:scale-90"
                                             onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
                                         >
                                             <Heart className={cn("h-5 w-5 text-white transition-all", isFavorite(item.id) && "fill-white text-white scale-110")} />
@@ -489,16 +489,16 @@ export default function CategoryPage() {
                                 <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-6 duration-700 relative">
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl mb-1 tracking-tight">{item.title}</h3>
-                                        <button 
-                                            className="absolute top-0 right-4 h-8 w-8 text-primary active:scale-90"
-                                            onClick={() => toggleFavorite(item)}
-                                        >
-                                            <Heart className={cn("h-6 w-6 transition-all", isFavorite(item.id) && "fill-primary")} />
-                                        </button>
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse bg-green-50 px-3 py-0.5 rounded-full border border-green-100">جديد</span>}
                                     </div>
                                     <div className="relative aspect-video bg-black overflow-hidden rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover opacity-80 group-hover:scale-110 transition-transform duration-1000" />}
+                                        <button 
+                                            className="absolute top-4 left-4 z-20 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
+                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                                        >
+                                            <Heart className={cn("h-5 w-5 text-white", isFavorite(item.id) && "fill-white text-white")} />
+                                        </button>
                                         <div className="absolute inset-0 flex items-center justify-center">
                                             <div className="bg-primary/90 text-white p-6 rounded-full shadow-2xl scale-90 group-hover:scale-100 transition-all duration-500 backdrop-blur-sm">
                                                 <PlayCircle className="h-14 w-14" />
@@ -520,6 +520,12 @@ export default function CategoryPage() {
                                         <div className="flex items-start gap-6 mb-8">
                                             <div className="h-24 w-24 rounded-[2.2rem] bg-card relative overflow-hidden shrink-0 shadow-2xl border-4 border-white/10 group-hover/card:scale-105 transition-transform duration-500">
                                                 {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
+                                                <button 
+                                                    className="absolute top-2 left-2 z-20 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
+                                                    onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                                                >
+                                                    <Heart className={cn("h-4 w-4 text-white", isFavorite(item.id) && "fill-white text-white")} />
+                                                </button>
                                             </div>
                                             <div className="flex-1 pt-2">
                                                 <h3 className="text-3xl font-black leading-tight text-foreground">{item.title}</h3>
@@ -530,9 +536,6 @@ export default function CategoryPage() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <button className="h-12 w-12 bg-card/50 backdrop-blur-md rounded-2xl flex items-center justify-center transition-all hover:bg-primary/10 hover:scale-110 shadow-sm border border-white/10 active:scale-90" onClick={() => toggleFavorite(item)}>
-                                                <Heart className={cn("h-6 w-6 text-muted-foreground transition-all", isFavorite(item.id) && "text-primary fill-primary scale-110")} />
-                                            </button>
                                         </div>
                                         {item.instructions && (
                                             <div className="mb-10 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -576,16 +579,16 @@ export default function CategoryPage() {
                                 <div key={item.id} className="flex flex-col gap-5 group animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl tracking-tight mb-1">{item.title}</h3>
-                                        <button 
-                                            className="absolute top-0 right-4 h-8 w-8 text-primary active:scale-90"
-                                            onClick={() => toggleFavorite(item)}
-                                        >
-                                            <Heart className={cn("h-6 w-6 transition-all", isFavorite(item.id) && "fill-primary")} />
-                                        </button>
                                         <p className="text-sm text-muted-foreground font-bold opacity-60">{item.instructions || 'تصفح الموقع الإلكتروني وتعرف على المزيد.'}</p>
                                     </div>
                                     <div className="relative aspect-video w-full rounded-[3rem] overflow-hidden shadow-2xl group cursor-pointer border-4 border-white/10" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />}
+                                        <button 
+                                            className="absolute top-4 left-4 z-20 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
+                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                                        >
+                                            <Heart className={cn("h-5 w-5 text-white", isFavorite(item.id) && "fill-white text-white")} />
+                                        </button>
                                         <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-[2px]">
                                             <ExternalLink className="text-white h-14 w-14 scale-75 group-hover:scale-100 transition-transform" />
                                         </div>
@@ -602,16 +605,16 @@ export default function CategoryPage() {
                                 <div key={item.id} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl text-foreground tracking-tight">{item.title}</h3>
-                                        <button 
-                                            className="absolute top-0 right-4 h-8 w-8 text-primary active:scale-90"
-                                            onClick={() => toggleFavorite(item)}
-                                        >
-                                            <Heart className={cn("h-6 w-6 transition-all", isFavorite(item.id) && "fill-primary")} />
-                                        </button>
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1 uppercase tracking-tighter">New Update</span>}
                                     </div>
                                     <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.1)] group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                                         {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-1000" />}
+                                        <button 
+                                            className="absolute top-4 left-4 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
+                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                                        >
+                                            <Heart className={cn("h-5 w-5 text-white", isFavorite(item.id) && "fill-white text-white")} />
+                                        </button>
                                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                             <Eye className="text-white h-12 w-12" />
                                         </div>
