@@ -34,7 +34,8 @@ import {
     Image as ImageIcon,
     PlusCircle,
     Info,
-    Layout
+    Layout,
+    ExternalLink
 } from 'lucide-react';
 
 import { 
@@ -60,7 +61,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -90,7 +91,7 @@ const itemSchema = z.object({
   instructions: z.string().optional(),
   videoUrl: z.string().optional(),
   appVersion: z.string().optional(),
-  screenshots: z.string().optional().describe("روابط لقطات الشاشة مفصولة بفاصلة"),
+  screenshots: z.string().optional(),
   visibility: z.enum(['public', 'pro']).default('public'),
   isNew: z.boolean().default(false),
 });
@@ -109,7 +110,7 @@ const planSchema = z.object({
     price: z.string().min(1, "السعر مطلوب"),
     currency: z.string().default("ر.س"),
     description: z.string().min(5, "الوصف مطلوب"),
-    features: z.string().describe("المميزات مفصولة بفاصلة"),
+    features: z.string(),
     isFeatured: z.boolean().default(false),
     enabled: z.boolean().default(true),
 });
@@ -128,13 +129,6 @@ const paymentMethodSchema = z.object({
     isUrl: z.boolean().default(true),
     country: z.string().default('ALL'),
     enabled: z.boolean().default(true),
-});
-
-const dialogConfigSchema = z.object({
-    title: z.string().min(2, "العنوان مطلوب"),
-    description: z.string().min(5, "الوصف مطلوب"),
-    link: z.string().url("الرابط غير صالح"),
-    enabled: z.boolean().default(false),
 });
 
 export default function AdminDashboard() {
@@ -193,9 +187,14 @@ export default function AdminDashboard() {
       defaultValues: { displayName: '', email: '', password: '', role: 'pro' }
   });
 
-  const dialogConfigForm = useForm<z.infer<typeof dialogConfigSchema>>({
-      resolver: zodResolver(dialogConfigSchema),
-      defaultValues: { title: '', description: '', link: '', enabled: false }
+  const planForm = useForm<z.infer<typeof planSchema>>({
+      resolver: zodResolver(planSchema),
+      defaultValues: { name: '', price: '', currency: 'ر.س', description: '', features: '', isFeatured: false, enabled: true }
+  });
+
+  const paymentForm = useForm<z.infer<typeof paymentMethodSchema>>({
+      resolver: zodResolver(paymentMethodSchema),
+      defaultValues: { name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', enabled: true }
   });
 
   // Handlers
@@ -604,7 +603,7 @@ export default function AdminDashboard() {
                     <Dialog open={!!editingPlan} onOpenChange={(o) => !o && setEditingPlan(null)}>
                         <DialogTrigger asChild>
                             <Button size="lg" className="rounded-2xl font-black px-6 shadow-xl shadow-primary/20" onClick={() => { 
-                                planForm.reset({ name: '', price: '', currency: 'ر.س', features: '', isFeatured: false, enabled: true }); 
+                                planForm.reset({ name: '', price: '', currency: 'ر.س', description: '', features: '', isFeatured: false, enabled: true }); 
                                 setEditingPlan({ id: '' } as any); 
                             }}>
                                 <Plus className="ml-2 h-5 w-5" /> باقة جديدة
@@ -629,6 +628,9 @@ export default function AdminDashboard() {
                                             <FormItem><FormLabel className="font-black text-xs">العملة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>
                                         )} />
                                     </div>
+                                    <FormField control={planForm.control} name="description" render={({ field }) => (
+                                        <FormItem><FormLabel className="font-black text-xs">وصف قصير</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>
+                                    )} />
                                     <FormField control={planForm.control} name="features" render={({ field }) => (
                                         <FormItem><FormLabel className="font-black text-xs">المميزات (مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl h-24" /></FormControl></FormItem>
                                     )} />
@@ -754,13 +756,63 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="font-black text-lg px-2">طرق الدفع</h3>
                             <Dialog open={!!editingPayment} onOpenChange={(o) => !o && setEditingPayment(null)}>
-                                <DialogTrigger asChild><Button className="rounded-xl font-black" onClick={() => { paymentForm.reset(); setEditingPayment({ id: '' } as any); }}><Plus className="ml-2 h-4 w-4" /> إضافة وسيلة</Button></DialogTrigger>
+                                <DialogTrigger asChild><Button className="rounded-xl font-black" onClick={() => { paymentForm.reset({ name: '', icon: 'CreditCard', link: '', isUrl: true, country: 'ALL', enabled: true }); setEditingPayment({ id: '' } as any); }}><Plus className="ml-2 h-4 w-4" /> إضافة وسيلة</Button></DialogTrigger>
                                 <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
-                                    {/* Payment form logic remains same */}
+                                    <DialogHeader><DialogTitle className="font-black">وسيلة دفع جديدة</DialogTitle></DialogHeader>
+                                    <Form {...paymentForm}>
+                                        <form onSubmit={paymentForm.handleSubmit(async (v) => {
+                                            const id = editingPayment?.id || doc(collection(firestore!, 'paymentMethods')).id;
+                                            await setDoc(doc(firestore!, 'paymentMethods', id), { ...v, order: editingPayment ? editingPayment.order : (payments?.length || 0) }, { merge: true });
+                                            toast({ title: "تم الحفظ" }); setEditingPayment(null);
+                                        })} className="space-y-4 pt-4">
+                                            <FormField control={paymentForm.control} name="name" render={({ field }) => (
+                                                <FormItem><FormLabel className="text-xs font-black">اسم الوسيلة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>
+                                            )} />
+                                            <FormField control={paymentForm.control} name="icon" render={({ field }) => (
+                                                <FormItem><FormLabel className="text-xs font-black">الأيقونة (Lucide Icon Name)</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl><FormDescription className="text-[9px]">مثل: CreditCard, Wallet, Paypal</FormDescription></FormItem>
+                                            )} />
+                                            <FormField control={paymentForm.control} name="link" render={({ field }) => (
+                                                <FormItem><FormLabel className="text-xs font-black">الرابط أو رقم الحساب</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>
+                                            )} />
+                                            <div className="flex gap-4">
+                                                <FormField control={paymentForm.control} name="country" render={({ field }) => (
+                                                    <FormItem className="flex-1">
+                                                        <FormLabel className="text-xs font-black">الدولة</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl><SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
+                                                            <SelectContent className="rounded-xl"><SelectItem value="ALL">الكل</SelectItem><SelectItem value="SA">السعودية</SelectItem><SelectItem value="YE">اليمن</SelectItem></SelectContent>
+                                                        </Select>
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={paymentForm.control} name="isUrl" render={({ field }) => (
+                                                    <FormItem className="flex flex-col justify-end p-2 border rounded-xl bg-muted/30">
+                                                        <div className="flex items-center gap-2"><span className="text-[10px] font-black">رابط؟</span><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                            <Button type="submit" className="w-full h-14 rounded-2xl font-black mt-4">حفظ الوسيلة</Button>
+                                        </form>
+                                    </Form>
                                 </DialogContent>
                             </Dialog>
                         </div>
-                        {/* Payments list remains same */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {payments?.map((pay) => (
+                                <Card key={pay.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-muted p-2 rounded-xl"><Wallet className="h-5 w-5 text-primary" /></div>
+                                        <div>
+                                            <p className="font-black text-sm">{pay.name}</p>
+                                            <Badge variant="outline" className="text-[8px]">{pay.country}</Badge>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingPayment(pay); paymentForm.reset(pay); }}><Edit2 className="h-3.5 w-3.5" /></Button>
+                                        {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'paymentMethods', pay.id))}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
                     </TabsContent>
                 </Tabs>
             </div>
