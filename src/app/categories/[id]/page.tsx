@@ -1,17 +1,18 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, DisplayStyle } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { cn } from '@/lib/utils';
@@ -19,8 +20,111 @@ import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 type FavoriteItem = WithId<ContentItem> & { displayStyle?: DisplayStyle };
+
+const AudioPlayerRow = ({ item, isFavorite, onToggleFavorite, onAction }: { 
+    item: WithId<ContentItem>, 
+    isFavorite: boolean, 
+    onToggleFavorite: () => void,
+    onAction: (action: () => void) => void 
+}) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        const setAudioData = () => setDuration(audio.duration);
+        const setAudioTime = () => setCurrentTime(audio.currentTime);
+        const onEnded = () => setIsPlaying(false);
+
+        audio.addEventListener('loadeddata', setAudioData);
+        audio.addEventListener('timeupdate', setAudioTime);
+        audio.addEventListener('ended', onEnded);
+
+        return () => {
+            audio.removeEventListener('loadeddata', setAudioData);
+            audio.removeEventListener('timeupdate', setAudioTime);
+            audio.removeEventListener('ended', onEnded);
+        };
+    }, []);
+
+    const togglePlay = () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+        } else {
+            // Stop other audios if needed (future implementation)
+            audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+    };
+
+    const handleSliderChange = (value: number[]) => {
+        if (audioRef.current) {
+            audioRef.current.currentTime = value[0];
+            setCurrentTime(value[0]);
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2rem] border border-white/10 group animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <audio ref={audioRef} src={item.audioUrl} preload="metadata" />
+            
+            {/* Music Icon (Right) */}
+            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner">
+                <Music className={cn("h-6 w-6 transition-transform duration-500", isPlaying && "animate-bounce")} />
+                {item.isNew && <div className="absolute top-0 right-0 bg-green-500 w-2 h-2 rounded-full" />}
+            </div>
+
+            {/* Title & Progress (Center) */}
+            <div className="flex-1 min-w-0 space-y-2">
+                <p className="font-black text-sm truncate px-1">{item.title}</p>
+                <div className="flex items-center gap-3">
+                    <Slider 
+                        value={[currentTime]} 
+                        max={duration || 100} 
+                        step={0.1}
+                        onValueChange={handleSliderChange}
+                        className="flex-1 cursor-pointer"
+                    />
+                    <span className="text-[9px] font-mono opacity-40 w-10 text-center">
+                        {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}
+                    </span>
+                </div>
+            </div>
+
+            {/* Controls (Left) */}
+            <div className="flex items-center gap-2 shrink-0">
+                <button 
+                    onClick={togglePlay}
+                    className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all"
+                >
+                    {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+                </button>
+                {item.downloadUrl && (
+                    <button 
+                        onClick={() => onAction(() => window.open(item.downloadUrl, '_blank'))}
+                        className="h-10 w-10 rounded-full bg-card/50 backdrop-blur-md flex items-center justify-center text-primary border border-primary/10 hover:bg-primary/10 active:scale-90 transition-all"
+                    >
+                        <Download className="h-5 w-5" />
+                    </button>
+                )}
+                <button 
+                    onClick={onToggleFavorite}
+                    className="h-10 w-10 rounded-full flex items-center justify-center transition-all active:scale-90"
+                >
+                    <Heart className={cn("h-5 w-5 text-muted-foreground", isFavorite && "text-primary fill-primary scale-110")} />
+                </button>
+            </div>
+        </div>
+    );
+};
 
 const WalkingEngineer = () => (
     <div className="relative flex flex-col items-center justify-center py-10">
@@ -138,35 +242,70 @@ export default function CategoryPage() {
         <div className="space-y-10">
             {currentSubCategories.length > 0 && (
                 <div className="space-y-4">
-                    <div className="flex items-center gap-2 px-1 opacity-60">
-                        <LayoutGrid className="h-4 w-4 text-primary" />
-                        <h4 className="text-xs font-black uppercase tracking-widest">أقسام فرعية</h4>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        {currentSubCategories.map(sub => {
-                            const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
-                            return (
-                                <div key={sub.id} onClick={() => handleSubCategoryClick(sub)}>
-                                    <div className="relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg aspect-square text-center active:scale-95 group overflow-hidden border-4 border-white/5">
-                                        <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
-                                        {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
-                                        {sub.fileTypes && (
-                                            <div className="absolute top-3.5 right-3.5 bg-black/20 text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm z-20">
-                                                {sub.fileTypes}
+                    {displayStyle === 'style7' ? (
+                        <ScrollArea className="w-full">
+                            <div className="flex items-center gap-3 pb-4">
+                                {currentSubCategories.map(sub => {
+                                    const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
+                                    return (
+                                        <button 
+                                            key={sub.id} 
+                                            onClick={() => handleSubCategoryClick(sub)}
+                                            className="px-6 py-3 rounded-full bg-primary/10 text-primary font-black whitespace-nowrap border border-primary/10 hover:bg-primary hover:text-white transition-all active:scale-95 relative"
+                                        >
+                                            {sub.name}
+                                            {isLocked && <Crown className="absolute -top-1 -right-1 h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <ScrollBar orientation="horizontal" className="hidden" />
+                        </ScrollArea>
+                    ) : (
+                        <>
+                            <div className="flex items-center gap-2 px-1 opacity-60">
+                                <LayoutGrid className="h-4 w-4 text-primary" />
+                                <h4 className="text-xs font-black uppercase tracking-widest">أقسام فرعية</h4>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {currentSubCategories.map(sub => {
+                                    const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
+                                    return (
+                                        <div key={sub.id} onClick={() => handleSubCategoryClick(sub)}>
+                                            <div className="relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg aspect-square text-center active:scale-95 group overflow-hidden border-4 border-white/5">
+                                                <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
+                                                {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
+                                                {sub.fileTypes && (
+                                                    <div className="absolute top-3.5 right-3.5 bg-black/20 text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm z-20">
+                                                        {sub.fileTypes}
+                                                    </div>
+                                                )}
+                                                <p className="font-bold text-lg relative z-10 leading-tight">{sub.name}</p>
                                             </div>
-                                        )}
-                                        <p className="font-bold text-lg relative z-10 leading-tight">{sub.name}</p>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 
             {typedItems.length > 0 && (
                 <div className="space-y-12">
-                    {displayStyle === 'style3' ? (
+                    {displayStyle === 'style7' ? (
+                        <div className="space-y-4">
+                            {typedItems.map(item => (
+                                <AudioPlayerRow 
+                                    key={item.id} 
+                                    item={item} 
+                                    isFavorite={isFavorite(item.id)} 
+                                    onToggleFavorite={() => toggleFavorite(item)}
+                                    onAction={(action) => handleAction(item, action)}
+                                />
+                            ))}
+                        </div>
+                    ) : displayStyle === 'style3' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

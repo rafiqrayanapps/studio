@@ -37,7 +37,8 @@ import {
     Layout,
     ExternalLink,
     Hammer,
-    Eye
+    Eye,
+    Music
 } from 'lucide-react';
 
 import { 
@@ -87,7 +88,8 @@ import type {
 // Schemas
 const itemSchema = z.object({
   title: z.string().min(2, "العنوان مطلوب"),
-  imageUrl: z.string().url("رابط الصورة غير صالح"),
+  imageUrl: z.string().url("رابط الصورة غير صالح").or(z.literal('')),
+  audioUrl: z.string().optional(),
   downloadUrl: z.string().optional(),
   prompt: z.string().optional(),
   instructions: z.string().optional(),
@@ -100,7 +102,7 @@ const itemSchema = z.object({
 
 const categorySchema = z.object({
     name: z.string().min(2, "الاسم مطلوب"),
-    displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5', 'style6']).default('style1'),
+    displayStyle: z.enum(['style1', 'style2', 'style3', 'style4', 'style5', 'style6', 'style7']).default('style1'),
     visibility: z.enum(['public', 'pro']).default('public'),
     isUnderMaintenance: z.boolean().default(false),
     fileTypes: z.string().optional(),
@@ -181,7 +183,7 @@ export default function AdminDashboard() {
 
   const itemForm = useForm<z.infer<typeof itemSchema>>({
     resolver: zodResolver(itemSchema),
-    defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', appVersion: '', screenshots: '', visibility: 'public', isNew: false }
+    defaultValues: { title: '', imageUrl: '', audioUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', appVersion: '', screenshots: '', visibility: 'public', isNew: false }
   });
 
   const userForm = useForm<z.infer<typeof newUserSchema>>({
@@ -405,6 +407,7 @@ export default function AdminDashboard() {
                                                             <SelectItem value="style4">فيديو (Style 4)</SelectItem>
                                                             <SelectItem value="style5">تطبيقات (Style 5)</SelectItem>
                                                             <SelectItem value="style6">موقع (Style 6)</SelectItem>
+                                                            <SelectItem value="style7">صوتيات (Style 7)</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </FormItem>
@@ -447,9 +450,16 @@ export default function AdminDashboard() {
                                             <FormField control={itemForm.control} name="title" render={({ field }) => (
                                                 <FormItem><FormLabel className="text-xs font-black">العنوان</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>
                                             )} />
-                                            <FormField control={itemForm.control} name="imageUrl" render={({ field }) => (
-                                                <FormItem><FormLabel className="text-xs font-black">رابط الصورة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>
-                                            )} />
+                                            {currentCategory?.displayStyle !== 'style7' && (
+                                                <FormField control={itemForm.control} name="imageUrl" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs font-black">رابط الصورة</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>
+                                                )} />
+                                            )}
+                                            {currentCategory?.displayStyle === 'style7' && (
+                                                <FormField control={itemForm.control} name="audioUrl" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-xs font-black">رابط ملف الصوت (Direct MP3)</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl text-left" dir="ltr" /></FormControl></FormItem>
+                                                )} />
+                                            )}
                                             {currentCategory?.displayStyle === 'style5' && (
                                                 <>
                                                     <FormField control={itemForm.control} name="appVersion" render={({ field }) => (
@@ -506,9 +516,9 @@ export default function AdminDashboard() {
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
                                                 <CardTitle className="text-xl font-black">{cat.name}</CardTitle>
-                                                {cat.isUnderMaintenance && <Badge className="bg-yellow-500 text-white border-none font-bold text-[8px] flex gap-1"><Hammer className="h-2 w-2" /> صيانة</Badge>}
+                                                {cat.isUnderMaintenance && <Badge className="bg-yellow-500 text-white border-none font-bold text-[8px] flex gap-1"><Hammer className="h-2 w-2" /> تحت الصيانة</Badge>}
                                             </div>
-                                            <Badge className="bg-white/20 text-white border-none font-bold text-[9px]">{cat.displayStyle}</Badge>
+                                            <Badge className="bg-white/20 text-white border-none font-bold text-[9px] uppercase">{cat.displayStyle}</Badge>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => moveItem(mainCategories, idx, 'up', ['categories'])} disabled={idx === 0}>
@@ -580,8 +590,8 @@ export default function AdminDashboard() {
                                                         <Button variant="ghost" size="icon" className="h-8 w-8" disabled={idx === 0} onClick={() => moveItem(currentItems, idx, 'up', ['categories', selectedParentId!, 'items'])}><ChevronUp className="h-4 w-4" /></Button>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8" disabled={idx === currentItems.length - 1} onClick={() => moveItem(currentItems, idx, 'down', ['categories', selectedParentId!, 'items'])}><ChevronDown className="h-4 w-4" /></Button>
                                                     </div>
-                                                    <div className="h-14 w-14 rounded-2xl overflow-hidden border-2 relative shrink-0">
-                                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="object-cover h-full w-full" />}
+                                                    <div className="h-14 w-14 rounded-2xl overflow-hidden border-2 relative shrink-0 flex items-center justify-center bg-muted">
+                                                        {item.imageUrl ? <img src={item.imageUrl} alt="" className="object-cover h-full w-full" /> : (item.audioUrl ? <Music className="h-6 w-6 text-primary" /> : <ImageIcon className="h-6 w-6 text-muted-foreground" />)}
                                                         {item.visibility === 'pro' && <div className="absolute top-0 right-0 bg-yellow-500 text-white p-0.5 rounded-bl-lg"><Zap className="h-2.5 w-2.5 fill-white" /></div>}
                                                     </div>
                                                     <div className="flex-1 min-w-0">

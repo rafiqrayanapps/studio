@@ -1,4 +1,4 @@
-export type DisplayStyle = 'style1' | 'style2' | 'style3' | 'style4' | 'style5' | 'style6';
+export type DisplayStyle = 'style1' | 'style2' | 'style3' | 'style4' | 'style5' | 'style6' | 'style7';
 
 export interface Category {
   id: string;
@@ -17,6 +17,7 @@ export interface ContentItem {
   title: string;
   imageUrl: string;
   downloadUrl?: string;
+  audioUrl?: string; // New field for direct audio links
   prompt?: string;
   videoUrl?: string;
   instructions?: string;
