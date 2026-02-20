@@ -214,7 +214,7 @@ export default function CategoryPage() {
                     ) : displayStyle === 'style5' ? (
                         <div className="space-y-10">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[3rem] border-none bg-primary/5">
+                                <Card key={item.id} className="overflow-hidden rounded-[3rem] border border-white/20 bg-card/30 backdrop-blur-2xl shadow-2xl">
                                     <div className="p-8">
                                         <div className="flex items-center gap-5 mb-6">
                                             <div className="h-20 w-20 rounded-[1.5rem] bg-muted relative overflow-hidden shrink-0 shadow-inner border-2 border-primary/5">
@@ -250,7 +250,7 @@ export default function CategoryPage() {
                                                         {item.screenshots.map((shot, idx) => (
                                                             <div 
                                                                 key={idx} 
-                                                                className="relative h-[380px] w-[210px] rounded-[2rem] overflow-hidden bg-muted shrink-0 shadow-xl cursor-zoom-in group border-4 border-background/20"
+                                                                className="relative h-[380px] w-[210px] rounded-[2rem] overflow-hidden bg-muted shrink-0 shadow-xl cursor-zoom-in group"
                                                                 onClick={() => setSelectedImage(shot)}
                                                             >
                                                                 <Image src={shot} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
