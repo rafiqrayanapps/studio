@@ -91,9 +91,7 @@ export default function CategoryPage() {
       }
   };
 
-  // Maintenance Check - Prioritize over normal loading if we have category data
   const isMaintenanceOn = category?.isUnderMaintenance && !isAdmin && !isEditor;
-
   const isLoading = (isCategoryLoading || areItemsLoading || isUserLoading) && !isMaintenanceOn;
 
   const renderContent = () => {
@@ -213,26 +211,26 @@ export default function CategoryPage() {
                             ))}
                         </div>
                     ) : displayStyle === 'style4' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-card group">
-                                    <div className="p-5 text-center">
-                                        <h3 className="font-black text-xl mb-1">{item.title}</h3>
+                                <div key={item.id} className="flex flex-col gap-4 group">
+                                    <div className="text-center px-4">
+                                        <h3 className="font-black text-xl mb-1 tracking-tight">{item.title}</h3>
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse">جديد</span>}
                                     </div>
-                                    <div className="relative aspect-video bg-black overflow-hidden mx-4 rounded-3xl mb-4">
+                                    <div className="relative aspect-video bg-black overflow-hidden rounded-[2.5rem] shadow-2xl group cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover opacity-80 group-hover:scale-110 transition-transform duration-1000" />}
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="bg-primary/90 text-white p-5 rounded-full shadow-2xl scale-90 group-hover:scale-100 transition-all duration-500 cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
+                                            <div className="bg-primary/90 text-white p-5 rounded-full shadow-2xl scale-90 group-hover:scale-100 transition-all duration-500">
                                                 <PlayCircle className="h-12 w-12" />
                                             </div>
                                         </div>
                                         {item.visibility === 'pro' && !isPro && !isAdmin && !isEditor && <div className="absolute top-4 left-4 bg-yellow-500 text-white p-1.5 rounded-full shadow-lg"><Lock className="h-4 w-4" /></div>}
                                     </div>
-                                    <div className="px-6 pb-6 text-center">
-                                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.instructions || 'شاهد شرح المحتوى بالفيديو.'}</p>
+                                    <div className="px-4 text-center">
+                                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-medium">{item.instructions || 'شاهد شرح المحتوى بالفيديو.'}</p>
                                     </div>
-                                </Card>
+                                </div>
                             ))}
                         </div>
                     ) : displayStyle === 'style5' ? (
@@ -297,72 +295,92 @@ export default function CategoryPage() {
                             ))}
                         </div>
                     ) : displayStyle === 'style6' ? (
-                        <div className="grid grid-cols-1 gap-8">
+                        <div className="grid grid-cols-1 gap-10">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border-none shadow-xl bg-card group">
-                                    <div className="p-6 text-center">
-                                        <h3 className="font-black text-xl mb-1">{item.title}</h3>
-                                        <p className="text-xs text-muted-foreground">{item.instructions || 'تصفح الموقع الإلكتروني.'}</p>
+                                <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="text-center px-4">
+                                        <h3 className="font-black text-2xl tracking-tight mb-1">{item.title}</h3>
+                                        <p className="text-xs text-muted-foreground font-medium">{item.instructions || 'تصفح الموقع الإلكتروني.'}</p>
                                     </div>
-                                    <div className="relative aspect-video bg-muted mx-6 rounded-[2rem] overflow-hidden group shadow-inner">
+                                    <div className="relative aspect-video w-full rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-pointer" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />}
-                                        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
                                             <ExternalLink className="text-white h-12 w-12 scale-75 group-hover:scale-100 transition-transform" />
                                         </div>
                                     </div>
-                                    <div className="p-6">
+                                    <div className="px-2 mt-2">
                                         <Button 
-                                            className="w-full rounded-[1.5rem] font-black h-14 shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" 
+                                            className="w-full rounded-[2rem] font-black h-16 text-lg shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" 
                                             onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
                                         >
-                                            <ExternalLink className="ml-2 h-5 w-5" /> زيارة الموقع
+                                            <ExternalLink className="ml-2 h-6 w-6" /> زيارة الموقع
                                         </Button>
                                     </div>
-                                </Card>
+                                </div>
                             ))}
                         </div>
                     ) : displayStyle === 'style2' ? (
-                        <div className="grid grid-cols-1 gap-8">
+                        <div className="grid grid-cols-1 gap-12 mt-4">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border-none shadow-xl bg-card">
-                                    <div className="p-6 text-center">
-                                        <h3 className="font-black text-xl">{item.title}</h3>
-                                        {item.isNew && <span className="text-[10px] text-green-500 font-black">جديد</span>}
+                                <div key={item.id} className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="text-center px-4">
+                                        <h3 className="font-black text-2xl text-foreground tracking-tight">{item.title}</h3>
+                                        {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1">جديد</span>}
                                     </div>
-                                    <div className="relative aspect-video bg-muted mx-6 rounded-[2rem] overflow-hidden group shadow-inner">
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />}
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                            <Eye className="text-white h-10 w-10 scale-75 group-hover:scale-100 transition-transform" />
+                                    
+                                    <div className="relative aspect-video w-full rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                        {item.imageUrl && (
+                                            <Image 
+                                                src={item.imageUrl} 
+                                                alt={item.title} 
+                                                fill 
+                                                className="object-cover group-hover:scale-110 transition-transform duration-1000" 
+                                            />
+                                        )}
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                            <Eye className="text-white h-12 w-12 scale-75 group-hover:scale-100 transition-transform" />
                                         </div>
                                     </div>
-                                    <div className="p-6 pt-4">
+
+                                    <div className="px-2">
                                         <Button 
-                                            className="w-full rounded-[1.5rem] font-black h-14 shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" 
+                                            className="w-full rounded-[2rem] font-black h-16 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all relative overflow-hidden group" 
                                             onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
                                         >
-                                            <Download className="ml-2 h-5 w-5" /> تحميل الملف
+                                            <Download className="ml-3 h-6 w-6 relative z-10 group-hover:translate-y-1 transition-transform" />
+                                            <span className="relative z-10">تحميل الملف</span>
+                                            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                                         </Button>
                                     </div>
-                                </Card>
+                                </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-6">
+                        <div className="grid grid-cols-2 gap-x-5 gap-y-10">
                             {typedItems.map(item => (
-                                <div key={item.id} className="space-y-4 text-center group">
-                                    <h3 className="font-black text-sm truncate px-2">{item.title}</h3>
-                                    <div className="relative aspect-square rounded-[2rem] overflow-hidden shadow-xl bg-muted border-4 border-white dark:border-card" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-110 transition-transform duration-700" />}
-                                        {item.isNew && <div className="absolute top-3 right-3 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full z-10">جديد</div>}
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <h3 className="font-black text-sm text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
+                                    
+                                    <div className="relative aspect-square w-full rounded-[2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                        {item.imageUrl && (
+                                            <Image 
+                                                src={item.imageUrl} 
+                                                alt={item.title} 
+                                                fill 
+                                                className="object-cover group-hover:scale-110 transition-transform duration-1000" 
+                                            />
+                                        )}
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                             <Eye className="text-white h-8 w-8" />
                                         </div>
+                                        {item.isNew && <div className="absolute top-3 right-3 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full z-10">جديد</div>}
                                     </div>
+
                                     <Button 
-                                        className="w-full rounded-2xl h-12 font-black shadow-lg shadow-primary/10 hover:scale-[1.05] active:scale-90 transition-all relative overflow-hidden" 
+                                        className="w-full rounded-[1.2rem] h-12 font-black shadow-lg shadow-primary/10 hover:scale-[1.05] active:scale-90 transition-all relative overflow-hidden group" 
                                         onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
                                     >
-                                        <Download className="ml-2 h-4 w-4 relative z-10" />
+                                        <Download className="ml-2 h-4 w-4 relative z-10 group-hover:translate-y-0.5 transition-transform" />
                                         <span className="relative z-10">تحميل</span>
                                         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                                     </Button>
