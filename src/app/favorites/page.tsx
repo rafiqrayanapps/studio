@@ -147,7 +147,12 @@ const AudioPlayerRow = ({
             "flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500",
             loadError && "border-destructive/30 bg-destructive/5"
         )}>
-            <audio ref={audioRef} src={directAudioUrl} preload="metadata" referrerPolicy="no-referrer" />
+            <audio 
+                ref={audioRef} 
+                src={directAudioUrl || undefined} 
+                preload="metadata" 
+                referrerPolicy="no-referrer" 
+            />
             
             <div className={cn(
                 "h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden",

@@ -38,7 +38,8 @@ import {
     ExternalLink,
     Hammer,
     Eye,
-    Music
+    Music,
+    Save
 } from 'lucide-react';
 
 import { 
@@ -144,6 +145,7 @@ export default function AdminDashboard() {
   const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'settings'>('content');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
   const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
   const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
@@ -219,22 +221,34 @@ export default function AdminDashboard() {
       } catch (e) { toast({ title: "خطأ في الحفظ", variant: "destructive" }); }
   };
 
-  const onAddItem = async (values: z.infer<typeof itemSchema>) => {
+  const onSaveItem = async (values: z.infer<typeof itemSchema>) => {
     if (!firestore || !selectedParentId) return;
     try {
       const screenshotsArray = values.screenshots ? values.screenshots.split(',').map(s => s.trim()).filter(s => s !== '') : [];
       
-      await addDocumentNonBlocking(collection(firestore, 'categories', selectedParentId, 'items'), { 
+      const itemData: any = { 
           ...values,
           screenshots: screenshotsArray,
-          order: currentItems.length, 
-          createdAt: serverTimestamp(), 
+          updatedAt: serverTimestamp(),
           status: isAdmin ? 'approved' : 'pending' 
-      });
-      toast({ title: isAdmin ? "تم النشر بنجاح" : "تم الإرسال للمراجعة" });
+      };
+
+      if (editingItem) {
+          await setDoc(doc(firestore, 'categories', selectedParentId, 'items', editingItem.id), itemData, { merge: true });
+          toast({ title: "تم التحديث بنجاح" });
+      } else {
+          await addDocumentNonBlocking(collection(firestore, 'categories', selectedParentId, 'items'), { 
+              ...itemData,
+              order: currentItems.length, 
+              createdAt: serverTimestamp(), 
+          });
+          toast({ title: isAdmin ? "تم النشر بنجاح" : "تم الإرسال للمراجعة" });
+      }
+      
       itemForm.reset();
       setIsAddingItem(false);
-    } catch (e) { toast({ title: "خطأ في الإضافة", variant: "destructive" }); }
+      setEditingItem(null);
+    } catch (e) { toast({ title: "خطأ في الحفظ", variant: "destructive" }); }
   };
 
   const onCreateUser = async (values: z.infer<typeof newUserSchema>) => {
@@ -435,7 +449,10 @@ export default function AdminDashboard() {
                         </Dialog>
 
                         {selectedParentId && (
-                            <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
+                            <Dialog open={isAddingItem} onOpenChange={(open) => {
+                                setIsAddingItem(open);
+                                if (!open) setEditingItem(null);
+                            }}>
                                 <DialogTrigger asChild>
                                     <Button size="lg" variant="outline" className="rounded-2xl font-black px-6 border-2">
                                         <Send className="ml-2 h-5 w-5" /> منشور جديد
@@ -443,10 +460,10 @@ export default function AdminDashboard() {
                                 </DialogTrigger>
                                 <DialogContent className="max-w-md rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto" dir="rtl">
                                     <DialogHeader>
-                                        <DialogTitle className="text-xl font-black">نشر محتوى</DialogTitle>
+                                        <DialogTitle className="text-xl font-black">{editingItem ? 'تعديل منشور' : 'نشر محتوى جديد'}</DialogTitle>
                                     </DialogHeader>
                                     <Form {...itemForm}>
-                                        <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-4 pt-4">
+                                        <form onSubmit={itemForm.handleSubmit(onSaveItem)} className="space-y-4 pt-4">
                                             <FormField control={itemForm.control} name="title" render={({ field }) => (
                                                 <FormItem><FormLabel className="text-xs font-black">العنوان</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl" /></FormControl></FormItem>
                                             )} />
@@ -497,7 +514,9 @@ export default function AdminDashboard() {
                                                     </FormItem>
                                                 )} />
                                             </div>
-                                            <Button type="submit" className="w-full h-14 rounded-2xl font-black mt-4 shadow-xl shadow-primary/20">نشر الآن</Button>
+                                            <Button type="submit" className="w-full h-14 rounded-2xl font-black mt-4 shadow-xl shadow-primary/20">
+                                                {editingItem ? <><Save className="ml-2 h-5 w-5" /> حفظ التغييرات</> : <><Send className="ml-2 h-5 w-5" /> نشر الآن</>}
+                                            </Button>
                                         </form>
                                     </Form>
                                 </DialogContent>
@@ -601,7 +620,24 @@ export default function AdminDashboard() {
                                                             <span className="text-[10px] opacity-40 font-bold uppercase">{item.visibility}</span>
                                                         </div>
                                                     </div>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="ghost" size="icon" className="text-primary h-10 w-10" onClick={() => {
+                                                            setEditingItem(item);
+                                                            itemForm.reset({
+                                                                ...item,
+                                                                screenshots: item.screenshots?.join(', ') || '',
+                                                                imageUrl: item.imageUrl || '',
+                                                                audioUrl: item.audioUrl || '',
+                                                                downloadUrl: item.downloadUrl || '',
+                                                                prompt: item.prompt || '',
+                                                                instructions: item.instructions || '',
+                                                                videoUrl: item.videoUrl || '',
+                                                                appVersion: item.appVersion || ''
+                                                            });
+                                                            setIsAddingItem(true);
+                                                        }}>
+                                                            <Edit2 className="h-4 w-4" />
+                                                        </Button>
                                                         {isAdmin && <Button variant="ghost" size="icon" className="text-destructive h-10 w-10" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId!, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button>}
                                                     </div>
                                                 </div>

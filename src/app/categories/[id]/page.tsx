@@ -2,10 +2,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, DisplayStyle } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,20 +24,46 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 type FavoriteItem = WithId<ContentItem> & { displayStyle?: DisplayStyle };
 
+const AdminQuickActions = ({ 
+    onDelete 
+}: { 
+    onDelete: () => void 
+}) => {
+    return (
+        <div className="absolute top-2 right-2 flex gap-1 z-30">
+            <Button 
+                variant="destructive" 
+                size="icon" 
+                className="h-8 w-8 rounded-full shadow-lg hover:scale-110 active:scale-90 transition-all" 
+                onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if(confirm("هل أنت متأكد من حذف هذا العنصر؟")) onDelete(); 
+                }}
+            >
+                <Trash2 className="h-4 w-4" />
+            </Button>
+        </div>
+    );
+};
+
 const AudioPlayerRow = ({ 
     item, 
     isFavorite, 
     onToggleFavorite, 
     onAction,
     activeId,
-    onPlay
+    onPlay,
+    isAdminView,
+    onDelete
 }: { 
     item: WithId<ContentItem>, 
     isFavorite: boolean, 
     onToggleFavorite: () => void,
     onAction: (action: () => void) => void,
     activeId: string | null,
-    onPlay: (id: string | null) => void
+    onPlay: (id: string | null) => void,
+    isAdminView?: boolean,
+    onDelete?: () => void
 }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -149,12 +175,12 @@ const AudioPlayerRow = ({
 
     return (
         <div className={cn(
-            "flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500",
+            "flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500 relative",
             loadError && "border-destructive/30 bg-destructive/5"
         )}>
             <audio 
                 ref={audioRef} 
-                src={directAudioUrl} 
+                src={directAudioUrl || undefined} 
                 preload="metadata"
                 referrerPolicy="no-referrer"
             />
@@ -209,6 +235,14 @@ const AudioPlayerRow = ({
                 >
                     <Heart className={cn("h-5 w-5 text-muted-foreground", isFavorite && "text-primary fill-primary scale-110")} />
                 </button>
+                {isAdminView && onDelete && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); if(confirm("حذف؟")) onDelete(); }}
+                        className="h-10 w-10 rounded-full flex items-center justify-center text-destructive hover:bg-destructive/10 transition-all active:scale-90"
+                    >
+                        <Trash2 className="h-5 w-5" />
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -289,6 +323,13 @@ export default function CategoryPage() {
           setShowUpgradeDialog(true);
       } else {
           router.push(`/categories/${sub.id}`);
+      }
+  };
+
+  const deleteItem = (itemId: string) => {
+      if (firestore && id) {
+          deleteDocumentNonBlocking(doc(firestore, 'categories', id, 'items', itemId));
+          toast({ title: "تم الحذف بنجاح" });
       }
   };
 
@@ -393,13 +434,16 @@ export default function CategoryPage() {
                                     onAction={(action) => handleAction(item, action)}
                                     activeId={activeAudioId}
                                     onPlay={setActiveAudioId}
+                                    isAdminView={isAdmin || isEditor}
+                                    onDelete={() => deleteItem(item.id)}
                                 />
                             ))}
                         </div>
                     ) : displayStyle === 'style3' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {typedItems.map(item => (
-                                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
                                     <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5">
                                         {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
@@ -437,7 +481,8 @@ export default function CategoryPage() {
                     ) : displayStyle === 'style4' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                             {typedItems.map(item => (
-                                <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-6 duration-700">
+                                <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-6 duration-700 relative">
+                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl mb-1 tracking-tight">{item.title}</h3>
                                         <button 
@@ -466,7 +511,8 @@ export default function CategoryPage() {
                     ) : displayStyle === 'style5' ? (
                         <div className="space-y-12">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[3.5rem] border border-white/20 bg-primary/5 backdrop-blur-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] hover:shadow-[0_35px_80px_-15px_rgba(0,0,0,0.15)] transition-all duration-500 group/card">
+                                <Card key={item.id} className="overflow-hidden rounded-[3.5rem] border border-white/20 bg-primary/5 backdrop-blur-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] hover:shadow-[0_35px_80px_-15px_rgba(0,0,0,0.15)] transition-all duration-500 group/card relative">
+                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <div className="p-8 sm:p-10">
                                         <div className="flex items-start gap-6 mb-8">
                                             <div className="h-24 w-24 rounded-[2.2rem] bg-card relative overflow-hidden shrink-0 shadow-2xl border-4 border-white/10 group-hover/card:scale-105 transition-transform duration-500">
@@ -524,7 +570,8 @@ export default function CategoryPage() {
                     ) : displayStyle === 'style6' ? (
                         <div className="grid grid-cols-1 gap-12">
                             {typedItems.map(item => (
-                                <div key={item.id} className="flex flex-col gap-5 group animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div key={item.id} className="flex flex-col gap-5 group animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl tracking-tight mb-1">{item.title}</h3>
                                         <button 
@@ -550,7 +597,8 @@ export default function CategoryPage() {
                     ) : displayStyle === 'style2' ? (
                         <div className="grid grid-cols-1 gap-14 mt-4">
                             {typedItems.map(item => (
-                                <div key={item.id} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div key={item.id} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl text-foreground tracking-tight">{item.title}</h3>
                                         <button 
@@ -580,7 +628,8 @@ export default function CategoryPage() {
                     ) : (
                         <div className="grid grid-cols-2 gap-x-6 gap-y-12">
                             {typedItems.map(item => (
-                                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <h3 className="font-black text-base text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
                                     <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />}
