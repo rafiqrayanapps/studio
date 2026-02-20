@@ -22,17 +22,14 @@ import { useCategories } from '@/components/providers/CategoryProvider';
 
 const WalkingEngineer = () => (
     <div className="relative flex flex-col items-center justify-center py-10">
-        {/* Walking Character SVG */}
         <div className="animate-walk mb-4">
             <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 4C13.1046 4 14 3.10457 14 2C14 0.89543 13.1046 0 12 0C10.8954 0 10 0.89543 10 2C10 3.10457 10.8954 4 12 4Z" fill="currentColor" className="text-primary"/>
                 <path d="M15 5H9C7.34315 5 6 6.34315 6 8V14C6 14.5523 6.44772 15 7 15H8V21C8 22.6569 9.34315 24 11 24H13C14.6569 24 16 22.6569 16 21V15H17C17.5523 15 18 14.5523 18 14V8C18 6.34315 16.6569 5 15 5Z" fill="currentColor" className="text-primary opacity-80"/>
                 <rect x="10" y="6" width="4" height="2" fill="white" className="opacity-20"/>
-                {/* Hammer in hand */}
                 <path d="M19 10L21 12M21 12L23 10M21 12L20 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary"/>
             </svg>
         </div>
-        {/* Shadow under feet */}
         <div className="w-16 h-2 bg-black/10 rounded-full blur-md animate-float-shadow" />
     </div>
 );
@@ -67,25 +64,18 @@ export default function CategoryPage() {
   const toggleFavorite = (item: WithId<ContentItem>) => {
     const isCurrentlyFavorite = isFavorite(item.id);
     if (isCurrentlyFavorite) {
-      toast({ title: "تمت الإزالة من المفضلة" });
       setFavorites(prev => prev.filter(fav => fav.id !== item.id));
+      toast({ title: "تمت الإزالة من المفضلة" });
     } else {
-      toast({ title: "تمت الإضافة إلى المفضلة" });
       setFavorites(prev => [...prev, item]);
+      toast({ title: "تمت الإضافة إلى المفضلة" });
     }
   };
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
-    
-    const viewableItems = (isAdmin || isEditor)
-        ? rawItems 
-        : rawItems.filter(item => !item.status || item.status === 'approved');
-        
-    const searchedItems = viewableItems.filter((item) => 
-        (item.title || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
+    const viewableItems = (isAdmin || isEditor) ? rawItems : rawItems.filter(item => !item.status || item.status === 'approved');
+    const searchedItems = viewableItems.filter((item) => (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
     return [...searchedItems].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   }, [rawItems, searchTerm, isAdmin, isEditor]);
 
@@ -115,24 +105,17 @@ export default function CategoryPage() {
        return (
          <div className="flex flex-col items-center justify-center text-center p-10 bg-card/40 backdrop-blur-3xl rounded-[3.5rem] mt-8 shadow-2xl border border-white/20 min-h-[500px] animate-in fade-in zoom-in duration-700">
             <WalkingEngineer />
-            
             <div className="space-y-4 mt-4">
                 <h3 className="font-black text-3xl text-foreground tracking-tight">نطور من أجلك</h3>
                 <p className="text-muted-foreground text-base max-w-xs mx-auto leading-relaxed font-bold opacity-80">
                     المهندس يعمل الآن على إضافة لمسات إبداعية لهذا القسم. سنكون جاهزين قريباً جداً!
                 </p>
             </div>
-
             <div className="flex items-center gap-2 mt-10 py-2.5 px-5 bg-primary/10 rounded-full border border-primary/20">
                 <Sparkles className="h-4 w-4 text-primary animate-pulse" />
                 <span className="text-[11px] font-black text-primary uppercase tracking-widest">تحديثات جارية الآن</span>
             </div>
-
-            <Button 
-                variant="default" 
-                onClick={() => router.back()} 
-                className="mt-12 rounded-2xl px-12 h-14 font-black text-lg shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
-            >
+            <Button variant="default" onClick={() => router.back()} className="mt-12 rounded-2xl px-12 h-14 font-black text-lg shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">
                 <ArrowLeft className="ml-2 h-6 w-6" /> العودة للرئيسية
             </Button>
          </div>
@@ -180,7 +163,7 @@ export default function CategoryPage() {
             )}
 
             {typedItems.length > 0 && (
-                <div className="space-y-6">
+                <div className="space-y-12">
                     {displayStyle === 'style3' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {typedItems.map(item => (
@@ -188,8 +171,11 @@ export default function CategoryPage() {
                                     <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
                                     <div className="relative aspect-video rounded-3xl overflow-hidden bg-muted group shadow-2xl border-4 border-white/5">
                                         {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
-                                        <button className="absolute top-3 left-3 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg" onClick={() => toggleFavorite(item)}>
-                                            <Heart className={cn("h-5 w-5 text-white", isFavorite(item.id) && "fill-white")} />
+                                        <button 
+                                            className="absolute top-3 left-3 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg active:scale-90"
+                                            onClick={() => toggleFavorite(item)}
+                                        >
+                                            <Heart className={cn("h-5 w-5 text-white transition-all", isFavorite(item.id) && "fill-white text-white scale-110")} />
                                         </button>
                                     </div>
                                     <div className="space-y-2 px-2">
@@ -206,7 +192,7 @@ export default function CategoryPage() {
                                         {item.downloadUrl && (
                                             <Button 
                                                 variant="outline" 
-                                                className="h-14 w-14 rounded-2xl border-2 hover:bg-primary/10 transition-all border-primary/20"
+                                                className="h-14 w-14 rounded-2xl border-2 hover:bg-primary/10 transition-all border-primary/20 active:scale-90"
                                                 onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}
                                             >
                                                 <Download className="h-6 w-6 text-primary" />
@@ -220,8 +206,14 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-6 duration-700">
-                                    <div className="text-center px-4">
+                                    <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl mb-1 tracking-tight">{item.title}</h3>
+                                        <button 
+                                            className="absolute top-0 right-4 h-8 w-8 text-primary active:scale-90"
+                                            onClick={() => toggleFavorite(item)}
+                                        >
+                                            <Heart className={cn("h-6 w-6 transition-all", isFavorite(item.id) && "fill-primary")} />
+                                        </button>
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse bg-green-50 px-3 py-0.5 rounded-full border border-green-100">جديد</span>}
                                     </div>
                                     <div className="relative aspect-video bg-black overflow-hidden rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
@@ -257,21 +249,17 @@ export default function CategoryPage() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <button className="h-12 w-12 bg-card/50 backdrop-blur-md rounded-2xl flex items-center justify-center transition-all hover:bg-primary/10 hover:scale-110 shadow-sm border border-white/10" onClick={() => toggleFavorite(item)}>
-                                                <Heart className={cn("h-6 w-6 text-muted-foreground", isFavorite(item.id) && "text-primary fill-primary")} />
+                                            <button className="h-12 w-12 bg-card/50 backdrop-blur-md rounded-2xl flex items-center justify-center transition-all hover:bg-primary/10 hover:scale-110 shadow-sm border border-white/10 active:scale-90" onClick={() => toggleFavorite(item)}>
+                                                <Heart className={cn("h-6 w-6 text-muted-foreground transition-all", isFavorite(item.id) && "text-primary fill-primary scale-110")} />
                                             </button>
                                         </div>
-
                                         {item.instructions && (
                                             <div className="mb-10 animate-in fade-in slide-in-from-right-4 duration-500">
                                                 <div className="p-6 rounded-[2rem] bg-card/30 border border-white/10 shadow-inner">
-                                                    <p className="text-sm text-foreground/70 font-bold leading-relaxed">
-                                                        {item.instructions}
-                                                    </p>
+                                                    <p className="text-sm text-foreground/70 font-bold leading-relaxed">{item.instructions}</p>
                                                 </div>
                                             </div>
                                         )}
-
                                         {item.screenshots && item.screenshots.length > 0 && (
                                             <div className="mb-12 -mx-4">
                                                 <div className="overflow-x-auto no-scrollbar pb-4" dir="rtl">
@@ -279,24 +267,22 @@ export default function CategoryPage() {
                                                         {item.screenshots.map((shot, idx) => (
                                                             <div 
                                                                 key={idx} 
-                                                                className="relative h-[420px] w-[230px] rounded-[2.5rem] overflow-hidden bg-muted shrink-0 shadow-[0_15px_40px_rgba(0,0,0,0.2)] cursor-zoom-in group/img border-4 border-white/5"
+                                                                className="relative h-[420px] w-[230px] rounded-[2.5rem] overflow-hidden bg-muted shrink-0 shadow-[0_15px_40px_rgba(0,0,0,0.2)] cursor-zoom-in group/img"
                                                                 onClick={() => setSelectedImage(shot)}
                                                             >
                                                                 <Image src={shot} alt="" fill className="object-cover group-hover/img:scale-110 transition-transform duration-1000" />
-                                                                <div className="absolute inset-0 bg-black/5 group-hover/img:bg-transparent transition-colors" />
                                                             </div>
                                                         ))}
                                                     </div>
                                                 </div>
                                             </div>
                                         )}
-
                                         <Button 
                                             className="w-full h-20 rounded-[2.2rem] font-black text-xl shadow-[0_15px_40px_rgba(var(--primary),0.3)] hover:shadow-[0_20px_50px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-95 transition-all bg-primary relative overflow-hidden group/btn"
                                             onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
                                         >
                                             <Download className="ml-3 h-7 w-7 group-hover/btn:translate-y-1 transition-transform relative z-10" />
-                                            <span className="relative z-10">تحميل التطبيق مجاناً</span>
+                                            <span className="relative z-10">تحميل التطبيق</span>
                                             <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
                                         </Button>
                                     </div>
@@ -307,8 +293,14 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 gap-12">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-5 group animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="text-center px-4">
+                                    <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl tracking-tight mb-1">{item.title}</h3>
+                                        <button 
+                                            className="absolute top-0 right-4 h-8 w-8 text-primary active:scale-90"
+                                            onClick={() => toggleFavorite(item)}
+                                        >
+                                            <Heart className={cn("h-6 w-6 transition-all", isFavorite(item.id) && "fill-primary")} />
+                                        </button>
                                         <p className="text-sm text-muted-foreground font-bold opacity-60">{item.instructions || 'تصفح الموقع الإلكتروني وتعرف على المزيد.'}</p>
                                     </div>
                                     <div className="relative aspect-video w-full rounded-[3rem] overflow-hidden shadow-2xl group cursor-pointer border-4 border-white/10" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
@@ -318,12 +310,7 @@ export default function CategoryPage() {
                                         </div>
                                     </div>
                                     <div className="px-2 mt-2">
-                                        <Button 
-                                            className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" 
-                                            onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
-                                        >
-                                            زيارة الموقع الآن
-                                        </Button>
+                                        <Button className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>زيارة الموقع الآن</Button>
                                     </div>
                                 </div>
                             ))}
@@ -332,31 +319,26 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 gap-14 mt-4">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="text-center px-4">
+                                    <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl text-foreground tracking-tight">{item.title}</h3>
+                                        <button 
+                                            className="absolute top-0 right-4 h-8 w-8 text-primary active:scale-90"
+                                            onClick={() => toggleFavorite(item)}
+                                        >
+                                            <Heart className={cn("h-6 w-6 transition-all", isFavorite(item.id) && "fill-primary")} />
+                                        </button>
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1 uppercase tracking-tighter">New Update</span>}
                                     </div>
-                                    
                                     <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.1)] group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                        {item.imageUrl && (
-                                            <img 
-                                                src={item.imageUrl} 
-                                                alt={item.title} 
-                                                className="w-full h-auto group-hover:scale-105 transition-transform duration-1000" 
-                                            />
-                                        )}
+                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="w-full h-auto group-hover:scale-105 transition-transform duration-1000" />}
                                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                             <Eye className="text-white h-12 w-12" />
                                         </div>
                                     </div>
-
                                     <div className="px-2">
-                                        <Button 
-                                            className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all relative overflow-hidden group" 
-                                            onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
-                                        >
+                                        <Button className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all relative overflow-hidden group" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                             <Download className="ml-3 h-6 w-6 relative z-10 group-hover:translate-y-1 transition-transform" />
-                                            <span className="relative z-10">تحميل الملف</span>
+                                            <span className="relative z-10">تحميل</span>
                                             <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                                         </Button>
                                     </div>
@@ -368,26 +350,20 @@ export default function CategoryPage() {
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <h3 className="font-black text-base text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
-                                    
                                     <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                        {item.imageUrl && (
-                                            <Image 
-                                                src={item.imageUrl} 
-                                                alt={item.title} 
-                                                fill 
-                                                className="object-cover group-hover:scale-110 transition-transform duration-1000" 
-                                            />
-                                        )}
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                        {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />}
+                                        <button 
+                                            className="absolute top-3 left-3 z-10 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
+                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                                        >
+                                            <Heart className={cn("h-4 w-4 text-white transition-all", isFavorite(item.id) && "fill-white scale-110")} />
+                                        </button>
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
                                             <Eye className="text-white h-8 w-8" />
                                         </div>
                                         {item.isNew && <div className="absolute top-3 right-3 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full z-10 shadow-lg">جديد</div>}
                                     </div>
-
-                                    <Button 
-                                        className="w-full rounded-[1.5rem] h-14 font-black shadow-xl shadow-primary/10 hover:scale-[1.05] active:scale-90 transition-all relative overflow-hidden group" 
-                                        onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
-                                    >
+                                    <Button className="w-full rounded-[1.5rem] h-14 font-black shadow-xl shadow-primary/10 hover:scale-[1.05] active:scale-90 transition-all relative overflow-hidden group" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                                         <Download className="ml-2 h-5 w-5 relative z-10 group-hover:translate-y-0.5 transition-transform" />
                                         <span className="relative z-10">تحميل</span>
                                         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
@@ -403,7 +379,7 @@ export default function CategoryPage() {
   };
   
   return (
-    <div className="flex min-h-dvh flex-col bg-secondary">
+    <div className="flex min-h-dvh flex-col bg-secondary overflow-x-hidden">
         <div className="sticky top-0 z-30">
              <Header showMenu={false} title={isLoading ? '...' : (category?.name || "تحميل...")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
@@ -417,7 +393,6 @@ export default function CategoryPage() {
               </div>
             </div>
         </div>
-
       <main className="flex-1 px-6 pt-4 pb-24">
         {!isLoading && !category ? (
             <div className="text-center text-destructive p-12 bg-destructive/10 rounded-[2.5rem] mt-4 space-y-4">
@@ -431,9 +406,7 @@ export default function CategoryPage() {
           </div>
         ) : renderContent()}
       </main>
-
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
-      
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none overflow-hidden rounded-3xl">
           <div className="sr-only">معاينة الصورة</div>
