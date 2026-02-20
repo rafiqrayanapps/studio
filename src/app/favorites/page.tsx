@@ -253,9 +253,15 @@ export default function FavoritesPage() {
         return (
             <div key={item.id} className="flex flex-col gap-4 animate-in fade-in duration-500">
                 <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
-                <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5">
-                    {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
+                <div 
+                    className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
+                    onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
+                >
+                    {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-auto group-hover:scale-105 transition-transform duration-500" />}
                     <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                        <Eye className="text-white h-12 w-12" />
+                    </div>
                 </div>
                 <div className="space-y-2 px-2">
                     <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">نص البرومبت:</p>

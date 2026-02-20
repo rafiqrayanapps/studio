@@ -460,14 +460,20 @@ export default function CategoryPage() {
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                                     {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
-                                    <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5">
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
+                                    <div 
+                                        className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
+                                        onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
+                                    >
+                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-auto group-hover:scale-105 transition-transform duration-500" />}
                                         <button 
                                             className="absolute top-3 left-3 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg active:scale-90"
-                                            onClick={() => toggleFavorite(item)}
+                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
                                         >
                                             <Heart className={cn("h-5 w-5 text-white transition-all", isFavorite(item.id) && "fill-white text-white scale-110")} />
                                         </button>
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                                            <Eye className="text-white h-12 w-12" />
+                                        </div>
                                     </div>
                                     <div className="space-y-2 px-2">
                                         <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">نص البرومبت:</p>
