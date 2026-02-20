@@ -3,151 +3,205 @@
 import { useState } from 'react';
 import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
-import type { ContentItem } from '@/lib/definitions';
-import { Card, CardContent } from '@/components/ui/card';
+import type { ContentItem, DisplayStyle } from '@/lib/definitions';
+import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Download, Copy, Trash2, Heart, PlayCircle, Lock, Crown } from 'lucide-react';
+import { Download, Copy, Trash2, Heart, PlayCircle, Lock, Crown, Eye, ExternalLink, Sparkles, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { WithId } from '@/firebase';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-// Reusable Remove Button
+type FavoriteItem = WithId<ContentItem> & { displayStyle?: DisplayStyle };
+
 const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
   <Button
     size="icon"
-    className="absolute top-2 left-2 z-10 h-9 w-9 bg-black/50 hover:bg-black/70 text-white"
+    className="absolute top-3 left-3 z-20 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-destructive hover:scale-110 transition-all shadow-lg"
     onClick={(e) => { e.stopPropagation(); e.preventDefault(); onRemove(); }}
   >
-    <Trash2 className="h-4 w-4" />
+    <Trash2 className="h-5 w-5" />
   </Button>
 );
 
-// A component for Prompt-based items (Style 3)
-const PromptItemCard = ({ item, onRemove, onImageClick, isLocked }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void, isLocked: boolean }) => {
-  const { toast } = useToast();
-  const router = useRouter();
-
-  const handleCopy = () => {
-    if (item.prompt) {
-      navigator.clipboard.writeText(item.prompt);
-      toast({ title: "تم نسخ البرومبت!" });
-    }
-  };
-
-  return (
-    <Card className="overflow-hidden bg-card text-card-foreground flex flex-col h-full group rounded-[2.5rem] border-none shadow-lg">
-      {item.imageUrl && (
-        <div className="relative w-full cursor-pointer aspect-video bg-muted" onClick={() => !isLocked && onImageClick(item.imageUrl!)}>
-          <RemoveButton onRemove={() => onRemove(item.id)} />
-          <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
-        </div>
-      )}
-      <CardContent className="p-6 flex flex-col flex-1 gap-4 text-right">
-        <h3 className="font-bold text-xl text-center text-primary">{item.title}</h3>
-        <div className="space-y-2">
-          <h4 className="text-[10px] font-black opacity-40 uppercase tracking-widest">البرومبت</h4>
-           {isLocked ? (
-              <div className="h-28 bg-muted rounded-2xl flex flex-col items-center justify-center text-center p-4 gap-2">
-                  <Lock className="h-6 w-6 text-muted-foreground" />
-                  <p className="text-muted-foreground font-semibold">محتوى حصري للمشتركين</p>
-                  <Button size="sm" variant="secondary" onClick={() => router.push('/pricing')}>الترقية الآن</Button>
-              </div>
-          ) : (
-            <Textarea readOnly value={item.prompt} className="h-28 bg-muted/50 border-transparent rounded-2xl font-mono text-xs" dir="ltr" />
-          )}
-        </div>
-        <div className="flex gap-2 mt-auto">
-            <Button variant="default" className="flex-1 h-12 rounded-xl font-bold" onClick={handleCopy} disabled={isLocked}>
-                {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Copy className="ml-2 h-4 w-4" />}
-                {isLocked ? 'الترقية للنسخ' : 'نسخ البرومبت'}
-            </Button>
-            {!isLocked && item.downloadUrl && (
-                <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-2" onClick={() => window.open(item.downloadUrl, '_blank')}>
-                    <Download className="h-5 w-5" />
-                </Button>
-            )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// A component for Video-based items (Style 4)
-const VideoItemCard = ({ item, onRemove, isLocked }: { item: WithId<ContentItem>, onRemove: (id: string) => void, isLocked: boolean }) => {
-    const router = useRouter();
-
-    const handleLockedClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        router.push('/pricing');
-    };
-
-    return (
-        <div className="overflow-hidden flex flex-col h-full group relative bg-primary text-primary-foreground p-4 rounded-3xl shadow-xl">
-            {isLocked && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-300 z-10" />}
-            <div className="pb-2">
-                <h3 className="font-bold text-lg text-center truncate px-2">{item.title}</h3>
-            </div>
-            
-            <a href={isLocked ? '#' : item.videoUrl || '#'} onClick={isLocked ? handleLockedClick : undefined} target="_blank" rel="noopener noreferrer" className="relative block">
-                <div className="aspect-video relative w-full cursor-pointer rounded-2xl overflow-hidden shadow-lg" >
-                    <RemoveButton onRemove={() => onRemove(item.id)} />
-                    {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <PlayCircle className="h-12 w-12 text-white opacity-80" />
-                    </div>
-                </div>
-            </a>
-            
-            <div className="pt-4 mt-auto">
-                <Button asChild variant="secondary" className="w-full rounded-xl font-bold">
-                    <a href={isLocked ? '#' : item.videoUrl || '#'} onClick={isLocked ? handleLockedClick : undefined} target="_blank" rel="noopener noreferrer">
-                        {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <PlayCircle className="ml-2 h-4 w-4" />}
-                        {isLocked ? 'الترقية للمشاهدة' : 'مشاهدة الفيديو'}
-                    </a>
-                </Button>
-            </div>
-        </div>
-    );
-};
-
-
-// A component for Downloadable items (Style 1/2/5)
-const DownloadItemCard = ({ item, onRemove, onImageClick, isLocked }: { item: WithId<ContentItem>, onRemove: (id: string) => void, onImageClick: (url: string) => void, isLocked: boolean }) => {
-    const router = useRouter();
-    return (
-        <div className="flex flex-col text-center group gap-y-3 bg-card p-4 rounded-[2.5rem] shadow-md border-none">
-            <h3 className="font-bold text-base text-foreground min-h-[2.5rem] flex items-center justify-center px-2">{item.title}</h3>
-            {item.imageUrl && (
-              <div className="relative w-full cursor-pointer aspect-square bg-muted rounded-2xl shadow-sm overflow-hidden" onClick={() => !isLocked && onImageClick(item.imageUrl!)}>
-                <RemoveButton onRemove={() => onRemove(item.id)} />
-                <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
-              </div>
-            )}
-            <div className="w-full mt-auto">
-              <Button className="w-full rounded-xl font-bold h-11" disabled={isLocked} onClick={() => isLocked ? router.push('/pricing') : (item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                {isLocked ? <Lock className="ml-2 h-4 w-4" /> : <Download className="ml-2 h-4 w-4" />}
-                {isLocked ? 'الترقية للتحميل' : 'تحميل'}
-              </Button>
-            </div>
-        </div>
-    );
-};
-
-
 export default function FavoritesPage() {
-  const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
+  const [favorites, setFavorites] = useLocalStorage<FavoriteItem[]>('favorites', []);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const { toast } = useToast();
-  const { isPro, isAdmin } = useUserProfile();
+  const { isPro, isAdmin, isEditor } = useUserProfile();
+  const router = useRouter();
 
   const removeFromFavorites = (itemId: string) => {
     setFavorites(prevFavorites => prevFavorites.filter(item => item.id !== itemId));
     toast({ title: "تمت الإزالة من المفضلة" });
+  };
+
+  const handleAction = (item: FavoriteItem, action: () => void) => {
+      const isLocked = item.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
+      if (isLocked) {
+          router.push('/pricing');
+      } else {
+          action();
+      }
+  };
+
+  const renderFavoriteItem = (item: FavoriteItem) => {
+    const style = item.displayStyle || 'style1';
+    const isLocked = item.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
+
+    if (style === 'style3') {
+        return (
+            <div key={item.id} className="flex flex-col gap-4 animate-in fade-in duration-500">
+                <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
+                <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5">
+                    {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
+                    <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
+                </div>
+                <div className="space-y-2 px-2">
+                    <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">نص البرومبت:</p>
+                    <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted/50 border-none rounded-2xl text-xs font-mono p-4 shadow-inner" dir="ltr" />
+                </div>
+                <div className="flex gap-3 px-2">
+                    <Button 
+                        className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20" 
+                        onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ"}); } })}
+                    >
+                        نسخ البرومبت
+                    </Button>
+                    {item.downloadUrl && (
+                        <Button 
+                            variant="outline" 
+                            className="h-14 w-14 rounded-2xl border-2 border-primary/20"
+                            onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}
+                        >
+                            <Download className="h-6 w-6 text-primary" />
+                        </Button>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    if (style === 'style4') {
+        return (
+            <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in duration-500">
+                <div className="text-center px-4 relative">
+                    <h3 className="font-black text-2xl mb-1 tracking-tight">{item.title}</h3>
+                    <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
+                </div>
+                <div className="relative aspect-video bg-black overflow-hidden rounded-[3rem] shadow-2xl cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
+                    {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover opacity-80" />}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-primary/90 text-white p-6 rounded-full shadow-2xl scale-90 backdrop-blur-sm">
+                            <PlayCircle className="h-14 w-14" />
+                        </div>
+                    </div>
+                    {isLocked && <div className="absolute top-6 left-6 bg-yellow-500 text-white p-2 rounded-full border-2 border-white/20"><Crown className="h-5 w-5" /></div>}
+                </div>
+            </div>
+        );
+    }
+
+    if (style === 'style5') {
+        return (
+            <Card key={item.id} className="overflow-hidden rounded-[3.5rem] border border-white/20 bg-primary/5 backdrop-blur-3xl shadow-xl transition-all duration-500 animate-in fade-in">
+                <div className="p-8">
+                    <div className="flex items-start gap-6 mb-8">
+                        <div className="h-24 w-24 rounded-[2.2rem] bg-card relative overflow-hidden shrink-0 shadow-2xl border-4 border-white/10">
+                            {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
+                        </div>
+                        <div className="flex-1 pt-2">
+                            <h3 className="text-3xl font-black leading-tight text-foreground">{item.title}</h3>
+                            {item.appVersion && (
+                                <span className="inline-flex items-center gap-1.5 mt-2 px-4 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-black">
+                                    <Sparkles className="h-3 w-3" />
+                                    إصدار {item.appVersion}
+                                </span>
+                            )}
+                        </div>
+                        <Button size="icon" variant="ghost" className="h-12 w-12 bg-destructive/10 text-destructive rounded-2xl hover:bg-destructive/20" onClick={() => removeFromFavorites(item.id)}>
+                            <Trash2 className="h-6 w-6" />
+                        </Button>
+                    </div>
+                    {item.screenshots && item.screenshots.length > 0 && (
+                        <div className="mb-8 -mx-4">
+                            <div className="overflow-x-auto no-scrollbar pb-2" dir="rtl">
+                                <div className="flex gap-4 px-4">
+                                    {item.screenshots.map((shot, idx) => (
+                                        <div key={idx} className="relative h-[280px] w-[160px] rounded-[2rem] overflow-hidden bg-muted shrink-0 shadow-lg cursor-zoom-in" onClick={() => setSelectedImage(shot)}>
+                                            <Image src={shot} alt="" fill className="object-cover" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <Button 
+                        className="w-full h-16 rounded-[2.2rem] font-black text-xl shadow-lg bg-primary"
+                        onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
+                    >
+                        <Download className="ml-3 h-6 w-6" />
+                        تحميل
+                    </Button>
+                </div>
+            </Card>
+        );
+    }
+
+    if (style === 'style6') {
+        return (
+            <div key={item.id} className="flex flex-col gap-5 animate-in fade-in duration-500">
+                <div className="text-center px-4 relative">
+                    <h3 className="font-black text-2xl tracking-tight mb-1">{item.title}</h3>
+                    <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
+                </div>
+                <div className="relative aspect-video w-full rounded-[3rem] overflow-hidden shadow-2xl group cursor-pointer border-4 border-white/10" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                    {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
+                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center backdrop-blur-[2px]">
+                        <ExternalLink className="text-white h-14 w-14" />
+                    </div>
+                </div>
+                <Button className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>زيارة الموقع الآن</Button>
+            </div>
+        );
+    }
+
+    if (style === 'style2') {
+        return (
+            <div key={item.id} className="flex flex-col gap-6 animate-in fade-in duration-500">
+                <div className="text-center px-4 relative">
+                    <h3 className="font-black text-2xl text-foreground tracking-tight">{item.title}</h3>
+                    <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
+                </div>
+                <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                    {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="w-full h-auto" />}
+                </div>
+                <Button className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                    <Download className="ml-3 h-6 w-6" />
+                    تحميل
+                </Button>
+            </div>
+        );
+    }
+
+    // Default Style 1 (Grid)
+    return (
+        <div key={item.id} className="flex flex-col gap-4 animate-in fade-in duration-500">
+            <h3 className="font-black text-base text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
+            <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
+                <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
+            </div>
+            <Button className="w-full rounded-[1.5rem] h-14 font-black shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                <Download className="ml-2 h-5 w-5" />
+                تحميل
+            </Button>
+        </div>
+    );
   };
 
   return (
@@ -155,17 +209,8 @@ export default function FavoritesPage() {
       <Header title="المفضلة" />
       <main className="flex-1 px-6 pt-4 pb-24">
         {favorites.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-            {favorites.map((item) => {
-              const isLocked = item.visibility === 'pro' && !isPro && !isAdmin;
-              if (item.prompt) {
-                return <PromptItemCard key={item.id} item={item} onRemove={removeFromFavorites} onImageClick={setSelectedImage} isLocked={isLocked} />;
-              }
-              if (item.videoUrl) {
-                return <VideoItemCard key={item.id} item={item} onRemove={removeFromFavorites} isLocked={isLocked} />;
-              }
-              return <DownloadItemCard key={item.id} item={item} onRemove={removeFromFavorites} onImageClick={setSelectedImage} isLocked={isLocked} />;
-            })}
+          <div className="space-y-12 mt-6">
+            {favorites.map((item) => renderFavoriteItem(item))}
           </div>
         ) : (
           <div className="text-center text-muted-foreground p-12 mt-10 bg-card rounded-[2.5rem] shadow-sm">
@@ -178,6 +223,9 @@ export default function FavoritesPage() {
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none overflow-hidden rounded-3xl">
           <div className="sr-only">معاينة الصورة</div>
+          <button className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full transition-colors z-50 backdrop-blur-md" onClick={() => setSelectedImage(null)}>
+            <X className="h-6 w-6" />
+          </button>
           {selectedImage && (
             <div className="relative w-full h-[85vh]">
                 <Image src={selectedImage} alt="Preview" fill className="object-contain" />

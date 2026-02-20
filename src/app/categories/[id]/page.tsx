@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
+import type { Category as CategoryType, ContentItem, DisplayStyle } from '@/lib/definitions';
 import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -19,6 +19,8 @@ import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
+
+type FavoriteItem = WithId<ContentItem> & { displayStyle?: DisplayStyle };
 
 const WalkingEngineer = () => (
     <div className="relative flex flex-col items-center justify-center py-10">
@@ -42,7 +44,7 @@ export default function CategoryPage() {
   
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
+  const [favorites, setFavorites] = useLocalStorage<FavoriteItem[]>('favorites', []);
   const { toast } = useToast();
   const { isPro, isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
@@ -67,7 +69,7 @@ export default function CategoryPage() {
       setFavorites(prev => prev.filter(fav => fav.id !== item.id));
       toast({ title: "تمت الإزالة من المفضلة" });
     } else {
-      setFavorites(prev => [...prev, item]);
+      setFavorites(prev => [...prev, { ...item, displayStyle: category?.displayStyle || 'style1' }]);
       toast({ title: "تمت الإضافة إلى المفضلة" });
     }
   };
@@ -145,7 +147,7 @@ export default function CategoryPage() {
                             const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
                             return (
                                 <div key={sub.id} onClick={() => handleSubCategoryClick(sub)}>
-                                    <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg aspect-square text-center active:scale-95 group overflow-hidden">
+                                    <div className="relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg aspect-square text-center active:scale-95 group overflow-hidden border-4 border-white/5">
                                         <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
                                         {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
                                         {sub.fileTypes && (
@@ -169,7 +171,7 @@ export default function CategoryPage() {
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
-                                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-muted group shadow-2xl border-4 border-white/5">
+                                    <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5">
                                         {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
                                         <button 
                                             className="absolute top-3 left-3 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg active:scale-90"
@@ -180,7 +182,7 @@ export default function CategoryPage() {
                                     </div>
                                     <div className="space-y-2 px-2">
                                         <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">نص البرومبت:</p>
-                                        <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted/50 border-none rounded-2xl text-xs font-mono p-4" dir="ltr" />
+                                        <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted/50 border-none rounded-2xl text-xs font-mono p-4 shadow-inner" dir="ltr" />
                                     </div>
                                     <div className="flex gap-3 px-2">
                                         <Button 
@@ -282,7 +284,7 @@ export default function CategoryPage() {
                                             onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
                                         >
                                             <Download className="ml-3 h-7 w-7 group-hover/btn:translate-y-1 transition-transform relative z-10" />
-                                            <span className="relative z-10">تحميل التطبيق</span>
+                                            <span className="relative z-10">تحميل</span>
                                             <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
                                         </Button>
                                     </div>
