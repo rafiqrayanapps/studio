@@ -155,23 +155,7 @@ const AudioPlayerRow = ({
             />
             
             <div className="flex items-center gap-4">
-                {/* Right Side: Music Icon */}
-                <div className={cn(
-                    "h-14 w-14 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner border border-primary/5",
-                    loadError && "bg-destructive/10 text-destructive"
-                )}>
-                    {loadError ? <AlertCircle className="h-7 w-7" /> : <Music className={cn("h-7 w-7 transition-transform", isPlaying && "animate-bounce")} />}
-                </div>
-
-                {/* Center: Title & Time */}
-                <div className="flex-1 min-w-0">
-                    <p className={cn("font-black text-lg truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
-                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                        {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {duration ? `${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}` : '--:--'}
-                    </p>
-                </div>
-
-                {/* Left Side: Play Control */}
+                {/* Left Side: Play Control (to match image layout in RTL) */}
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={togglePlay}
@@ -184,10 +168,34 @@ const AudioPlayerRow = ({
                         {isPlaying ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 ml-1 fill-current" />}
                     </button>
                 </div>
+
+                {/* Center: Title & Time */}
+                <div className="flex-1 min-w-0 text-center">
+                    <p className={cn("font-black text-lg truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
+                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                        {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {duration ? `${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}` : '--:--'}
+                    </p>
+                </div>
+
+                {/* Right Side: Music Icon */}
+                <div className={cn(
+                    "h-14 w-14 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner border border-primary/5",
+                    loadError && "bg-destructive/10 text-destructive"
+                )}>
+                    {loadError ? <AlertCircle className="h-7 w-7" /> : <Music className={cn("h-7 w-7 transition-transform", isPlaying && "animate-bounce")} />}
+                </div>
             </div>
 
             {/* Bottom Row: Slider & Remove */}
             <div className="flex items-center gap-4 pt-1">
+                <button 
+                    onClick={onRemove}
+                    className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center text-destructive transition-all active:scale-90"
+                    title="إزالة من المفضلة"
+                >
+                    <Trash2 className="h-4 w-4" />
+                </button>
+
                 <div className="flex-1 px-1">
                     <Slider 
                         value={[currentTime]} 
@@ -198,14 +206,6 @@ const AudioPlayerRow = ({
                         disabled={loadError}
                     />
                 </div>
-                
-                <button 
-                    onClick={onRemove}
-                    className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center text-destructive transition-all active:scale-90"
-                    title="إزالة من المفضلة"
-                >
-                    <Trash2 className="h-4 w-4" />
-                </button>
             </div>
         </div>
     );
@@ -257,7 +257,7 @@ export default function FavoritesPage() {
                     className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
                     onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
                 >
-                    {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-auto group-hover:scale-105 transition-transform duration-500" />}
+                    {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto group-hover:scale-105 transition-transform duration-500" />}
                     <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
                     <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
                         <Eye className="text-white h-12 w-12" />
@@ -380,7 +380,7 @@ export default function FavoritesPage() {
                     <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
                 </div>
                 <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="w-full h-auto" />}
+                    {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto" />}
                 </div>
                 <Button className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                     <Download className="ml-3 h-6 w-6" />

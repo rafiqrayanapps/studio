@@ -186,24 +186,7 @@ const AudioPlayerRow = ({
             />
             
             <div className="flex items-center gap-4">
-                {/* Right Side: Music Icon */}
-                <div className={cn(
-                    "h-14 w-14 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner border border-primary/5",
-                    loadError && "bg-destructive/10 text-destructive"
-                )}>
-                    {loadError ? <AlertCircle className="h-7 w-7" /> : <Music className={cn("h-7 w-7 transition-transform duration-500", isPlaying && "animate-bounce")} />}
-                    {item.isNew && !loadError && <div className="absolute top-1 right-1 bg-green-500 w-3 h-3 rounded-full border-2 border-white shadow-sm" />}
-                </div>
-
-                {/* Center: Title & Time */}
-                <div className="flex-1 min-w-0">
-                    <p className={cn("font-black text-lg truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
-                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                        {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {duration ? `${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}` : '--:--'}
-                    </p>
-                </div>
-
-                {/* Left Side: Main Controls */}
+                {/* Right Side: Play Control (to match image layout in RTL) */}
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={togglePlay}
@@ -216,38 +199,28 @@ const AudioPlayerRow = ({
                         {isPlaying ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 ml-1 fill-current" />}
                     </button>
                 </div>
+
+                {/* Center: Title & Time */}
+                <div className="flex-1 min-w-0 text-center">
+                    <p className={cn("font-black text-lg truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
+                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                        {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {duration ? `${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}` : '--:--'}
+                    </p>
+                </div>
+
+                {/* Left Side: Music Icon */}
+                <div className={cn(
+                    "h-14 w-14 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner border border-primary/5",
+                    loadError && "bg-destructive/10 text-destructive"
+                )}>
+                    {loadError ? <AlertCircle className="h-7 w-7" /> : <Music className={cn("h-7 w-7 transition-transform duration-500", isPlaying && "animate-bounce")} />}
+                    {item.isNew && !loadError && <div className="absolute top-1 right-1 bg-green-500 w-3 h-3 rounded-full border-2 border-white shadow-sm" />}
+                </div>
             </div>
 
             {/* Bottom Row: Progress Bar & Secondary Actions */}
             <div className="flex items-center gap-4 pt-1">
-                <div className="flex-1 px-1">
-                    <Slider 
-                        value={[currentTime]} 
-                        max={duration || 100} 
-                        step={0.1}
-                        onValueChange={handleSliderChange}
-                        className="cursor-pointer"
-                        disabled={loadError}
-                    />
-                </div>
-                
-                <div className="flex items-center gap-1.5">
-                    {item.downloadUrl && (
-                        <button 
-                            onClick={() => onAction(() => window.open(item.downloadUrl, '_blank'))}
-                            className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-primary border border-primary/5 hover:bg-primary/10 active:scale-90 transition-all"
-                            title="تحميل"
-                        >
-                            <Download className="h-4 w-4" />
-                        </button>
-                    )}
-                    <button 
-                        onClick={onToggleFavorite}
-                        className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center transition-all active:scale-90"
-                        title="المفضلة"
-                    >
-                        <Heart className={cn("h-4 w-4 text-muted-foreground", isFavorite && "text-primary fill-primary scale-110")} />
-                    </button>
+                <div className="flex items-center gap-1.5 shrink-0">
                     {(isAdminView && onDelete) && (
                         <button 
                             onClick={(e) => { e.stopPropagation(); if(confirm("حذف؟")) onDelete(); }}
@@ -257,6 +230,33 @@ const AudioPlayerRow = ({
                             <Trash2 className="h-4 w-4" />
                         </button>
                     )}
+                    <button 
+                        onClick={onToggleFavorite}
+                        className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center transition-all active:scale-90"
+                        title="المفضلة"
+                    >
+                        <Heart className={cn("h-4 w-4 text-muted-foreground", isFavorite && "text-primary fill-primary scale-110")} />
+                    </button>
+                    {item.downloadUrl && (
+                        <button 
+                            onClick={() => onAction(() => window.open(item.downloadUrl, '_blank'))}
+                            className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-primary border border-primary/5 hover:bg-primary/10 active:scale-90 transition-all"
+                            title="تحميل"
+                        >
+                            <Download className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+
+                <div className="flex-1 px-1">
+                    <Slider 
+                        value={[currentTime]} 
+                        max={duration || 100} 
+                        step={0.1}
+                        onValueChange={handleSliderChange}
+                        className="cursor-pointer"
+                        disabled={loadError}
+                    />
                 </div>
             </div>
         </div>
@@ -299,8 +299,6 @@ export default function CategoryPage() {
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
-      // Using orderBy here matches the background pre-fetch query, 
-      // making it more likely to hit the local cache instantly.
       return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
   }, [firestore, id]);
   const { data: rawItems, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
@@ -322,7 +320,7 @@ export default function CategoryPage() {
     if (!rawItems) return [];
     const viewableItems = (isAdmin || isEditor) ? rawItems : rawItems.filter(item => !item.status || item.status === 'approved');
     const searchedItems = viewableItems.filter((item) => (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
-    return searchedItems; // Order is already handled by Firestore query
+    return searchedItems;
   }, [rawItems, searchTerm, isAdmin, isEditor]);
 
   const handleAction = (item: WithId<ContentItem>, action: () => void) => {
@@ -352,8 +350,6 @@ export default function CategoryPage() {
 
   const isMaintenanceOn = category?.isUnderMaintenance && !isAdmin && !isEditor;
   
-  // Note: Firestore's offline persistence means isLoading might be true while 
-  // data is already present from cache. We prioritize showing data if it exists.
   const showSkeleton = (isCategoryLoading || areItemsLoading || isUserLoading) && !isMaintenanceOn && (!rawItems || rawItems.length === 0);
 
   const renderContent = () => {
@@ -392,52 +388,24 @@ export default function CategoryPage() {
         <div className="space-y-10">
             {currentSubCategories.length > 0 && (
                 <div className="space-y-4">
-                    {displayStyle === 'style7' ? (
-                        <ScrollArea className="w-full">
-                            <div className="flex items-center gap-3 pb-4">
-                                {currentSubCategories.map(sub => {
-                                    const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
-                                    return (
-                                        <button 
-                                            key={sub.id} 
-                                            onClick={() => handleSubCategoryClick(sub)}
-                                            className="px-6 py-3 rounded-full bg-primary/10 text-primary font-black whitespace-nowrap border border-primary/10 hover:bg-primary hover:text-white transition-all active:scale-95 relative"
-                                        >
-                                            {sub.name}
-                                            {isLocked && <Crown className="absolute -top-1 -right-1 h-4 w-4 text-yellow-500 fill-yellow-500" />}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <ScrollBar orientation="horizontal" className="hidden" />
-                        </ScrollArea>
-                    ) : (
-                        <>
-                            <div className="flex items-center gap-2 px-1 opacity-60">
-                                <LayoutGrid className="h-4 w-4 text-primary" />
-                                <h4 className="text-xs font-black uppercase tracking-widest">أقسام فرعية</h4>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                {currentSubCategories.map(sub => {
-                                    const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
-                                    return (
-                                        <div key={sub.id} onClick={() => handleSubCategoryClick(sub)}>
-                                            <div className="relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg aspect-square text-center active:scale-95 group overflow-hidden border-4 border-white/5">
-                                                <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
-                                                {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
-                                                {sub.fileTypes && (
-                                                    <div className="absolute top-3.5 right-3.5 bg-black/20 text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm z-20">
-                                                        {sub.fileTypes}
-                                                    </div>
-                                                )}
-                                                <p className="font-bold text-lg relative z-10 leading-tight">{sub.name}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </>
-                    )}
+                    <ScrollArea className="w-full" dir="rtl">
+                        <div className="flex flex-row items-center gap-3 pb-4">
+                            {currentSubCategories.map(sub => {
+                                const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
+                                return (
+                                    <button 
+                                        key={sub.id} 
+                                        onClick={() => handleSubCategoryClick(sub)}
+                                        className="px-8 py-3 rounded-full bg-primary/10 text-primary font-black whitespace-nowrap border border-primary/10 hover:bg-primary hover:text-white transition-all active:scale-95 relative shadow-sm"
+                                    >
+                                        {sub.name}
+                                        {isLocked && <Crown className="absolute -top-1 -right-1 h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <ScrollBar orientation="horizontal" className="hidden" />
+                    </ScrollArea>
                 </div>
             )}
 
@@ -469,7 +437,7 @@ export default function CategoryPage() {
                                         className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
                                         onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
                                     >
-                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-auto group-hover:scale-105 transition-transform duration-500" />}
+                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto group-hover:scale-105 transition-transform duration-500" />}
                                         <button 
                                             className="absolute top-3 left-3 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg active:scale-90"
                                             onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
@@ -636,7 +604,7 @@ export default function CategoryPage() {
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1 uppercase tracking-tighter">New Update</span>}
                                     </div>
                                     <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.1)] group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="w-full h-auto group-hover:scale-105 transition-transform duration-1000" />}
+                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto group-hover:scale-105 transition-transform duration-1000" />}
                                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                             <Eye className="text-white h-12 w-12" />
                                         </div>
