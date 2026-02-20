@@ -1,20 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
 import type { ContentItem, DisplayStyle } from '@/lib/definitions';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Download, Copy, Trash2, Heart, PlayCircle, Lock, Crown, Eye, ExternalLink, Sparkles, X } from 'lucide-react';
+import { Download, Copy, Trash2, Heart, PlayCircle, Lock, Crown, Eye, ExternalLink, Sparkles, X, Music, Play, Pause } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { WithId } from '@/firebase';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn, getDirectDriveLink } from '@/lib/utils';
+import { Slider } from '@/components/ui/slider';
 
 type FavoriteItem = WithId<ContentItem> & { displayStyle?: DisplayStyle };
 
@@ -28,9 +29,121 @@ const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
   </Button>
 );
 
+const AudioPlayerRow = ({ 
+    item, 
+    onRemove,
+    activeId,
+    onPlay
+}: { 
+    item: FavoriteItem, 
+    onRemove: () => void,
+    activeId: string | null,
+    onPlay: (id: string | null) => void
+}) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const { toast } = useToast();
+
+    const directAudioUrl = useMemo(() => getDirectDriveLink(item.audioUrl), [item.audioUrl]);
+
+    useEffect(() => {
+        if (activeId !== item.id && isPlaying) {
+            audioRef.current?.pause();
+            setIsPlaying(false);
+        }
+    }, [activeId, item.id, isPlaying]);
+
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        const setAudioData = () => setDuration(audio.duration);
+        const setAudioTime = () => setCurrentTime(audio.currentTime);
+        const onEnded = () => {
+            setIsPlaying(false);
+            if (activeId === item.id) onPlay(null);
+        };
+
+        audio.addEventListener('loadeddata', setAudioData);
+        audio.addEventListener('timeupdate', setAudioTime);
+        audio.addEventListener('ended', onEnded);
+
+        return () => {
+            audio.removeEventListener('loadeddata', setAudioData);
+            audio.removeEventListener('timeupdate', setAudioTime);
+            audio.removeEventListener('ended', onEnded);
+        };
+    }, [activeId, item.id, onPlay]);
+
+    const togglePlay = async () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+            onPlay(null);
+        } else {
+            try {
+                await audioRef.current.play();
+                setIsPlaying(true);
+                onPlay(item.id);
+            } catch (err) {
+                toast({ title: "فشل تشغيل الملف", variant: "destructive" });
+            }
+        }
+    };
+
+    const handleSliderChange = (value: number[]) => {
+        if (audioRef.current) {
+            audioRef.current.currentTime = value[0];
+            setCurrentTime(value[0]);
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <audio ref={audioRef} src={directAudioUrl} preload="metadata" crossOrigin="anonymous" />
+            
+            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden">
+                <Music className={cn("h-6 w-6 transition-transform", isPlaying && "animate-bounce")} />
+            </div>
+
+            <div className="flex-1 min-w-0 space-y-2">
+                <p className="font-black text-sm truncate px-1">{item.title}</p>
+                <div className="flex items-center gap-3">
+                    <Slider 
+                        value={[currentTime]} 
+                        max={duration || 100} 
+                        step={0.1}
+                        onValueChange={handleSliderChange}
+                        className="flex-1 cursor-pointer"
+                    />
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+                <button 
+                    onClick={togglePlay}
+                    className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg active:scale-90 transition-all"
+                >
+                    {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+                </button>
+                <button 
+                    onClick={onRemove}
+                    className="h-10 w-10 rounded-full flex items-center justify-center text-destructive transition-all active:scale-90"
+                >
+                    <Trash2 className="h-5 w-5" />
+                </button>
+            </div>
+        </div>
+    );
+};
+
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useLocalStorage<FavoriteItem[]>('favorites', []);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
   const { toast } = useToast();
   const { isPro, isAdmin, isEditor } = useUserProfile();
   const router = useRouter();
@@ -52,6 +165,18 @@ export default function FavoritesPage() {
   const renderFavoriteItem = (item: FavoriteItem) => {
     const style = item.displayStyle || 'style1';
     const isLocked = item.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
+
+    if (style === 'style7') {
+        return (
+            <AudioPlayerRow 
+                key={item.id} 
+                item={item} 
+                onRemove={() => removeFromFavorites(item.id)}
+                activeId={activeAudioId}
+                onPlay={setActiveAudioId}
+            />
+        );
+    }
 
     if (style === 'style3') {
         return (

@@ -43,8 +43,9 @@ const AudioPlayerRow = ({
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const { toast } = useToast();
 
-    // Automatic link conversion
+    // Automatic link conversion for Google Drive
     const directAudioUrl = useMemo(() => getDirectDriveLink(item.audioUrl), [item.audioUrl]);
 
     // Handle global playing state
@@ -65,28 +66,45 @@ const AudioPlayerRow = ({
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
         };
+        const onError = () => {
+            console.error("Audio Load Error:", item.title);
+            setIsPlaying(false);
+            if (activeId === item.id) onPlay(null);
+        };
 
         audio.addEventListener('loadeddata', setAudioData);
         audio.addEventListener('timeupdate', setAudioTime);
         audio.addEventListener('ended', onEnded);
+        audio.addEventListener('error', onError);
 
         return () => {
             audio.removeEventListener('loadeddata', setAudioData);
             audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', onEnded);
+            audio.removeEventListener('error', onError);
         };
-    }, [activeId, item.id, onPlay]);
+    }, [activeId, item.id, onPlay, item.title]);
 
-    const togglePlay = () => {
+    const togglePlay = async () => {
         if (!audioRef.current) return;
+        
         if (isPlaying) {
             audioRef.current.pause();
             setIsPlaying(false);
             onPlay(null);
         } else {
-            audioRef.current.play();
-            setIsPlaying(true);
-            onPlay(item.id);
+            try {
+                await audioRef.current.play();
+                setIsPlaying(true);
+                onPlay(item.id);
+            } catch (err) {
+                console.error("Playback failed:", err);
+                toast({ 
+                    title: "فشل تشغيل الملف الصوتي", 
+                    description: "تأكد من صحة الرابط أو جودة الاتصال.",
+                    variant: "destructive" 
+                });
+            }
         }
     };
 
@@ -98,8 +116,13 @@ const AudioPlayerRow = ({
     };
 
     return (
-        <div className="flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2rem] border border-white/10 group animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <audio ref={audioRef} src={directAudioUrl} preload="metadata" />
+        <div className="flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <audio 
+                ref={audioRef} 
+                src={directAudioUrl} 
+                preload="metadata" 
+                crossOrigin="anonymous"
+            />
             
             <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner">
                 <Music className={cn("h-6 w-6 transition-transform duration-500", isPlaying && "animate-bounce")} />

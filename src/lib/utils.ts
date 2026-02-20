@@ -6,14 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Converts a standard Google Drive share link into a direct download link.
- * Works for formats: /file/d/ID/view and ?id=ID
+ * Converts a standard Google Drive share link into a direct streaming/download link.
+ * Supports various formats: /file/d/ID/view, ?id=ID, open?id=ID
  */
 export function getDirectDriveLink(url: string | undefined): string {
   if (!url) return '';
   
-  // Regular expression to match Google Drive file IDs
-  const driveRegex = /\/file\/d\/([^\/]+)\//;
+  // Regular expressions to match Google Drive file IDs from different formats
+  const driveRegex = /\/file\/d\/([^\/]+)/;
   const driveIdMatch = url.match(driveRegex);
   
   const idParamRegex = /[?&]id=([^&]+)/;
@@ -21,8 +21,9 @@ export function getDirectDriveLink(url: string | undefined): string {
 
   const fileId = driveIdMatch?.[1] || idParamMatch?.[1];
 
-  if (fileId && url.includes('drive.google.com')) {
-    return `https://drive.google.com/uc?export=download&id=${fileId}`;
+  if (fileId && (url.includes('drive.google.com') || url.includes('docs.google.com'))) {
+    // Using docs.google.com/uc is more reliable for streaming in <audio> tags
+    return `https://docs.google.com/uc?export=open&id=${fileId}`;
   }
   
   return url;
