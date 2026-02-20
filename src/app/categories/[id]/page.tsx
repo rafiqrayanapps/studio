@@ -167,9 +167,23 @@ export default function CategoryPage() {
                                             <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">البرومبت:</p>
                                             <Textarea readOnly value={item.prompt || ''} className="h-24 bg-muted/50 border-none rounded-2xl text-xs font-mono" dir="ltr" />
                                         </div>
-                                        <Button className="w-full h-14 rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ"}); } })}>
-                                            <Copy className="ml-2 h-5 w-5" /> نسخ البرومبت
-                                        </Button>
+                                        <div className="flex gap-3">
+                                            <Button 
+                                                className="flex-1 h-14 rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" 
+                                                onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ"}); } })}
+                                            >
+                                                <Copy className="ml-2 h-5 w-5" /> نسخ البرومبت
+                                            </Button>
+                                            {item.downloadUrl && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="h-14 w-14 rounded-2xl border-2 hover:bg-primary/10 transition-all border-primary/20"
+                                                    onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}
+                                                >
+                                                    <Download className="h-6 w-6 text-primary" />
+                                                </Button>
+                                            )}
+                                        </div>
                                     </CardContent>
                                 </Card>
                             ))}
@@ -207,7 +221,7 @@ export default function CategoryPage() {
                                                 {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="text-2xl font-black truncate">{item.title}</h3>
+                                                <h3 className="text-2xl font-black">{item.title}</h3>
                                                 {item.appVersion && (
                                                     <span className="inline-block mt-1 px-3 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">
                                                         إصدار: {item.appVersion}
@@ -221,9 +235,11 @@ export default function CategoryPage() {
 
                                         {item.instructions && (
                                             <div className="mb-6">
-                                                <p className="text-xs text-muted-foreground font-medium leading-relaxed bg-muted/30 p-4 rounded-2xl border border-dashed">
-                                                    {item.instructions}
-                                                </p>
+                                                <div className="p-5 rounded-3xl bg-primary/5 border border-primary/10">
+                                                    <p className="text-sm text-foreground/80 font-medium leading-relaxed">
+                                                        {item.instructions}
+                                                    </p>
+                                                </div>
                                             </div>
                                         )}
 
@@ -234,10 +250,10 @@ export default function CategoryPage() {
                                                         {item.screenshots.map((shot, idx) => (
                                                             <div 
                                                                 key={idx} 
-                                                                className="relative h-64 w-36 rounded-2xl overflow-hidden bg-muted shrink-0 shadow-md cursor-zoom-in"
+                                                                className="relative h-64 w-36 rounded-2xl overflow-hidden bg-muted shrink-0 shadow-md cursor-zoom-in group"
                                                                 onClick={() => setSelectedImage(shot)}
                                                             >
-                                                                <Image src={shot} alt="" fill className="object-cover" />
+                                                                <Image src={shot} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                                                             </div>
                                                         ))}
                                                     </div>
