@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, DisplayStyle } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, Trash2, Settings, Wrench, Cog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -263,17 +263,44 @@ const AudioPlayerRow = ({
     );
 };
 
-const WalkingEngineer = () => (
-    <div className="relative flex flex-col items-center justify-center py-10">
-        <div className="animate-walk mb-4">
-            <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+const MaintenanceArt = () => (
+    <div className="relative w-full max-w-[280px] h-[280px] mx-auto mb-8">
+        {/* Background Rotating Gears */}
+        <div className="absolute top-4 right-4 text-primary/20 animate-gear-rotate">
+            <Cog size={120} strokeWidth={1} />
+        </div>
+        <div className="absolute bottom-10 left-4 text-primary/10 animate-gear-rotate-reverse">
+            <Settings size={80} strokeWidth={1} />
+        </div>
+
+        {/* Floating Tool Icons */}
+        <div className="absolute top-10 left-10 text-primary/40 animate-floating" style={{ animationDelay: '0.5s' }}>
+            <Wrench size={32} />
+        </div>
+        <div className="absolute bottom-20 right-10 text-primary/40 animate-floating" style={{ animationDelay: '1.2s' }}>
+            <Hammer size={32} />
+        </div>
+
+        {/* Main Character Illustration (SVG) */}
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+            <svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
+                {/* Person Body */}
                 <path d="M12 4C13.1046 4 14 3.10457 14 2C14 0.89543 13.1046 0 12 0C10.8954 0 10 0.89543 10 2C10 3.10457 10.8954 4 12 4Z" fill="currentColor" className="text-primary"/>
-                <path d="M15 5H9C7.34315 5 6 6.34315 6 8V14C6 14.5523 6.44772 15 7 15H8V21C8 22.6569 9.34315 24 11 24H13C14.6569 24 16 22.6569 16 21V15H17C17.5523 15 18 14.5523 18 14V8C18 6.34315 16.6569 5 15 5Z" fill="currentColor" className="text-primary opacity-80"/>
-                <rect x="10" y="6" width="4" height="2" fill="white" className="opacity-20"/>
-                <path d="M19 10L21 12M21 12L23 10M21 12L20 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary"/>
+                <path d="M15 5H9C7.34315 5 6 6.34315 6 8V14C6 14.5523 6.44772 15 7 15H8V21C8 22.6569 9.34315 24 11 24H13C14.6569 24 16 22.6569 16 21V15H17C17.5523 15 18 14.5523 18 14V8C18 6.34315 16.6569 5 15 5Z" fill="currentColor" className="text-primary opacity-90"/>
+                
+                {/* Animated Arm with Wrench */}
+                <g className="animate-wrench">
+                    <path d="M18 10L21 12M21 12L23 10M21 12L20 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary"/>
+                    <circle cx="21" cy="12" r="1.5" fill="white" className="opacity-40" />
+                </g>
+
+                {/* Chest Detail */}
+                <rect x="10" y="7" width="4" height="3" rx="1" fill="white" className="opacity-20"/>
             </svg>
         </div>
-        <div className="w-16 h-2 bg-black/10 rounded-full blur-md animate-float-shadow" />
+
+        {/* Floor Shadow */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-32 h-3 bg-black/5 rounded-[100%] blur-md animate-float-shadow" />
     </div>
 );
 
@@ -355,21 +382,38 @@ export default function CategoryPage() {
   const renderContent = () => {
     if (isMaintenanceOn) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-10 bg-card/40 backdrop-blur-3xl rounded-[3.5rem] mt-8 shadow-2xl border border-white/20 min-h-[500px] animate-in fade-in zoom-in duration-700">
-            <WalkingEngineer />
-            <div className="space-y-4 mt-4">
-                <h3 className="font-black text-3xl text-foreground tracking-tight">نطور من أجلك</h3>
+         <div className="flex flex-col items-center justify-center text-center p-8 sm:p-12 bg-card/40 backdrop-blur-3xl rounded-[3.5rem] mt-8 shadow-2xl border border-white/20 min-h-[550px] animate-in fade-in zoom-in duration-700 relative overflow-hidden">
+            {/* Background Decorative Sparkles */}
+            <div className="absolute top-10 left-10 text-primary/20 animate-pulse"><Sparkles size={40} /></div>
+            <div className="absolute bottom-20 right-10 text-primary/20 animate-pulse" style={{ animationDelay: '1s' }}><Sparkles size={24} /></div>
+
+            <MaintenanceArt />
+
+            <div className="space-y-5 relative z-20">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
+                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Live Updates</span>
+                </div>
+                <h3 className="font-black text-4xl text-foreground tracking-tight leading-tight">نطور من أجلك</h3>
                 <p className="text-muted-foreground text-base max-w-xs mx-auto leading-relaxed font-bold opacity-80">
                     المهندس يعمل الآن على إضافة لمسات إبداعية لهذا القسم. سنكون جاهزين قريباً جداً!
                 </p>
             </div>
-            <div className="flex items-center gap-2 mt-10 py-2.5 px-5 bg-primary/10 rounded-full border border-primary/20">
-                <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-                <span className="text-[11px] font-black text-primary uppercase tracking-widest">تحديثات جارية الآن</span>
+
+            <div className="flex flex-col items-center gap-6 mt-12 w-full max-w-xs relative z-20">
+                <Button 
+                    variant="default" 
+                    onClick={() => router.back()} 
+                    className="w-full rounded-2xl h-16 font-black text-xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all group"
+                >
+                    <ArrowLeft className="ml-3 h-7 w-7 group-hover:-translate-x-1 transition-transform" /> العودة للرئيسية
+                </Button>
+                
+                <div className="flex items-center gap-2 py-2 px-5 bg-primary/5 rounded-full border border-primary/10">
+                    <Settings className="h-3 w-3 text-primary animate-spin" />
+                    <span className="text-[9px] font-black text-primary/60 uppercase tracking-widest">الموقع تحت التطوير المستمر</span>
+                </div>
             </div>
-            <Button variant="default" onClick={() => router.back()} className="mt-12 rounded-2xl px-12 h-14 font-black text-lg shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">
-                <ArrowLeft className="ml-2 h-6 w-6" /> العودة للرئيسية
-            </Button>
          </div>
        )
     }

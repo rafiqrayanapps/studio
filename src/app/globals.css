@@ -80,4 +80,36 @@
   .animate-float-shadow {
     animation: float-shadow 1.5s ease-in-out infinite;
   }
+
+  @keyframes gear-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .animate-gear-rotate {
+    animation: gear-rotate 8s linear infinite;
+  }
+
+  .animate-gear-rotate-reverse {
+    animation: gear-rotate 12s linear infinite reverse;
+  }
+
+  @keyframes floating {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+
+  .animate-floating {
+    animation: floating 3s ease-in-out infinite;
+  }
+
+  @keyframes wrench-swing {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(-20deg); }
+  }
+
+  .animate-wrench {
+    animation: wrench-swing 2s ease-in-out infinite;
+    transform-origin: top right;
+  }
 }
