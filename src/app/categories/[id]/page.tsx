@@ -99,14 +99,35 @@ export default function CategoryPage() {
   const renderContent = () => {
     if (isMaintenanceOn) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-4 shadow-2xl border border-primary/10 min-h-[400px] animate-in fade-in zoom-in duration-500">
-            <div className="bg-primary/10 text-primary p-8 rounded-[2rem] mb-6 animate-pulse">
-                <Hammer className="h-16 w-16" />
+         <div className="flex flex-col items-center justify-center text-center p-10 bg-card/40 backdrop-blur-xl rounded-[3.5rem] mt-8 shadow-2xl border border-white/20 min-h-[450px] animate-in fade-in zoom-in slide-in-from-bottom-10 duration-700">
+            <div className="relative mb-8">
+                <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+                <div className="relative bg-primary text-primary-foreground p-8 rounded-[2.5rem] shadow-2xl animate-bounce">
+                    <Hammer className="h-16 w-16" />
+                </div>
             </div>
-            <h3 className="font-black text-2xl mb-2">القسم قيد الصيانة</h3>
-            <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed">نعمل حالياً على تحديث هذا القسم وتوفير محتوى جديد ومميز. سنعود قريباً!</p>
-            <Button variant="outline" onClick={() => router.back()} className="mt-8 rounded-2xl px-8 h-12 font-black border-2 border-primary/20 hover:bg-primary/5 transition-all">
-                <ArrowLeft className="ml-2 h-5 w-5" /> العودة للخلف
+            
+            <div className="space-y-3">
+                <h3 className="font-black text-3xl text-foreground tracking-tight">القسم قيد الصيانة</h3>
+                <p className="text-muted-foreground text-base max-w-xs mx-auto leading-relaxed font-medium">
+                    نحن نعمل بجد لتطوير هذا القسم وتوفير أفضل الأدوات لك. سنعود قريباً بمحتوى مذهل!
+                </p>
+            </div>
+
+            <div className="flex items-center gap-2 mt-8 py-2 px-4 bg-primary/5 rounded-full border border-primary/10">
+                <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                </span>
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest">تحديثات مستمرة</span>
+            </div>
+
+            <Button 
+                variant="default" 
+                onClick={() => router.back()} 
+                className="mt-10 rounded-[1.5rem] px-10 h-14 font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+            >
+                <ArrowLeft className="ml-2 h-6 w-6" /> العودة للرئيسية
             </Button>
          </div>
        )

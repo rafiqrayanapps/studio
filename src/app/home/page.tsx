@@ -94,7 +94,7 @@ function HomeContent() {
                 <div key={cat.id} onClick={() => handleCategoryClick(cat)}>
                   <div className={cn(
                       "relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95 group overflow-hidden",
-                      isUnderMaintenance && "grayscale-[0.5] opacity-90"
+                      // Maintenance sections now look the same as normal ones
                   )}>
                     {/* Background Decorative Element */}
                     <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
@@ -103,7 +103,7 @@ function HomeContent() {
                     
                     {isUnderMaintenance && (
                         <div className="absolute top-3 right-3 bg-yellow-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 z-20 shadow-md">
-                            <Hammer className="h-2 w-2" /> صيانة
+                            <Hammer className="h-2.5 w-2.5" /> صيانة
                         </div>
                     )}
 
