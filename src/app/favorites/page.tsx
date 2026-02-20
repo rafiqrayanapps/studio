@@ -69,7 +69,8 @@ const AudioPlayerRow = ({
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
         };
-        const onError = () => {
+        const onError = (e: any) => {
+            console.error("Audio Load Error (Fav):", item.title, e);
             setLoadError(true);
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
@@ -77,7 +78,7 @@ const AudioPlayerRow = ({
             if (activeId === item.id) {
                 toast({
                     title: "فشل تشغيل الملف الصوتي",
-                    description: "تأكد من أن الرابط مباشر أو متاح للجميع.",
+                    description: "تأكد من أن الرابط مباشر أو متاح للجميع في Google Drive.",
                     variant: "destructive"
                 });
             }
@@ -94,10 +95,11 @@ const AudioPlayerRow = ({
             audio.removeEventListener('ended', onEnded);
             audio.removeEventListener('error', onError);
         };
-    }, [activeId, item.id, onPlay, toast]);
+    }, [activeId, item.id, onPlay, toast, item.title]);
 
     const togglePlay = async () => {
         if (!audioRef.current) return;
+        
         if (isPlaying) {
             audioRef.current.pause();
             setIsPlaying(false);
@@ -109,6 +111,7 @@ const AudioPlayerRow = ({
                 setIsPlaying(true);
                 onPlay(item.id);
             } catch (err) {
+                console.error("Fav Playback start failed:", err);
                 setLoadError(true);
                 toast({ title: "فشل تشغيل الملف", variant: "destructive" });
             }
