@@ -254,7 +254,7 @@ const AudioPlayerRow = ({
                         max={duration || 100} 
                         step={0.1}
                         onValueChange={handleSliderChange}
-                        className="cursor-pointer"
+                        className="cursor-pointer py-2"
                         disabled={loadError}
                     />
                 </div>
@@ -396,10 +396,10 @@ export default function CategoryPage() {
                                     <button 
                                         key={sub.id} 
                                         onClick={() => handleSubCategoryClick(sub)}
-                                        className="px-8 py-3 rounded-full bg-primary/10 text-primary font-black whitespace-nowrap border border-primary/10 hover:bg-primary hover:text-white transition-all active:scale-95 relative shadow-sm"
+                                        className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-black whitespace-nowrap border border-primary/10 hover:bg-primary/90 transition-all active:scale-95 relative shadow-lg"
                                     >
                                         {sub.name}
-                                        {isLocked && <Crown className="absolute -top-1 -right-1 h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                                        {isLocked && <Crown className="absolute -top-1 -right-1 h-4 w-4 text-yellow-300 fill-yellow-300 drop-shadow-md" />}
                                     </button>
                                 );
                             })}
@@ -437,7 +437,7 @@ export default function CategoryPage() {
                                         className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
                                         onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
                                     >
-                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto group-hover:scale-105 transition-transform duration-500" />}
+                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-500" />}
                                         <button 
                                             className="absolute top-3 left-3 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg active:scale-90"
                                             onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
@@ -604,7 +604,7 @@ export default function CategoryPage() {
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1 uppercase tracking-tighter">New Update</span>}
                                     </div>
                                     <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.1)] group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto group-hover:scale-105 transition-transform duration-1000" />}
+                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-1000" />}
                                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                             <Eye className="text-white h-12 w-12" />
                                         </div>

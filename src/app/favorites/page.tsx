@@ -202,7 +202,7 @@ const AudioPlayerRow = ({
                         max={duration || 100} 
                         step={0.1}
                         onValueChange={handleSliderChange}
-                        className="cursor-pointer"
+                        className="cursor-pointer py-2"
                         disabled={loadError}
                     />
                 </div>
@@ -257,7 +257,7 @@ export default function FavoritesPage() {
                     className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
                     onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
                 >
-                    {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto group-hover:scale-105 transition-transform duration-500" />}
+                    {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-500" />}
                     <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
                     <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
                         <Eye className="text-white h-12 w-12" />
@@ -380,7 +380,7 @@ export default function FavoritesPage() {
                     <RemoveButton onRemove={() => removeFromFavorites(item.id)} />
                 </div>
                 <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                    {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto" />}
+                    {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto object-contain" />}
                 </div>
                 <Button className="w-full rounded-[2rem] font-black h-16 text-xl shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                     <Download className="ml-3 h-6 w-6" />
