@@ -4,7 +4,7 @@ import Header from '@/components/layout/Header';
 import { WithId } from '@/firebase';
 import type { Category as CategoryType, ReferralConfig, UserProfile } from '@/lib/definitions';
 import { Input } from '@/components/ui/input';
-import { Search, Crown, Loader2, Sparkles } from 'lucide-react';
+import { Search, Crown, Loader2, Sparkles, Hammer } from 'lucide-react';
 import SubscriptionDialog from '@/components/dialogs/SubscriptionDialog';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -87,14 +87,31 @@ function HomeContent() {
             <div className="grid grid-cols-2 gap-4">
               {mainCategories.map((cat) => {
                 const isLocked = cat.visibility === 'pro' && !isPro && !isAdmin;
+                const isUnderMaintenance = cat.isUnderMaintenance;
+
                 return (
                 <div key={cat.id} onClick={() => handleCategoryClick(cat)}>
-                  <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95 group overflow-hidden">
+                  <div className={cn(
+                      "relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95 group overflow-hidden",
+                      isUnderMaintenance && "grayscale-[0.5] opacity-90"
+                  )}>
                     {/* Background Decorative Element */}
                     <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
                     
-                    {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md" />}
-                    {cat.fileTypes && <div className="absolute top-3.5 right-3.5 bg-black/20 text-[10px] font-bold px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm">{cat.fileTypes}</div>}
+                    {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
+                    
+                    {isUnderMaintenance && (
+                        <div className="absolute top-3 right-3 bg-yellow-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 z-20 shadow-md">
+                            <Hammer className="h-2 w-2" /> صيانة
+                        </div>
+                    )}
+
+                    {cat.fileTypes && !isUnderMaintenance && (
+                        <div className="absolute top-3.5 right-3.5 bg-black/20 text-[10px] font-bold px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm z-20">
+                            {cat.fileTypes}
+                        </div>
+                    )}
+
                     <p className="font-bold text-lg relative z-10 leading-snug">{cat.name}</p>
                   </div>
                 </div>

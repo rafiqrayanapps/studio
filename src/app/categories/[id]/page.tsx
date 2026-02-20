@@ -91,18 +91,21 @@ export default function CategoryPage() {
       }
   };
 
-  const isLoading = isCategoryLoading || areItemsLoading || isUserLoading;
+  // Maintenance Check - Prioritize over normal loading if we have category data
+  const isMaintenanceOn = category?.isUnderMaintenance && !isAdmin && !isEditor;
+
+  const isLoading = (isCategoryLoading || areItemsLoading || isUserLoading) && !isMaintenanceOn;
 
   const renderContent = () => {
-    if (category?.isUnderMaintenance && !isAdmin && !isEditor) {
+    if (isMaintenanceOn) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-4 shadow-2xl border border-primary/10 min-h-[400px]">
+         <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-[3rem] mt-4 shadow-2xl border border-primary/10 min-h-[400px] animate-in fade-in zoom-in duration-500">
             <div className="bg-primary/10 text-primary p-8 rounded-[2rem] mb-6 animate-pulse">
                 <Hammer className="h-16 w-16" />
             </div>
             <h3 className="font-black text-2xl mb-2">القسم قيد الصيانة</h3>
-            <p className="text-muted-foreground text-sm max-w-xs mx-auto">نعمل على تحسين هذا القسم حالياً، سنعود قريباً!</p>
-            <Button variant="outline" onClick={() => router.back()} className="mt-8 rounded-2xl px-8 h-12 font-black border-2">
+            <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed">نعمل حالياً على تحديث هذا القسم وتوفير محتوى جديد ومميز. سنعود قريباً!</p>
+            <Button variant="outline" onClick={() => router.back()} className="mt-8 rounded-2xl px-8 h-12 font-black border-2 border-primary/20 hover:bg-primary/5 transition-all">
                 <ArrowLeft className="ml-2 h-5 w-5" /> العودة للخلف
             </Button>
          </div>
@@ -214,7 +217,7 @@ export default function CategoryPage() {
                     ) : displayStyle === 'style5' ? (
                         <div className="space-y-10">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[3rem] border border-white/20 bg-card/30 backdrop-blur-2xl shadow-2xl">
+                                <Card key={item.id} className="overflow-hidden rounded-[3rem] border border-white/20 bg-primary/5 backdrop-blur-2xl shadow-2xl">
                                     <div className="p-8">
                                         <div className="flex items-center gap-5 mb-6">
                                             <div className="h-20 w-20 rounded-[1.5rem] bg-muted relative overflow-hidden shrink-0 shadow-inner border-2 border-primary/5">
@@ -235,7 +238,7 @@ export default function CategoryPage() {
 
                                         {item.instructions && (
                                             <div className="mb-8">
-                                                <div className="p-5 rounded-3xl bg-background/40 border border-primary/5 backdrop-blur-sm">
+                                                <div className="p-5 rounded-3xl bg-primary/5 border border-primary/5 backdrop-blur-sm">
                                                     <p className="text-sm text-foreground/80 font-medium leading-relaxed">
                                                         {item.instructions}
                                                     </p>
@@ -245,7 +248,7 @@ export default function CategoryPage() {
 
                                         {item.screenshots && item.screenshots.length > 0 && (
                                             <div className="mb-10 -mx-2">
-                                                <div className="overflow-x-auto no-scrollbar pb-2">
+                                                <div className="overflow-x-auto no-scrollbar pb-2" dir="rtl">
                                                     <div className="flex gap-5 px-2">
                                                         {item.screenshots.map((shot, idx) => (
                                                             <div 
@@ -267,6 +270,31 @@ export default function CategoryPage() {
                                         >
                                             <Download className="ml-3 h-6 w-6 group-hover:translate-y-1 transition-transform" />
                                             تحميل التطبيق الآن
+                                        </Button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : displayStyle === 'style6' ? (
+                        <div className="grid grid-cols-1 gap-8">
+                            {typedItems.map(item => (
+                                <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border-none shadow-xl bg-card group">
+                                    <div className="p-6 text-center">
+                                        <h3 className="font-black text-xl mb-1">{item.title}</h3>
+                                        <p className="text-xs text-muted-foreground">{item.instructions || 'تصفح الموقع الإلكتروني.'}</p>
+                                    </div>
+                                    <div className="relative aspect-video bg-muted mx-6 rounded-[2rem] overflow-hidden group shadow-inner">
+                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />}
+                                        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                            <ExternalLink className="text-white h-12 w-12 scale-75 group-hover:scale-100 transition-transform" />
+                                        </div>
+                                    </div>
+                                    <div className="p-6">
+                                        <Button 
+                                            className="w-full rounded-[1.5rem] font-black h-14 shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" 
+                                            onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
+                                        >
+                                            <ExternalLink className="ml-2 h-5 w-5" /> زيارة الموقع
                                         </Button>
                                     </div>
                                 </Card>

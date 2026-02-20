@@ -35,7 +35,9 @@ import {
     PlusCircle,
     Info,
     Layout,
-    ExternalLink
+    ExternalLink,
+    Hammer,
+    Eye
 } from 'lucide-react';
 
 import { 
@@ -342,7 +344,7 @@ export default function AdminDashboard() {
                         <Dialog open={!!editingCategory} onOpenChange={(o) => !o && setEditingCategory(null)}>
                             <DialogTrigger asChild>
                                 <Button size="lg" className="rounded-2xl font-black px-6 shadow-xl shadow-primary/20" onClick={() => {
-                                    catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, parentId: selectedParentId });
+                                    catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: selectedParentId });
                                     setEditingCategory({ id: '' } as any);
                                 }}>
                                     <Plus className="ml-2 h-5 w-5" /> {selectedParentId ? 'قسم فرعي' : 'قسم رئيسي'}
@@ -497,9 +499,12 @@ export default function AdminDashboard() {
                                 <CardHeader className="bg-primary p-8 text-primary-foreground relative overflow-hidden">
                                     <div className="absolute -right-4 -bottom-4 bg-white/10 w-24 h-24 rounded-full blur-2xl" />
                                     <div className="flex justify-between items-start relative z-10">
-                                        <div>
-                                            <CardTitle className="text-xl font-black">{cat.name}</CardTitle>
-                                            <Badge className="mt-2 bg-white/20 text-white border-none font-bold text-[9px]">{cat.displayStyle}</Badge>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <CardTitle className="text-xl font-black">{cat.name}</CardTitle>
+                                                {cat.isUnderMaintenance && <Badge className="bg-yellow-500 text-white border-none font-bold text-[8px] flex gap-1"><Hammer className="h-2 w-2" /> صيانة</Badge>}
+                                            </div>
+                                            <Badge className="bg-white/20 text-white border-none font-bold text-[9px]">{cat.displayStyle}</Badge>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => moveItem(mainCategories, idx, 'up', ['categories'])} disabled={idx === 0}>
@@ -542,7 +547,10 @@ export default function AdminDashboard() {
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === 0} onClick={() => moveItem(subCategories, idx, 'up', ['categories'])}><ChevronUp className="h-3 w-3" /></Button>
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === subCategories.length - 1} onClick={() => moveItem(subCategories, idx, 'down', ['categories'])}><ChevronDown className="h-3 w-3" /></Button>
                                                 </div>
-                                                <span className="font-black text-sm">{sub.name}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-black text-sm">{sub.name}</span>
+                                                    {sub.isUnderMaintenance && <span className="text-[8px] text-yellow-600 font-bold flex items-center gap-1"><Hammer className="h-2 w-2" /> تحت الصيانة</span>}
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setEditingCategory(sub); catForm.reset(sub); }}><Edit2 className="h-3.5 w-3.5" /></Button>
