@@ -14,6 +14,7 @@ import { useCategories } from '@/components/providers/CategoryProvider';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 function HomeContent() {
   const [searchTerm, setSearchTerm] = useState('');
