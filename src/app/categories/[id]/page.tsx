@@ -21,6 +21,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { useUnityAds } from '@/components/ads/UnityAdsProvider';
 
 const AudioPlayerRow = ({ 
     item, 
@@ -79,25 +80,9 @@ const AudioPlayerRow = ({
             if (activeId === item.id) onPlay(null);
         };
         const onError = () => {
-            const error = audio.error;
-            console.error("Audio Load Error Details:", {
-                title: item.title,
-                code: error?.code,
-                message: error?.message,
-                url: directAudioUrl
-            });
-            
             setLoadError(true);
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
-            
-            if (activeId === item.id) {
-                toast({
-                    title: "تنبيه: فشل تشغيل الصوت",
-                    description: "تأكد من أن الملف عام (Public) في Google Drive وأن الرابط صحيح ومباشر.",
-                    variant: "destructive"
-                });
-            }
         };
 
         audio.addEventListener('loadedmetadata', setAudioData);
@@ -111,7 +96,7 @@ const AudioPlayerRow = ({
             audio.removeEventListener('ended', onEnded);
             audio.removeEventListener('error', onError);
         };
-    }, [activeId, item.id, onPlay, item.title, toast, directAudioUrl]);
+    }, [activeId, item.id, onPlay]);
 
     const togglePlay = async () => {
         if (!audioRef.current) return;
@@ -127,13 +112,7 @@ const AudioPlayerRow = ({
                 setIsPlaying(true);
                 onPlay(item.id);
             } catch (err) {
-                console.error("Manual playback failed:", err);
                 setLoadError(true);
-                toast({ 
-                    title: "خطأ في التشغيل", 
-                    description: "تأكد أن الملف عام ومتاح للجميع في Google Drive.",
-                    variant: "destructive" 
-                });
             }
         }
     };
@@ -256,6 +235,7 @@ export default function CategoryPage() {
   const router = useRouter();
   const id = params?.id as string;
   const firestore = useFirestore();
+  const { showInterstitial, config: adsConfig } = useUnityAds();
   
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -264,6 +244,9 @@ export default function CategoryPage() {
   const { isPro, isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
+  
+  // Track interactions for interstitial ads
+  const [interactionCount, setInteractionCount] = useState(0);
 
   const categoryRef = useMemoFirebase(() => id ? doc(firestore!, 'categories', id) : null, [firestore, id]);
   const { data: category, isLoading: isCategoryLoading } = useDoc<CategoryType>(categoryRef);
@@ -288,6 +271,17 @@ export default function CategoryPage() {
       setFavorites(prev => [...prev, { ...item, displayStyle: category?.displayStyle || 'style1' }]);
       toast({ title: "تمت الإضافة إلى المفضلة" });
     }
+    incrementInteraction();
+  };
+
+  const incrementInteraction = () => {
+      const newCount = interactionCount + 1;
+      setInteractionCount(newCount);
+      const frequency = adsConfig?.interstitialFrequency || 6;
+      if (newCount >= frequency) {
+          showInterstitial();
+          setInteractionCount(0);
+      }
   };
 
   const filteredItems = useMemo(() => {
@@ -303,6 +297,7 @@ export default function CategoryPage() {
           setShowUpgradeDialog(true);
       } else {
           action();
+          incrementInteraction();
       }
   };
 
@@ -331,7 +326,7 @@ export default function CategoryPage() {
                     <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Live Updates</span>
                 </div>
-                <h3 className="font-black text-3xl text-foreground tracking-tight leading-tight">نطور من أجلك</h3>
+                <h3 className="font-black text-2xl text-foreground tracking-tight leading-tight">نطور من أجلك</h3>
                 <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed font-bold opacity-80">
                     المهندس يعمل الآن على إضافة لمسات إبداعية لهذا القسم. سنكون جاهزين قريباً جداً!
                 </p>
@@ -413,7 +408,7 @@ export default function CategoryPage() {
                                                     {sub.fileTypes}
                                                 </div>
                                             )}
-                                            <p className="font-bold text-base relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{sub.name}</p>
+                                            <p className="font-bold text-sm relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{sub.name}</p>
                                         </div>
                                     </div>
                                 );
@@ -446,7 +441,10 @@ export default function CategoryPage() {
                                     <h3 className="font-black text-lg text-center text-primary px-4">{item.title}</h3>
                                     <div 
                                         className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
-                                        onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}
+                                        onClick={() => {
+                                            if (item.imageUrl) setSelectedImage(item.imageUrl);
+                                            incrementInteraction();
+                                        }}
                                     >
                                         {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-500" />}
                                         <button 
@@ -552,7 +550,10 @@ export default function CategoryPage() {
                                                             <div 
                                                                 key={idx} 
                                                                 className="relative h-[420px] w-[230px] rounded-[2.5rem] overflow-hidden bg-muted shrink-0 shadow-[0_15px_40px_rgba(0,0,0,0.2)] cursor-zoom-in group/img"
-                                                                onClick={() => setSelectedImage(shot)}
+                                                                onClick={() => {
+                                                                    setSelectedImage(shot);
+                                                                    incrementInteraction();
+                                                                }}
                                                             >
                                                                 <Image src={shot} alt="" fill className="object-cover group-hover/img:scale-110 transition-transform duration-1000" />
                                                             </div>
@@ -607,7 +608,10 @@ export default function CategoryPage() {
                                         <h3 className="font-black text-xl text-foreground tracking-tight">{item.title}</h3>
                                         {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1 uppercase tracking-tighter">New Update</span>}
                                     </div>
-                                    <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.1)] group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                    <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.1)] group cursor-zoom-in" onClick={() => {
+                                        if (item.imageUrl) setSelectedImage(item.imageUrl);
+                                        incrementInteraction();
+                                    }}>
                                         {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-1000" />}
                                         <button 
                                             className="absolute top-4 left-4 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
@@ -634,7 +638,10 @@ export default function CategoryPage() {
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                                     <h3 className="font-black text-sm text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
-                                    <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                    <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => {
+                                        if (item.imageUrl) setSelectedImage(item.imageUrl);
+                                        incrementInteraction();
+                                    }}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />}
                                         <button 
                                             className="absolute top-3 left-3 z-10 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"

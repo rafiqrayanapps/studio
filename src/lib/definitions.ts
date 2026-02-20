@@ -53,6 +53,18 @@ export interface ThemeConfig {
   primaryColorDark?: string;
 }
 
+export interface AdsConfig {
+  enabled: boolean;
+  gameId: string;
+  bannerEnabled: boolean;
+  bannerPlacement: string;
+  interstitialEnabled: boolean;
+  interstitialPlacement: string;
+  rewardedEnabled: boolean;
+  rewardedPlacement: string;
+  interstitialFrequency: number;
+}
+
 export interface ReferralConfig {
   requiredReferrals: number;
   rewardInterval: number; 

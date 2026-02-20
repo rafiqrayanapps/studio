@@ -18,28 +18,20 @@ import {
     CreditCard,
     ArrowRight,
     ChevronLeft,
-    ChevronRight,
     Monitor,
     Bell,
-    Share2,
-    Brush,
     Palette,
     FileCode,
     UserPlus,
     Users,
-    Key,
     Wallet,
-    ShieldCheck,
     UserCog,
     Image as ImageIcon,
-    PlusCircle,
-    Info,
     Layout,
-    ExternalLink,
     Hammer,
-    Eye,
     Music,
-    Save
+    Save,
+    Play
 } from 'lucide-react';
 
 import { 
@@ -83,7 +75,8 @@ import type {
     PricingPlan, 
     WhitelistEntry, 
     PaymentMethod,
-    SubscriptionDialogConfig
+    SubscriptionDialogConfig,
+    AdsConfig
 } from '@/lib/definitions';
 
 // Schemas
@@ -725,6 +718,7 @@ export default function AdminDashboard() {
                     <ScrollArea className="w-full">
                         <TabsList className="flex w-full min-w-max bg-white shadow-sm border rounded-2xl p-1 h-14">
                             <TabsTrigger value="appearance" className="rounded-xl font-black text-xs gap-2 px-6"><Palette className="h-4 w-4" /> المظهر</TabsTrigger>
+                            <TabsTrigger value="ads" className="rounded-xl font-black text-xs gap-2 px-6"><Play className="h-4 w-4" /> الإعلانات</TabsTrigger>
                             <TabsTrigger value="notifications" className="rounded-xl font-black text-xs gap-2 px-6"><Bell className="h-4 w-4" /> التنبيهات</TabsTrigger>
                             <TabsTrigger value="dialog" className="rounded-xl font-black text-xs gap-2 px-6"><Layout className="h-4 w-4" /> نافذة الاشتراك</TabsTrigger>
                             <TabsTrigger value="users" className="rounded-xl font-black text-xs gap-2 px-6"><Users className="h-4 w-4" /> المستخدمين</TabsTrigger>
@@ -737,6 +731,16 @@ export default function AdminDashboard() {
                         <Card className="rounded-[2.5rem] p-8 border-none shadow-xl">
                             <CardHeader className="px-0"><CardTitle className="flex items-center gap-3"><Palette className="h-6 w-6 text-primary" /> ألوان الموقع</CardTitle></CardHeader>
                             <FormThemeControl />
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="ads">
+                        <Card className="rounded-[2.5rem] p-8 border-none shadow-xl">
+                            <CardHeader className="px-0">
+                                <CardTitle className="flex items-center gap-3"><Play className="h-6 w-6 text-primary" /> إعدادات Unity Ads</CardTitle>
+                                <p className="text-xs text-muted-foreground mt-1">تحكم في إعلانات التطبيق ونظام المكافآت.</p>
+                            </CardHeader>
+                            <FormAdsControl />
                         </Card>
                     </TabsContent>
 
@@ -880,6 +884,80 @@ export default function AdminDashboard() {
       </main>
     </div>
   );
+}
+
+function FormAdsControl() {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const adsRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'ads') : null, [firestore]);
+    const { data: ads } = useDoc<AdsConfig>(adsRef);
+    const [config, setConfig] = useState<AdsConfig>({
+        enabled: false,
+        gameId: '5670767',
+        bannerEnabled: false,
+        bannerPlacement: 'banner',
+        interstitialEnabled: false,
+        interstitialPlacement: 'video',
+        rewardedEnabled: false,
+        rewardedPlacement: 'rewardedVideo',
+        interstitialFrequency: 6
+    });
+
+    useEffect(() => { if (ads) setConfig(ads); }, [ads]);
+
+    const save = async () => {
+        await setDoc(adsRef!, config, { merge: true });
+        toast({ title: "تم تحديث إعدادات الإعلانات" });
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                <div className="space-y-0.5">
+                    <p className="text-sm font-black">تفعيل الإعلانات بالكامل</p>
+                    <p className="text-[10px] text-muted-foreground">تعطيل هذا الخيار يوقف جميع أنواع الإعلانات في التطبيق.</p>
+                </div>
+                <Switch checked={config.enabled} onCheckedChange={v => setConfig({...config, enabled: v})} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <label className="text-xs font-black">Unity Game ID</label>
+                    <Input value={config.gameId} onChange={e => setConfig({...config, gameId: e.target.value})} dir="ltr" />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-black">تكرار الإعلانات البينية (كل X منشور)</label>
+                    <Input type="number" value={config.interstitialFrequency} onChange={e => setConfig({...config, interstitialFrequency: parseInt(e.target.value)})} dir="ltr" />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-black">إعلان بانر (Banner)</p>
+                        <Switch checked={config.bannerEnabled} onCheckedChange={v => setConfig({...config, bannerEnabled: v})} />
+                    </div>
+                    <Input placeholder="Placement ID" value={config.bannerPlacement} onChange={e => setConfig({...config, bannerPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
+                </Card>
+                <Card className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-black">إعلان بيني (Interstitial)</p>
+                        <Switch checked={config.interstitialEnabled} onCheckedChange={v => setConfig({...config, interstitialEnabled: v})} />
+                    </div>
+                    <Input placeholder="Placement ID" value={config.interstitialPlacement} onChange={e => setConfig({...config, interstitialPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
+                </Card>
+                <Card className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-black">إعلان مكافأة (Rewarded)</p>
+                        <Switch checked={config.rewardedEnabled} onCheckedChange={v => setConfig({...config, rewardedEnabled: v})} />
+                    </div>
+                    <Input placeholder="Placement ID" value={config.rewardedPlacement} onChange={e => setConfig({...config, rewardedPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
+                </Card>
+            </div>
+
+            <Button onClick={save} className="w-full h-14 rounded-2xl font-black">حفظ إعدادات الإعلانات</Button>
+        </div>
+    );
 }
 
 function FormThemeControl() {

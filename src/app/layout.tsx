@@ -10,6 +10,8 @@ import OnlineStatusDetector from '@/components/layout/OnlineStatusDetector';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import BottomNav from '@/components/layout/BottomNav';
 import { CategoryProvider } from '@/components/providers/CategoryProvider';
+import { UnityAdsProvider } from '@/components/ads/UnityAdsProvider';
+import UnityBannerAd from '@/components/ads/UnityBannerAd';
 
 export const metadata: Metadata = {
   applicationName: 'رفيق المصمم',
@@ -38,7 +40,6 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="hsl(350 72% 51%)" />
-        {/* The theme-color meta tag is now managed by ThemeManager.tsx */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -49,13 +50,16 @@ export default function RootLayout({
       <body className={cn('font-body antialiased')}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <FirebaseClientProvider>
-              <CategoryProvider>
-                <ThemeManager />
-                <OnlineStatusDetector />
-                <ServiceWorkerRegistrar />
-                {children}
-                <BottomNav />
-              </CategoryProvider>
+              <UnityAdsProvider>
+                <CategoryProvider>
+                  <ThemeManager />
+                  <OnlineStatusDetector />
+                  <ServiceWorkerRegistrar />
+                  {children}
+                  <UnityBannerAd />
+                  <BottomNav />
+                </CategoryProvider>
+              </UnityAdsProvider>
             </FirebaseClientProvider>
         </ThemeProvider>
         <Toaster />
