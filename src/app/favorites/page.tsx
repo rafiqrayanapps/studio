@@ -50,6 +50,14 @@ const AudioPlayerRow = ({
     const directAudioUrl = useMemo(() => getDirectDriveLink(item.audioUrl), [item.audioUrl]);
 
     useEffect(() => {
+        if (audioRef.current) {
+            audioRef.current.load();
+            setLoadError(false);
+            setCurrentTime(0);
+        }
+    }, [directAudioUrl]);
+
+    useEffect(() => {
         if (activeId !== item.id && isPlaying) {
             audioRef.current?.pause();
             setIsPlaying(false);
@@ -69,8 +77,12 @@ const AudioPlayerRow = ({
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
         };
-        const onError = (e: any) => {
-            console.error("Audio Load Error (Fav):", item.title, e);
+        const onError = () => {
+            console.error("Audio Load Error (Fav):", {
+                title: item.title,
+                code: audio.error?.code,
+                url: directAudioUrl
+            });
             setLoadError(true);
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
@@ -84,18 +96,18 @@ const AudioPlayerRow = ({
             }
         };
 
-        audio.addEventListener('loadeddata', setAudioData);
+        audio.addEventListener('loadedmetadata', setAudioData);
         audio.addEventListener('timeupdate', setAudioTime);
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('error', onError);
 
         return () => {
-            audio.removeEventListener('loadeddata', setAudioData);
+            audio.removeEventListener('loadedmetadata', setAudioData);
             audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', onEnded);
             audio.removeEventListener('error', onError);
         };
-    }, [activeId, item.id, onPlay, toast, item.title]);
+    }, [activeId, item.id, onPlay, toast, item.title, directAudioUrl]);
 
     const togglePlay = async () => {
         if (!audioRef.current) return;
@@ -130,7 +142,7 @@ const AudioPlayerRow = ({
             "flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500",
             loadError && "border-destructive/30 bg-destructive/5"
         )}>
-            <audio ref={audioRef} src={directAudioUrl} preload="metadata" />
+            <audio ref={audioRef} src={directAudioUrl} preload="metadata" referrerPolicy="no-referrer" />
             
             <div className={cn(
                 "h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden",

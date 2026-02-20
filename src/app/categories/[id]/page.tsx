@@ -48,6 +48,15 @@ const AudioPlayerRow = ({
 
     const directAudioUrl = useMemo(() => getDirectDriveLink(item.audioUrl), [item.audioUrl]);
 
+    // Force reload when URL changes
+    useEffect(() => {
+        if (audioRef.current) {
+            audioRef.current.load();
+            setLoadError(false);
+            setCurrentTime(0);
+        }
+    }, [directAudioUrl]);
+
     useEffect(() => {
         if (activeId !== item.id && isPlaying) {
             audioRef.current?.pause();
@@ -68,34 +77,40 @@ const AudioPlayerRow = ({
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
         };
-        const onError = (e: any) => {
-            console.error("Audio Load Error:", item.title, e);
+        const onError = () => {
+            const error = audio.error;
+            console.error("Audio Load Error Details:", {
+                title: item.title,
+                code: error?.code,
+                message: error?.message,
+                url: directAudioUrl
+            });
+            
             setLoadError(true);
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
             
-            // Only toast if it's the active one failing
             if (activeId === item.id) {
                 toast({
-                    title: "فشل تشغيل الملف الصوتي",
-                    description: "تأكد من أن الرابط مباشر أو أن الملف متاح للجميع في Google Drive.",
+                    title: "تعذر تشغيل الصوت",
+                    description: "تأكد من أن الملف عام (Public) في Google Drive وأن الرابط صحيح.",
                     variant: "destructive"
                 });
             }
         };
 
-        audio.addEventListener('loadeddata', setAudioData);
+        audio.addEventListener('loadedmetadata', setAudioData);
         audio.addEventListener('timeupdate', setAudioTime);
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('error', onError);
 
         return () => {
-            audio.removeEventListener('loadeddata', setAudioData);
+            audio.removeEventListener('loadedmetadata', setAudioData);
             audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', onEnded);
             audio.removeEventListener('error', onError);
         };
-    }, [activeId, item.id, onPlay, item.title, toast]);
+    }, [activeId, item.id, onPlay, item.title, toast, directAudioUrl]);
 
     const togglePlay = async () => {
         if (!audioRef.current) return;
@@ -114,8 +129,8 @@ const AudioPlayerRow = ({
                 console.error("Playback start failed:", err);
                 setLoadError(true);
                 toast({ 
-                    title: "تعذر البدء في التشغيل", 
-                    description: "قد يكون الرابط غير صالح أو محمي بخصوصية.",
+                    title: "خطأ في التشغيل", 
+                    description: "الملف قد يكون كبيراً جداً للتشغيل المباشر أو محمي.",
                     variant: "destructive" 
                 });
             }
@@ -138,6 +153,7 @@ const AudioPlayerRow = ({
                 ref={audioRef} 
                 src={directAudioUrl} 
                 preload="metadata"
+                referrerPolicy="no-referrer"
             />
             
             <div className={cn(

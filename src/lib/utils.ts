@@ -25,8 +25,8 @@ export function getDirectDriveLink(url: string | undefined): string {
   const fileId = driveIdMatch?.[1] || idParamMatch?.[1];
 
   if (fileId && (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com'))) {
-    // Using export=download is often more reliable for direct media streaming than export=open
-    return `https://docs.google.com/uc?export=download&id=${fileId}`;
+    // drive.google.com/uc is generally more reliable for direct streaming
+    return `https://drive.google.com/uc?id=${fileId}&export=download`;
   }
   
   return cleanUrl;
