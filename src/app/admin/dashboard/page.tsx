@@ -31,7 +31,8 @@ import {
     Wallet,
     ShieldCheck,
     UserCog,
-    Image as ImageIcon
+    Image as ImageIcon,
+    PlusCircle
 } from 'lucide-react';
 
 import { 
@@ -40,8 +41,7 @@ import {
     useMemoFirebase, 
     addDocumentNonBlocking, 
     deleteDocumentNonBlocking, 
-    useDoc,
-    WithId
+    useDoc
 } from '@/firebase';
 import { 
     collection, 
@@ -73,7 +73,6 @@ import type {
     Category, 
     ContentItem, 
     PricingPlan, 
-    ThemeConfig, 
     WhitelistEntry, 
     PaymentMethod 
 } from '@/lib/definitions';
@@ -86,6 +85,8 @@ const itemSchema = z.object({
   prompt: z.string().optional(),
   instructions: z.string().optional(),
   videoUrl: z.string().optional(),
+  appVersion: z.string().optional(),
+  screenshots: z.string().optional().describe("روابط لقطات الشاشة مفصولة بفاصلة"),
   visibility: z.enum(['public', 'pro']).default('public'),
   isNew: z.boolean().default(false),
 });
@@ -125,7 +126,7 @@ const paymentMethodSchema = z.object({
 });
 
 const themeSchema = z.object({
-    primaryColor: z.string().regex(/^\d+\s\d+%\s\d+%$/, "صيغة HSL غير صحيحة (مثال: 350 72% 51%)"),
+    primaryColor: z.string().regex(/^\d+\s\d+%\s\d+%$/, "صيغة HSL غير صحيحة"),
     primaryColorDark: z.string().regex(/^\d+\s\d+%\s\d+%$/, "صيغة HSL غير صحيحة").optional(),
 });
 
@@ -182,7 +183,7 @@ export default function AdminDashboard() {
 
   const itemForm = useForm<z.infer<typeof itemSchema>>({
     resolver: zodResolver(itemSchema),
-    defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', visibility: 'public', isNew: false }
+    defaultValues: { title: '', imageUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', appVersion: '', screenshots: '', visibility: 'public', isNew: false }
   });
 
   const planForm = useForm<z.infer<typeof planSchema>>({
@@ -231,8 +232,11 @@ export default function AdminDashboard() {
   const onAddItem = async (values: z.infer<typeof itemSchema>) => {
     if (!firestore || !selectedParentId) return;
     try {
+      const screenshotsArray = values.screenshots ? values.screenshots.split(',').map(s => s.trim()).filter(s => s !== '') : [];
+      
       await addDocumentNonBlocking(collection(firestore, 'categories', selectedParentId, 'items'), { 
-          ...values, 
+          ...values,
+          screenshots: screenshotsArray,
           order: currentItems.length, 
           createdAt: serverTimestamp(), 
           status: isAdmin ? 'approved' : 'pending' 
@@ -296,7 +300,6 @@ export default function AdminDashboard() {
       
       try {
           const batch = writeBatch(firestore);
-          // Get the base collection path
           const docRef1 = doc(firestore, ...path, list[index].id);
           const docRef2 = doc(firestore, ...path, list[newIndex].id);
           
@@ -325,8 +328,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-foreground pb-24" dir="rtl">
-      
-      {/* Horizontal Header Navigation */}
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b shadow-sm">
         <div className="container mx-auto max-w-6xl px-4">
             <div className="flex h-20 items-center justify-between">
@@ -374,7 +375,6 @@ export default function AdminDashboard() {
 
       <main className="container mx-auto max-w-6xl px-4 py-8">
         
-        {/* Tab 1: Content Management (Hierarchy) */}
         {activeTool === 'content' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -449,7 +449,7 @@ export default function AdminDashboard() {
                                                             <SelectItem value="style2">عمودي (Style 2)</SelectItem>
                                                             <SelectItem value="style3">برومبت (Style 3)</SelectItem>
                                                             <SelectItem value="style4">فيديو (Style 4)</SelectItem>
-                                                            <SelectItem value="style5">معرض (Style 5)</SelectItem>
+                                                            <SelectItem value="style5">معرض تطبيقات (Style 5)</SelectItem>
                                                             <SelectItem value="style6">موقع (Style 6)</SelectItem>
                                                         </SelectContent>
                                                     </Select>
@@ -484,7 +484,7 @@ export default function AdminDashboard() {
                                         <Send className="ml-2 h-5 w-5" /> منشور جديد
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
+                                <DialogContent className="max-w-md rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto" dir="rtl">
                                     <DialogHeader>
                                         <DialogTitle className="text-xl font-black">نشر محتوى</DialogTitle>
                                     </DialogHeader>
@@ -495,7 +495,7 @@ export default function AdminDashboard() {
                                                 name="title" 
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs font-black">العنوان</FormLabel>
+                                                        <FormLabel className="text-xs font-black">العنوان / اسم التطبيق</FormLabel>
                                                         <FormControl>
                                                             <Input {...field} className="h-12 rounded-xl" />
                                                         </FormControl>
@@ -507,13 +507,41 @@ export default function AdminDashboard() {
                                                 name="imageUrl" 
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs font-black">رابط الصورة</FormLabel>
+                                                        <FormLabel className="text-xs font-black">رابط الصورة الرئيسية / أيقونة التطبيق</FormLabel>
                                                         <FormControl>
                                                             <Input {...field} className="h-12 rounded-xl text-left" dir="ltr" />
                                                         </FormControl>
                                                     </FormItem>
                                                 )} 
                                             />
+                                            {currentCategory?.displayStyle === 'style5' && (
+                                                <>
+                                                    <FormField 
+                                                        control={itemForm.control} 
+                                                        name="appVersion" 
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs font-black">إصدار التطبيق</FormLabel>
+                                                                <FormControl>
+                                                                    <Input {...field} placeholder="مثال: 1.0.5" className="h-12 rounded-xl" />
+                                                                </FormControl>
+                                                            </FormItem>
+                                                        )} 
+                                                    />
+                                                    <FormField 
+                                                        control={itemForm.control} 
+                                                        name="screenshots" 
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs font-black">لقطات شاشة (روابط مفصولة بفاصلة)</FormLabel>
+                                                                <FormControl>
+                                                                    <Textarea {...field} placeholder="URL1, URL2, URL3" className="rounded-xl h-20" dir="ltr" />
+                                                                </FormControl>
+                                                            </FormItem>
+                                                        )} 
+                                                    />
+                                                </>
+                                            )}
                                             {currentCategory?.displayStyle === 'style3' && (
                                                 <FormField 
                                                     control={itemForm.control} 
@@ -530,6 +558,18 @@ export default function AdminDashboard() {
                                             )}
                                             <FormField 
                                                 control={itemForm.control} 
+                                                name="instructions" 
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs font-black">الوصف / التعليمات</FormLabel>
+                                                        <FormControl>
+                                                            <Textarea {...field} className="rounded-xl h-20" />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )} 
+                                            />
+                                            <FormField 
+                                                control={itemForm.control} 
                                                 name="downloadUrl" 
                                                 render={({ field }) => (
                                                     <FormItem>
@@ -540,7 +580,6 @@ export default function AdminDashboard() {
                                                     </FormItem>
                                                 )} 
                                             />
-                                            
                                             <div className="flex gap-4 pt-2">
                                                 <FormField 
                                                     control={itemForm.control} 
@@ -584,7 +623,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* Categories Grid or Items List */}
                 {!selectedParentId ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {mainCategories.map((cat, idx) => (
@@ -715,7 +753,6 @@ export default function AdminDashboard() {
             </div>
         )}
 
-        {/* Tab 2: Pricing Plans */}
         {activeTool === 'plans' && (
             <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="flex items-center justify-between">
@@ -853,7 +890,6 @@ export default function AdminDashboard() {
             </div>
         )}
 
-        {/* Tab 3: General Settings */}
         {activeTool === 'settings' && (
             <div className="animate-in fade-in duration-500">
                 <Tabs defaultValue="appearance" className="w-full space-y-8" dir="rtl">

@@ -4,8 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, ReferralConfig } from '@/lib/definitions';
-import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X } from 'lucide-react';
+import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
+import { ArrowLeft, Download, Copy, Search, Heart, AlertTriangle, Crown, Lock, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,7 @@ import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -30,14 +31,13 @@ export default function CategoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [favorites, setFavorites] = useLocalStorage<WithId<ContentItem>[]>('favorites', []);
   const { toast } = useToast();
-  const { isPro, isAdmin, isEditor, userProfile, isLoading: isUserLoading } = useUserProfile();
+  const { isPro, isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
-  // We fetch the specific category again to ensure we have the LATEST displayStyle
   const categoryRef = useMemoFirebase(() => id ? doc(firestore!, 'categories', id) : null, [firestore, id]);
   const { data: category, isLoading: isCategoryLoading } = useDoc<CategoryType>(categoryRef);
 
-  const { subCategories, isLoadingCategories: areAllCategoriesLoading } = useCategories();
+  const { subCategories } = useCategories();
   const currentSubCategories = useMemo(() => id ? subCategories.get(id) || [] : [], [subCategories, id]);
 
   const itemsQuery = useMemoFirebase(() => {
@@ -64,11 +64,7 @@ export default function CategoryPage() {
     
     const viewableItems = (isAdmin || isEditor)
         ? rawItems 
-        : rawItems.filter(item => 
-            !item.status || 
-            item.status === 'approved' || 
-            item.status === ''
-          );
+        : rawItems.filter(item => !item.status || item.status === 'approved');
         
     const searchedItems = viewableItems.filter((item) => 
         (item.title || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -136,10 +132,15 @@ export default function CategoryPage() {
                             const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
                             return (
                                 <div key={sub.id} onClick={() => handleSubCategoryClick(sub)}>
-                                    <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-sm aspect-square text-center active:scale-95 group overflow-hidden">
+                                    <div className="relative bg-primary text-primary-foreground p-4 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg aspect-square text-center active:scale-95 group overflow-hidden">
                                         <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-500" />
-                                        {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md" />}
-                                        <p className="font-bold text-lg relative z-10 leading-snug">{sub.name}</p>
+                                        {isLocked && <Crown className="absolute top-3 left-3 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
+                                        {sub.fileTypes && (
+                                            <div className="absolute top-3.5 right-3.5 bg-black/20 text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm z-20">
+                                                {sub.fileTypes}
+                                            </div>
+                                        )}
+                                        <p className="font-bold text-lg relative z-10 leading-tight">{sub.name}</p>
                                     </div>
                                 </div>
                             );
@@ -153,21 +154,21 @@ export default function CategoryPage() {
                     {displayStyle === 'style3' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden bg-card border-none shadow-md rounded-3xl relative">
-                                    <CardContent className="p-4 space-y-4">
-                                        <h3 className="font-bold text-lg text-center">{item.title}</h3>
-                                        <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted">
-                                            {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
-                                            <button className="absolute top-2 left-2 z-10 h-8 w-8 bg-black/50 rounded-full flex items-center justify-center" onClick={() => toggleFavorite(item)}>
+                                <Card key={item.id} className="overflow-hidden bg-card border-none shadow-xl rounded-[2.5rem] relative">
+                                    <CardContent className="p-6 space-y-4">
+                                        <h3 className="font-black text-lg text-center text-primary">{item.title}</h3>
+                                        <div className="relative aspect-video rounded-3xl overflow-hidden bg-muted group">
+                                            {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
+                                            <button className="absolute top-3 left-3 z-10 h-9 w-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-colors hover:bg-primary" onClick={() => toggleFavorite(item)}>
                                                 <Heart className={cn("h-4 w-4 text-white", isFavorite(item.id) && "fill-white")} />
                                             </button>
                                         </div>
                                         <div className="space-y-2">
-                                            <p className="text-xs font-black opacity-50">البرومبت:</p>
-                                            <Textarea readOnly value={item.prompt || ''} className="h-24 bg-muted/50 border-none rounded-xl text-xs" dir="ltr" />
+                                            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">البرومبت:</p>
+                                            <Textarea readOnly value={item.prompt || ''} className="h-24 bg-muted/50 border-none rounded-2xl text-xs font-mono" dir="ltr" />
                                         </div>
-                                        <Button className="w-full h-12 rounded-xl font-black" onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ"}); } })}>
-                                            <Copy className="ml-2 h-4 w-4" /> نسخ البرومبت
+                                        <Button className="w-full h-14 rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95" onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ"}); } })}>
+                                            <Copy className="ml-2 h-5 w-5" /> نسخ البرومبت
                                         </Button>
                                     </CardContent>
                                 </Card>
@@ -176,100 +177,130 @@ export default function CategoryPage() {
                     ) : displayStyle === 'style4' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-3xl border-none shadow-lg bg-card">
-                                    <div className="relative aspect-video bg-black group overflow-hidden">
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover opacity-80 group-hover:scale-110 transition-transform duration-700" />}
+                                <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-card group">
+                                    <div className="p-5 text-center">
+                                        <h3 className="font-black text-xl mb-1">{item.title}</h3>
+                                        {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse">جديد</span>}
+                                    </div>
+                                    <div className="relative aspect-video bg-black overflow-hidden mx-4 rounded-3xl mb-4">
+                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover opacity-80 group-hover:scale-110 transition-transform duration-1000" />}
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="bg-primary/90 text-white p-4 rounded-full shadow-2xl scale-90 group-hover:scale-100 transition-transform cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
-                                                <PlayCircle className="h-10 w-10" />
+                                            <div className="bg-primary/90 text-white p-5 rounded-full shadow-2xl scale-90 group-hover:scale-100 transition-all duration-500 cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
+                                                <PlayCircle className="h-12 w-12" />
                                             </div>
                                         </div>
-                                        {item.visibility === 'pro' && !isPro && !isAdmin && !isEditor && <div className="absolute top-4 left-4 bg-yellow-500 text-white p-1 rounded-full"><Lock className="h-4 w-4" /></div>}
+                                        {item.visibility === 'pro' && !isPro && !isAdmin && !isEditor && <div className="absolute top-4 left-4 bg-yellow-500 text-white p-1.5 rounded-full shadow-lg"><Lock className="h-4 w-4" /></div>}
                                     </div>
-                                    <div className="p-4 text-center">
-                                        <h3 className="font-bold text-lg">{item.title}</h3>
-                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.instructions || 'شرح توضيحي للمحتوى المرفق.'}</p>
+                                    <div className="px-6 pb-6 text-center">
+                                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.instructions || 'شاهد شرح المحتوى بالفيديو.'}</p>
                                     </div>
                                 </Card>
                             ))}
                         </div>
                     ) : displayStyle === 'style5' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-8">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[2rem] border-none shadow-lg bg-card group">
-                                    <div className="relative aspect-square md:aspect-video bg-muted cursor-pointer overflow-hidden" onClick={() => handleAction(item, () => item.imageUrl && setSelectedImage(item.imageUrl))}>
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                            <Eye className="text-white h-10 w-10" />
+                                <Card key={item.id} className="overflow-hidden rounded-[3rem] border-none shadow-2xl bg-card">
+                                    <div className="p-8">
+                                        <div className="flex items-center gap-5 mb-6">
+                                            <div className="h-20 w-20 rounded-[1.5rem] bg-muted relative overflow-hidden shrink-0 shadow-inner border-2 border-primary/5">
+                                                {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-2xl font-black truncate">{item.title}</h3>
+                                                {item.appVersion && (
+                                                    <span className="inline-block mt-1 px-3 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">
+                                                        إصدار: {item.appVersion}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button className="h-10 w-10 bg-muted rounded-2xl flex items-center justify-center transition-all hover:bg-primary/10" onClick={() => toggleFavorite(item)}>
+                                                <Heart className={cn("h-5 w-5 text-muted-foreground", isFavorite(item.id) && "text-primary fill-primary")} />
+                                            </button>
                                         </div>
-                                        {item.visibility === 'pro' && !isPro && !isAdmin && !isEditor && <div className="absolute top-4 left-4 bg-yellow-500 text-white p-1 rounded-full shadow-lg"><Lock className="h-4 w-4" /></div>}
-                                    </div>
-                                    <div className="p-6 flex flex-col items-center gap-3">
-                                        <h3 className="text-lg font-black">{item.title}</h3>
-                                        <Button className="w-full rounded-xl font-black h-12 shadow-md" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                                            <Download className="ml-2 h-4 w-4" /> تحميل الآن
+
+                                        {item.instructions && (
+                                            <div className="mb-6">
+                                                <p className="text-xs text-muted-foreground font-medium leading-relaxed bg-muted/30 p-4 rounded-2xl border border-dashed">
+                                                    {item.instructions}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {item.screenshots && item.screenshots.length > 0 && (
+                                            <div className="mb-8">
+                                                <ScrollArea className="w-full">
+                                                    <div className="flex gap-4 pb-4">
+                                                        {item.screenshots.map((shot, idx) => (
+                                                            <div 
+                                                                key={idx} 
+                                                                className="relative h-64 w-36 rounded-2xl overflow-hidden bg-muted shrink-0 shadow-md cursor-zoom-in"
+                                                                onClick={() => setSelectedImage(shot)}
+                                                            >
+                                                                <Image src={shot} alt="" fill className="object-cover" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <ScrollBar orientation="horizontal" />
+                                                </ScrollArea>
+                                            </div>
+                                        )}
+
+                                        <Button 
+                                            className="w-full h-16 rounded-[1.5rem] font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all bg-primary group"
+                                            onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
+                                        >
+                                            <Download className="ml-3 h-6 w-6 group-hover:translate-y-1 transition-transform" />
+                                            تحميل التطبيق الآن
                                         </Button>
                                     </div>
                                 </Card>
                             ))}
                         </div>
-                    ) : displayStyle === 'style6' ? (
-                        <div className="grid grid-cols-1 gap-6">
+                    ) : displayStyle === 'style2' ? (
+                        <div className="grid grid-cols-1 gap-8">
                             {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[2rem] border-none shadow-lg bg-card">
-                                    <div className="flex flex-col md:flex-row">
-                                        <div className="md:w-1/3 aspect-video md:aspect-auto relative bg-muted">
-                                            {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
-                                        </div>
-                                        <div className="p-6 flex-1 flex flex-col justify-center space-y-3">
-                                            <h3 className="text-xl font-black">{item.title}</h3>
-                                            <p className="text-muted-foreground text-xs line-clamp-2">{item.instructions || 'تفضل بزيارة هذا الموقع للحصول على المزيد من المعلومات.'}</p>
-                                            <Button className="w-fit rounded-xl font-black px-6" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                                                <ExternalLink className="ml-2 h-4 w-4" /> زيارة الموقع
-                                            </Button>
+                                <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border-none shadow-xl bg-card">
+                                    <div className="p-6 text-center">
+                                        <h3 className="font-black text-xl">{item.title}</h3>
+                                        {item.isNew && <span className="text-[10px] text-green-500 font-black">جديد</span>}
+                                    </div>
+                                    <div className="relative aspect-video bg-muted mx-6 rounded-[2rem] overflow-hidden group shadow-inner">
+                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />}
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                            <Eye className="text-white h-10 w-10 scale-75 group-hover:scale-100 transition-transform" />
                                         </div>
                                     </div>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : displayStyle === 'style2' ? (
-                        <div className="grid grid-cols-1 gap-6">
-                            {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[2rem] border-none shadow-md bg-card">
-                                    <div className="flex flex-col">
-                                        <div className="relative aspect-video bg-muted group overflow-hidden" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                            {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform" />}
-                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
-                                                <Eye className="text-white h-8 w-8" />
-                                            </div>
-                                        </div>
-                                        <div className="p-5 flex items-center justify-between gap-4">
-                                            <div className="flex-1 min-w-0 text-right">
-                                                <h3 className="font-black text-lg truncate">{item.title}</h3>
-                                                {item.isNew && <span className="text-[10px] text-green-500 font-black">جديد</span>}
-                                            </div>
-                                            <Button className="rounded-xl font-black h-11 px-6 shadow-sm" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                                                <Download className="ml-2 h-4 w-4" /> تحميل
-                                            </Button>
-                                        </div>
+                                    <div className="p-6 pt-4">
+                                        <Button 
+                                            className="w-full rounded-[1.5rem] font-black h-14 shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" 
+                                            onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
+                                        >
+                                            <Download className="ml-2 h-5 w-5" /> تحميل الملف
+                                        </Button>
                                     </div>
                                 </Card>
                             ))}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-6">
                             {typedItems.map(item => (
-                                <div key={item.id} className="space-y-3 text-center">
-                                    <div className="relative aspect-square rounded-3xl overflow-hidden shadow-md bg-muted group" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
-                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform" />}
-                                        {item.isNew && <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse">جديد</div>}
+                                <div key={item.id} className="space-y-4 text-center group">
+                                    <h3 className="font-black text-sm truncate px-2">{item.title}</h3>
+                                    <div className="relative aspect-square rounded-[2rem] overflow-hidden shadow-xl bg-muted border-4 border-white dark:border-card" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                        {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-110 transition-transform duration-700" />}
+                                        {item.isNew && <div className="absolute top-3 right-3 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full z-10">جديد</div>}
                                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
                                             <Eye className="text-white h-8 w-8" />
                                         </div>
                                     </div>
-                                    <h3 className="font-bold text-sm truncate px-1">{item.title}</h3>
-                                    <Button size="sm" className="w-full rounded-xl h-10 font-black shadow-sm" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                                        <Download className="ml-2 h-4 w-4" /> تحميل
+                                    <Button 
+                                        className="w-full rounded-2xl h-12 font-black shadow-lg shadow-primary/10 hover:scale-[1.05] active:scale-90 transition-all relative overflow-hidden" 
+                                        onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
+                                    >
+                                        <Download className="ml-2 h-4 w-4 relative z-10" />
+                                        <span className="relative z-10">تحميل</span>
+                                        <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                                     </Button>
                                 </div>
                             ))}
@@ -283,21 +314,21 @@ export default function CategoryPage() {
   
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
-        <div className="sticky top-0 z-20">
+        <div className="sticky top-0 z-30">
              <Header showMenu={false} title={isLoading ? '...' : (category?.name || "تحميل...")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-12">
               <div className="pb-4 px-6">
                 <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input placeholder="ابحث..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-xl focus:ring-2 focus:ring-primary/20" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input placeholder="ابحث..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-lg shadow-2xl focus:ring-4 focus:ring-primary/10 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
         </div>
 
-      <main className="flex-1 px-6 pt-2 pb-24">
+      <main className="flex-1 px-6 pt-4 pb-24">
         {!isLoading && !category ? (
             <div className="text-center text-destructive p-12 bg-destructive/10 rounded-[2.5rem] mt-4 space-y-4">
                 <AlertTriangle className="mx-auto h-12 w-12" />
@@ -306,7 +337,7 @@ export default function CategoryPage() {
             </div>
         ) : isLoading ? (
           <div className="grid grid-cols-2 gap-4 mt-6">
-             {[...Array(4)].map((_, i) => <CategorySkeleton key={i} className="aspect-square" />)}
+             {[...Array(4)].map((_, i) => <CategorySkeleton key={i} className="aspect-square rounded-[2rem]" />)}
           </div>
         ) : renderContent()}
       </main>
@@ -314,12 +345,16 @@ export default function CategoryPage() {
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
       
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none">
+        <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none overflow-hidden rounded-3xl">
           <div className="sr-only">معاينة الصورة</div>
-          <button className="absolute -top-12 right-0 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors" onClick={() => setSelectedImage(null)}>
+          <button className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full transition-colors z-50 backdrop-blur-md" onClick={() => setSelectedImage(null)}>
             <X className="h-6 w-6" />
           </button>
-          {selectedImage && <div className="relative w-full h-[80vh]"><Image src={selectedImage} alt="" fill className="object-contain" /></div>}
+          {selectedImage && (
+            <div className="relative w-full h-[85vh]">
+                <Image src={selectedImage} alt="" fill className="object-contain" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
