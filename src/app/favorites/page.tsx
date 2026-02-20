@@ -7,7 +7,7 @@ import type { ContentItem, DisplayStyle } from '@/lib/definitions';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Download, Copy, Trash2, Heart, PlayCircle, Lock, Crown, Eye, ExternalLink, Sparkles, X, Music, Play, Pause } from 'lucide-react';
+import { Download, Copy, Trash2, Heart, PlayCircle, Lock, Crown, Eye, ExternalLink, Sparkles, X, Music, Play, Pause, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { WithId } from '@/firebase';
@@ -43,6 +43,7 @@ const AudioPlayerRow = ({
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [loadError, setLoadError] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const { toast } = useToast();
 
@@ -59,23 +60,41 @@ const AudioPlayerRow = ({
         const audio = audioRef.current;
         if (!audio) return;
 
-        const setAudioData = () => setDuration(audio.duration);
+        const setAudioData = () => {
+            setDuration(audio.duration);
+            setLoadError(false);
+        };
         const setAudioTime = () => setCurrentTime(audio.currentTime);
         const onEnded = () => {
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
         };
+        const onError = () => {
+            setLoadError(true);
+            setIsPlaying(false);
+            if (activeId === item.id) onPlay(null);
+            
+            if (activeId === item.id) {
+                toast({
+                    title: "فشل تشغيل الملف الصوتي",
+                    description: "تأكد من أن الرابط مباشر أو متاح للجميع.",
+                    variant: "destructive"
+                });
+            }
+        };
 
         audio.addEventListener('loadeddata', setAudioData);
         audio.addEventListener('timeupdate', setAudioTime);
         audio.addEventListener('ended', onEnded);
+        audio.addEventListener('error', onError);
 
         return () => {
             audio.removeEventListener('loadeddata', setAudioData);
             audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', onEnded);
+            audio.removeEventListener('error', onError);
         };
-    }, [activeId, item.id, onPlay]);
+    }, [activeId, item.id, onPlay, toast]);
 
     const togglePlay = async () => {
         if (!audioRef.current) return;
@@ -85,10 +104,12 @@ const AudioPlayerRow = ({
             onPlay(null);
         } else {
             try {
+                setLoadError(false);
                 await audioRef.current.play();
                 setIsPlaying(true);
                 onPlay(item.id);
             } catch (err) {
+                setLoadError(true);
                 toast({ title: "فشل تشغيل الملف", variant: "destructive" });
             }
         }
@@ -102,15 +123,21 @@ const AudioPlayerRow = ({
     };
 
     return (
-        <div className="flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <audio ref={audioRef} src={directAudioUrl} preload="metadata" crossOrigin="anonymous" />
+        <div className={cn(
+            "flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500",
+            loadError && "border-destructive/30 bg-destructive/5"
+        )}>
+            <audio ref={audioRef} src={directAudioUrl} preload="metadata" />
             
-            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden">
-                <Music className={cn("h-6 w-6 transition-transform", isPlaying && "animate-bounce")} />
+            <div className={cn(
+                "h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden",
+                loadError && "bg-destructive/10 text-destructive"
+            )}>
+                {loadError ? <AlertCircle className="h-6 w-6" /> : <Music className={cn("h-6 w-6 transition-transform", isPlaying && "animate-bounce")} />}
             </div>
 
             <div className="flex-1 min-w-0 space-y-2">
-                <p className="font-black text-sm truncate px-1">{item.title}</p>
+                <p className={cn("font-black text-sm truncate px-1", loadError && "text-destructive")}>{item.title}</p>
                 <div className="flex items-center gap-3">
                     <Slider 
                         value={[currentTime]} 
@@ -118,6 +145,7 @@ const AudioPlayerRow = ({
                         step={0.1}
                         onValueChange={handleSliderChange}
                         className="flex-1 cursor-pointer"
+                        disabled={loadError}
                     />
                 </div>
             </div>
@@ -125,7 +153,11 @@ const AudioPlayerRow = ({
             <div className="flex items-center gap-2 shrink-0">
                 <button 
                     onClick={togglePlay}
-                    className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg active:scale-90 transition-all"
+                    disabled={loadError}
+                    className={cn(
+                        "h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg active:scale-90 transition-all",
+                        loadError && "opacity-50 grayscale"
+                    )}
                 >
                     {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
                 </button>

@@ -12,19 +12,22 @@ export function cn(...inputs: ClassValue[]) {
 export function getDirectDriveLink(url: string | undefined): string {
   if (!url) return '';
   
+  // Clean the URL from any trailing slashes or spaces
+  const cleanUrl = url.trim();
+
   // Regular expressions to match Google Drive file IDs from different formats
-  const driveRegex = /\/file\/d\/([^\/]+)/;
-  const driveIdMatch = url.match(driveRegex);
+  const driveRegex = /\/file\/d\/([^\/\?]+)/;
+  const driveIdMatch = cleanUrl.match(driveRegex);
   
   const idParamRegex = /[?&]id=([^&]+)/;
-  const idParamMatch = url.match(idParamRegex);
+  const idParamMatch = cleanUrl.match(idParamRegex);
 
   const fileId = driveIdMatch?.[1] || idParamMatch?.[1];
 
-  if (fileId && (url.includes('drive.google.com') || url.includes('docs.google.com'))) {
-    // Using docs.google.com/uc is more reliable for streaming in <audio> tags
-    return `https://docs.google.com/uc?export=open&id=${fileId}`;
+  if (fileId && (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com'))) {
+    // Using export=download is often more reliable for direct media streaming than export=open
+    return `https://docs.google.com/uc?export=download&id=${fileId}`;
   }
   
-  return url;
+  return cleanUrl;
 }

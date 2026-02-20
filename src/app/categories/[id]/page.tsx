@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, DisplayStyle } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,13 +42,12 @@ const AudioPlayerRow = ({
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [loadError, setLoadError] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const { toast } = useToast();
 
-    // Automatic link conversion for Google Drive
     const directAudioUrl = useMemo(() => getDirectDriveLink(item.audioUrl), [item.audioUrl]);
 
-    // Handle global playing state
     useEffect(() => {
         if (activeId !== item.id && isPlaying) {
             audioRef.current?.pause();
@@ -60,16 +59,29 @@ const AudioPlayerRow = ({
         const audio = audioRef.current;
         if (!audio) return;
 
-        const setAudioData = () => setDuration(audio.duration);
+        const setAudioData = () => {
+            setDuration(audio.duration);
+            setLoadError(false);
+        };
         const setAudioTime = () => setCurrentTime(audio.currentTime);
         const onEnded = () => {
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
         };
-        const onError = () => {
-            console.error("Audio Load Error:", item.title);
+        const onError = (e: any) => {
+            console.error("Audio Load Error:", item.title, e);
+            setLoadError(true);
             setIsPlaying(false);
             if (activeId === item.id) onPlay(null);
+            
+            // Only toast if it's the active one failing
+            if (activeId === item.id) {
+                toast({
+                    title: "فشل تشغيل الملف الصوتي",
+                    description: "تأكد من أن الرابط مباشر أو أن الملف متاح للجميع في Google Drive.",
+                    variant: "destructive"
+                });
+            }
         };
 
         audio.addEventListener('loadeddata', setAudioData);
@@ -83,7 +95,7 @@ const AudioPlayerRow = ({
             audio.removeEventListener('ended', onEnded);
             audio.removeEventListener('error', onError);
         };
-    }, [activeId, item.id, onPlay, item.title]);
+    }, [activeId, item.id, onPlay, item.title, toast]);
 
     const togglePlay = async () => {
         if (!audioRef.current) return;
@@ -94,14 +106,16 @@ const AudioPlayerRow = ({
             onPlay(null);
         } else {
             try {
+                setLoadError(false);
                 await audioRef.current.play();
                 setIsPlaying(true);
                 onPlay(item.id);
             } catch (err) {
-                console.error("Playback failed:", err);
+                console.error("Playback start failed:", err);
+                setLoadError(true);
                 toast({ 
-                    title: "فشل تشغيل الملف الصوتي", 
-                    description: "تأكد من صحة الرابط أو جودة الاتصال.",
+                    title: "تعذر البدء في التشغيل", 
+                    description: "قد يكون الرابط غير صالح أو محمي بخصوصية.",
                     variant: "destructive" 
                 });
             }
@@ -116,21 +130,26 @@ const AudioPlayerRow = ({
     };
 
     return (
-        <div className="flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className={cn(
+            "flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500",
+            loadError && "border-destructive/30 bg-destructive/5"
+        )}>
             <audio 
                 ref={audioRef} 
                 src={directAudioUrl} 
-                preload="metadata" 
-                crossOrigin="anonymous"
+                preload="metadata"
             />
             
-            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner">
-                <Music className={cn("h-6 w-6 transition-transform duration-500", isPlaying && "animate-bounce")} />
-                {item.isNew && <div className="absolute top-0 right-0 bg-green-500 w-2.5 h-2.5 rounded-full border-2 border-white" />}
+            <div className={cn(
+                "h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner",
+                loadError && "bg-destructive/10 text-destructive"
+            )}>
+                {loadError ? <AlertCircle className="h-6 w-6" /> : <Music className={cn("h-6 w-6 transition-transform duration-500", isPlaying && "animate-bounce")} />}
+                {item.isNew && !loadError && <div className="absolute top-0 right-0 bg-green-500 w-2.5 h-2.5 rounded-full border-2 border-white" />}
             </div>
 
             <div className="flex-1 min-w-0 space-y-2">
-                <p className="font-black text-sm truncate px-1">{item.title}</p>
+                <p className={cn("font-black text-sm truncate px-1", loadError && "text-destructive")}>{item.title}</p>
                 <div className="flex items-center gap-3">
                     <Slider 
                         value={[currentTime]} 
@@ -138,6 +157,7 @@ const AudioPlayerRow = ({
                         step={0.1}
                         onValueChange={handleSliderChange}
                         className="flex-1 cursor-pointer"
+                        disabled={loadError}
                     />
                     <span className="text-[9px] font-mono opacity-40 w-10 text-center">
                         {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}
@@ -148,7 +168,11 @@ const AudioPlayerRow = ({
             <div className="flex items-center gap-2 shrink-0">
                 <button 
                     onClick={togglePlay}
-                    className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all"
+                    disabled={loadError}
+                    className={cn(
+                        "h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all",
+                        loadError && "opacity-50 grayscale cursor-not-allowed"
+                    )}
                 >
                     {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
                 </button>
