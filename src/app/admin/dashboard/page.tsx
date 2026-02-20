@@ -24,17 +24,14 @@ import {
     Share2,
     Brush,
     Palette,
-    Info,
     FileCode,
     UserPlus,
     Users,
     Key,
-    Globe,
-    ExternalLink,
     Wallet,
     ShieldCheck,
     UserCog,
-    X
+    Image as ImageIcon
 } from 'lucide-react';
 
 import { 
@@ -43,8 +40,6 @@ import {
     useMemoFirebase, 
     addDocumentNonBlocking, 
     deleteDocumentNonBlocking, 
-    updateDocumentNonBlocking, 
-    setDocumentNonBlocking, 
     useDoc,
     WithId
 } from '@/firebase';
@@ -62,8 +57,8 @@ import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -79,9 +74,6 @@ import type {
     ContentItem, 
     PricingPlan, 
     ThemeConfig, 
-    Notification, 
-    ShareLinkConfig, 
-    RequestDesignConfig, 
     WhitelistEntry, 
     PaymentMethod 
 } from '@/lib/definitions';
@@ -301,10 +293,21 @@ export default function AdminDashboard() {
       if (!firestore) return;
       const newIndex = direction === 'up' ? index - 1 : index + 1;
       if (newIndex < 0 || newIndex >= list.length) return;
-      const batch = writeBatch(firestore);
-      batch.update(doc(firestore, ...path, list[index].id), { order: newIndex });
-      batch.update(doc(firestore, ...path, list[newIndex].id), { order: index });
-      await batch.commit();
+      
+      try {
+          const batch = writeBatch(firestore);
+          // Get the base collection path
+          const docRef1 = doc(firestore, ...path, list[index].id);
+          const docRef2 = doc(firestore, ...path, list[newIndex].id);
+          
+          batch.update(docRef1, { order: newIndex });
+          batch.update(docRef2, { order: index });
+          
+          await batch.commit();
+          toast({ title: "تم تحديث الترتيب" });
+      } catch (e) {
+          toast({ title: "فشل تحديث الترتيب", variant: "destructive" });
+      }
   };
 
   const generateRandomCode = () => {
@@ -443,7 +446,7 @@ export default function AdminDashboard() {
                                                         </FormControl>
                                                         <SelectContent className="rounded-xl">
                                                             <SelectItem value="style1">تحميل (Style 1)</SelectItem>
-                                                            <SelectItem value="style2">نمط بديل (Style 2)</SelectItem>
+                                                            <SelectItem value="style2">عمودي (Style 2)</SelectItem>
                                                             <SelectItem value="style3">برومبت (Style 3)</SelectItem>
                                                             <SelectItem value="style4">فيديو (Style 4)</SelectItem>
                                                             <SelectItem value="style5">معرض (Style 5)</SelectItem>
@@ -631,9 +634,19 @@ export default function AdminDashboard() {
                                         <p className="text-xs font-bold">لا توجد أقسام فرعية</p>
                                     </div>
                                 ) : (
-                                    subCategories.map((sub) => (
+                                    subCategories.map((sub, idx) => (
                                         <div key={sub.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border group">
-                                            <span className="font-black text-sm">{sub.name}</span>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col">
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === 0} onClick={() => moveItem(subCategories, idx, 'up', ['categories'])}>
+                                                        <ChevronUp className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === subCategories.length - 1} onClick={() => moveItem(subCategories, idx, 'down', ['categories'])}>
+                                                        <ChevronDown className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                                <span className="font-black text-sm">{sub.name}</span>
+                                            </div>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setEditingCategory(sub); catForm.reset(sub); }}>
                                                     <Edit2 className="h-3.5 w-3.5" />
@@ -1072,8 +1085,8 @@ export default function AdminDashboard() {
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="payments" className="space-y-6">
-                        <div className="flex items-center justify-between">
+                    <TabsContent value="payments">
+                        <div className="flex items-center justify-between mb-6">
                             <h3 className="font-black text-lg px-2">طرق الدفع</h3>
                             <Dialog open={!!editingPayment} onOpenChange={(o) => !o && setEditingPayment(null)}>
                                 <DialogTrigger asChild>

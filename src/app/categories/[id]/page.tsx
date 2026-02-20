@@ -33,12 +33,12 @@ export default function CategoryPage() {
   const { isPro, isAdmin, isEditor, userProfile, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
-  const { categoryMap, subCategories, isLoadingCategories: areAllCategoriesLoading } = useCategories();
-  const category = useMemo(() => id ? categoryMap.get(id) : null, [categoryMap, id]);
-  const currentSubCategories = useMemo(() => id ? subCategories.get(id) || [] : [], [subCategories, id]);
+  // We fetch the specific category again to ensure we have the LATEST displayStyle
+  const categoryRef = useMemoFirebase(() => id ? doc(firestore!, 'categories', id) : null, [firestore, id]);
+  const { data: category, isLoading: isCategoryLoading } = useDoc<CategoryType>(categoryRef);
 
-  const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
-  const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
+  const { subCategories, isLoadingCategories: areAllCategoriesLoading } = useCategories();
+  const currentSubCategories = useMemo(() => id ? subCategories.get(id) || [] : [], [subCategories, id]);
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
@@ -95,7 +95,7 @@ export default function CategoryPage() {
       }
   };
 
-  const isLoading = areAllCategoriesLoading || areItemsLoading || isUserLoading;
+  const isLoading = isCategoryLoading || areItemsLoading || isUserLoading;
 
   const renderContent = () => {
     if (category?.isUnderMaintenance && !isAdmin && !isEditor) {
@@ -232,6 +232,30 @@ export default function CategoryPage() {
                                 </Card>
                             ))}
                         </div>
+                    ) : displayStyle === 'style2' ? (
+                        <div className="grid grid-cols-1 gap-6">
+                            {typedItems.map(item => (
+                                <Card key={item.id} className="overflow-hidden rounded-[2rem] border-none shadow-md bg-card">
+                                    <div className="flex flex-col">
+                                        <div className="relative aspect-video bg-muted group overflow-hidden" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
+                                            {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover group-hover:scale-105 transition-transform" />}
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                                                <Eye className="text-white h-8 w-8" />
+                                            </div>
+                                        </div>
+                                        <div className="p-5 flex items-center justify-between gap-4">
+                                            <div className="flex-1 min-w-0 text-right">
+                                                <h3 className="font-black text-lg truncate">{item.title}</h3>
+                                                {item.isNew && <span className="text-[10px] text-green-500 font-black">جديد</span>}
+                                            </div>
+                                            <Button className="rounded-xl font-black h-11 px-6 shadow-sm" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                                <Download className="ml-2 h-4 w-4" /> تحميل
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
                     ) : (
                         <div className="grid grid-cols-2 gap-4">
                             {typedItems.map(item => (
@@ -260,7 +284,7 @@ export default function CategoryPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
         <div className="sticky top-0 z-20">
-             <Header showMenu={false} title={areAllCategoriesLoading ? '...' : (category?.name || "تحميل...")}>
+             <Header showMenu={false} title={isLoading ? '...' : (category?.name || "تحميل...")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-12">
