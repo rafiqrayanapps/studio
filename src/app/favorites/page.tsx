@@ -144,7 +144,7 @@ const AudioPlayerRow = ({
 
     return (
         <div className={cn(
-            "flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2.2rem] border border-primary/10 group animate-in fade-in slide-in-from-bottom-2 duration-500",
+            "flex flex-col gap-3 p-5 bg-card/40 backdrop-blur-xl rounded-[2.5rem] border border-primary/10 shadow-lg group animate-in fade-in slide-in-from-bottom-2 duration-500 relative",
             loadError && "border-destructive/30 bg-destructive/5"
         )}>
             <audio 
@@ -154,43 +154,57 @@ const AudioPlayerRow = ({
                 referrerPolicy="no-referrer" 
             />
             
-            <div className={cn(
-                "h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden",
-                loadError && "bg-destructive/10 text-destructive"
-            )}>
-                {loadError ? <AlertCircle className="h-6 w-6" /> : <Music className={cn("h-6 w-6 transition-transform", isPlaying && "animate-bounce")} />}
+            <div className="flex items-center gap-4">
+                {/* Right Side: Music Icon */}
+                <div className={cn(
+                    "h-14 w-14 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner border border-primary/5",
+                    loadError && "bg-destructive/10 text-destructive"
+                )}>
+                    {loadError ? <AlertCircle className="h-7 w-7" /> : <Music className={cn("h-7 w-7 transition-transform", isPlaying && "animate-bounce")} />}
+                </div>
+
+                {/* Center: Title & Time */}
+                <div className="flex-1 min-w-0">
+                    <p className={cn("font-black text-lg truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
+                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                        {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {duration ? `${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}` : '--:--'}
+                    </p>
+                </div>
+
+                {/* Left Side: Play Control */}
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={togglePlay}
+                        disabled={loadError}
+                        className={cn(
+                            "h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xl shadow-primary/20 hover:scale-110 active:scale-90 transition-all",
+                            loadError && "opacity-50 grayscale"
+                        )}
+                    >
+                        {isPlaying ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 ml-1 fill-current" />}
+                    </button>
+                </div>
             </div>
 
-            <div className="flex-1 min-w-0 space-y-2">
-                <p className={cn("font-black text-sm truncate px-1", loadError && "text-destructive")}>{item.title}</p>
-                <div className="flex items-center gap-3">
+            {/* Bottom Row: Slider & Remove */}
+            <div className="flex items-center gap-4 pt-1">
+                <div className="flex-1 px-1">
                     <Slider 
                         value={[currentTime]} 
                         max={duration || 100} 
                         step={0.1}
                         onValueChange={handleSliderChange}
-                        className="flex-1 cursor-pointer"
+                        className="cursor-pointer"
                         disabled={loadError}
                     />
                 </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-                <button 
-                    onClick={togglePlay}
-                    disabled={loadError}
-                    className={cn(
-                        "h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg active:scale-90 transition-all",
-                        loadError && "opacity-50 grayscale"
-                    )}
-                >
-                    {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
-                </button>
+                
                 <button 
                     onClick={onRemove}
-                    className="h-10 w-10 rounded-full flex items-center justify-center text-destructive transition-all active:scale-90"
+                    className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center text-destructive transition-all active:scale-90"
+                    title="إزالة من المفضلة"
                 >
-                    <Trash2 className="h-5 w-5" />
+                    <Trash2 className="h-4 w-4" />
                 </button>
             </div>
         </div>
