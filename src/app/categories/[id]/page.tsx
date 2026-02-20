@@ -3,7 +3,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc } from 'firebase/firestore';
+import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem, DisplayStyle } from '@/lib/definitions';
 import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -299,7 +299,9 @@ export default function CategoryPage() {
 
   const itemsQuery = useMemoFirebase(() => {
       if (!firestore || !id) return null;
-      return query(collection(firestore, 'categories', id, 'items'));
+      // Using orderBy here matches the background pre-fetch query, 
+      // making it more likely to hit the local cache instantly.
+      return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
   }, [firestore, id]);
   const { data: rawItems, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
 
@@ -320,7 +322,7 @@ export default function CategoryPage() {
     if (!rawItems) return [];
     const viewableItems = (isAdmin || isEditor) ? rawItems : rawItems.filter(item => !item.status || item.status === 'approved');
     const searchedItems = viewableItems.filter((item) => (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
-    return [...searchedItems].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    return searchedItems; // Order is already handled by Firestore query
   }, [rawItems, searchTerm, isAdmin, isEditor]);
 
   const handleAction = (item: WithId<ContentItem>, action: () => void) => {
@@ -349,7 +351,10 @@ export default function CategoryPage() {
   };
 
   const isMaintenanceOn = category?.isUnderMaintenance && !isAdmin && !isEditor;
-  const isLoading = (isCategoryLoading || areItemsLoading || isUserLoading) && !isMaintenanceOn;
+  
+  // Note: Firestore's offline persistence means isLoading might be true while 
+  // data is already present from cache. We prioritize showing data if it exists.
+  const showSkeleton = (isCategoryLoading || areItemsLoading || isUserLoading) && !isMaintenanceOn && (!rawItems || rawItems.length === 0);
 
   const renderContent = () => {
     if (isMaintenanceOn) {
@@ -373,7 +378,7 @@ export default function CategoryPage() {
        )
     }
 
-    if (!isLoading && filteredItems.length === 0 && currentSubCategories.length === 0) return (
+    if (!showSkeleton && filteredItems.length === 0 && currentSubCategories.length === 0) return (
         <div className="text-center py-20 text-muted-foreground bg-card rounded-[2.5rem] mt-4 shadow-sm border border-dashed">
             <Search className="h-16 w-16 mx-auto mb-4 opacity-20" />
             <p className="text-xl font-black">لا يوجد محتوى متاح حالياً.</p>
@@ -683,7 +688,7 @@ export default function CategoryPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-secondary overflow-x-hidden">
         <div className="sticky top-0 z-30">
-             <Header showMenu={false} title={isLoading ? '...' : (category?.name || "تحميل...")}>
+             <Header showMenu={false} title={showSkeleton ? '...' : (category?.name || "تحميل...")}>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
              </Header>
             <div className="relative z-10 -mt-12">
@@ -696,13 +701,13 @@ export default function CategoryPage() {
             </div>
         </div>
       <main className="flex-1 px-6 pt-4 pb-24">
-        {!isLoading && !category ? (
+        {!showSkeleton && !category ? (
             <div className="text-center text-destructive p-12 bg-destructive/10 rounded-[2.5rem] mt-4 space-y-4">
                 <X className="mx-auto h-12 w-12" />
                 <h3 className="font-black text-xl">عفواً، لم نجد هذا القسم</h3>
                 <Button variant="outline" onClick={() => router.push('/home')} className="rounded-xl border-2">العودة للرئيسية</Button>
             </div>
-        ) : isLoading ? (
+        ) : showSkeleton ? (
           <div className="grid grid-cols-2 gap-4 mt-6">
              {[...Array(4)].map((_, i) => <CategorySkeleton key={i} className="aspect-square rounded-[2rem]" />)}
           </div>
