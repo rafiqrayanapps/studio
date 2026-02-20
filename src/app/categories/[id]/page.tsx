@@ -2,10 +2,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
-import type { Category as CategoryType, ContentItem, DisplayStyle } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, LayoutGrid, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, Trash2, Settings, Wrench, Cog } from 'lucide-react';
+import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, Settings, Wrench, Cog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,48 +22,20 @@ import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
-type FavoriteItem = WithId<ContentItem> & { displayStyle?: DisplayStyle };
-
-const AdminQuickActions = ({ 
-    onDelete 
-}: { 
-    onDelete: () => void 
-}) => {
-    return (
-        <div className="absolute top-2 right-2 flex gap-1 z-30">
-            <Button 
-                variant="destructive" 
-                size="icon" 
-                className="h-8 w-8 rounded-full shadow-lg hover:scale-110 active:scale-90 transition-all" 
-                onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if(confirm("هل أنت متأكد من حذف هذا العنصر؟")) onDelete(); 
-                }}
-            >
-                <Trash2 className="h-4 w-4" />
-            </Button>
-        </div>
-    );
-};
-
 const AudioPlayerRow = ({ 
     item, 
     isFavorite, 
     onToggleFavorite, 
     onAction,
     activeId,
-    onPlay,
-    isAdminView,
-    onDelete
+    onPlay
 }: { 
     item: WithId<ContentItem>, 
     isFavorite: boolean, 
     onToggleFavorite: () => void,
     onAction: (action: () => void) => void,
     activeId: string | null,
-    onPlay: (id: string | null) => void,
-    isAdminView?: boolean,
-    onDelete?: () => void
+    onPlay: (id: string | null) => void
 }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -108,7 +80,7 @@ const AudioPlayerRow = ({
         };
         const onError = () => {
             const error = audio.error;
-            console.error("Audio Playback Error:", {
+            console.error("Audio Load Error Details:", {
                 title: item.title,
                 code: error?.code,
                 message: error?.message,
@@ -217,15 +189,6 @@ const AudioPlayerRow = ({
 
             <div className="flex items-center gap-4 pt-1">
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {(isAdminView && onDelete) && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); if(confirm("حذف؟")) onDelete(); }}
-                            className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-all active:scale-90"
-                            title="حذف"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </button>
-                    )}
                     <button 
                         onClick={onToggleFavorite}
                         className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center transition-all active:scale-90"
@@ -296,7 +259,7 @@ export default function CategoryPage() {
   
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [favorites, setFavorites] = useLocalStorage<FavoriteItem[]>('favorites', []);
+  const [favorites, setFavorites] = useLocalStorage<any[]>('favorites', []);
   const { toast } = useToast();
   const { isPro, isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
@@ -312,11 +275,11 @@ export default function CategoryPage() {
       if (!firestore || !id) return null;
       return query(collection(firestore, 'categories', id, 'items'), orderBy('order', 'asc'));
   }, [firestore, id]);
-  const { data: rawItems, isLoading: areItemsLoading } = useCollection<ContentItem>(itemsQuery);
+  const { data: rawItems, isLoading: areItemsLoading } = useCollection<any>(itemsQuery);
 
   const isFavorite = (itemId: string) => favorites.some(item => item.id === itemId);
 
-  const toggleFavorite = (item: WithId<ContentItem>) => {
+  const toggleFavorite = (item: WithId<any>) => {
     const isCurrentlyFavorite = isFavorite(item.id);
     if (isCurrentlyFavorite) {
       setFavorites(prev => prev.filter(fav => fav.id !== item.id));
@@ -334,7 +297,7 @@ export default function CategoryPage() {
     return searchedItems;
   }, [rawItems, searchTerm, isAdmin, isEditor]);
 
-  const handleAction = (item: WithId<ContentItem>, action: () => void) => {
+  const handleAction = (item: WithId<any>, action: () => void) => {
       const isLocked = item.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
       if (isLocked) {
           setShowUpgradeDialog(true);
@@ -349,13 +312,6 @@ export default function CategoryPage() {
           setShowUpgradeDialog(true);
       } else {
           router.push(`/categories/${sub.id}`);
-      }
-  };
-
-  const deleteItem = (itemId: string) => {
-      if (firestore && id) {
-          deleteDocumentNonBlocking(doc(firestore, 'categories', id, 'items', itemId));
-          toast({ title: "تم الحذف بنجاح" });
       }
   };
 
@@ -404,7 +360,7 @@ export default function CategoryPage() {
         </div>
     );
 
-    const typedItems = filteredItems as WithId<ContentItem>[];
+    const typedItems = filteredItems as WithId<any>[];
     const displayStyle = category?.displayStyle || 'style1';
 
     return (
@@ -480,8 +436,6 @@ export default function CategoryPage() {
                                     onAction={(action) => handleAction(item, action)}
                                     activeId={activeAudioId}
                                     onPlay={setActiveAudioId}
-                                    isAdminView={isAdmin || isEditor}
-                                    onDelete={() => deleteItem(item.id)}
                                 />
                             ))}
                         </div>
@@ -489,7 +443,6 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <h3 className="font-black text-xl text-center text-primary px-4">{item.title}</h3>
                                     <div 
                                         className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
@@ -534,7 +487,6 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-6 duration-700 relative">
-                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl mb-1 tracking-tight">{item.title}</h3>
                                         <button 
@@ -564,7 +516,6 @@ export default function CategoryPage() {
                         <div className="space-y-12">
                             {typedItems.map(item => (
                                 <Card key={item.id} className="overflow-hidden rounded-[3.5rem] border border-white/20 bg-primary/5 backdrop-blur-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] hover:shadow-[0_35px_80px_-15px_rgba(0,0,0,0.15)] transition-all duration-500 group/card relative">
-                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <div className="p-8 sm:p-10">
                                         <div className="flex items-start gap-6 mb-8">
                                             <div className="h-24 w-24 rounded-[2.2rem] bg-card relative overflow-hidden shrink-0 shadow-2xl border-4 border-white/10 group-hover/card:scale-105 transition-transform duration-500">
@@ -623,7 +574,6 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 gap-12">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-5 group animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl tracking-tight mb-1">{item.title}</h3>
                                         <button 
@@ -650,7 +600,6 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-1 gap-14 mt-4">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <div className="text-center px-4 relative">
                                         <h3 className="font-black text-2xl text-foreground tracking-tight">{item.title}</h3>
                                         <button 
@@ -681,7 +630,6 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-2 gap-x-6 gap-y-12">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    {(isAdmin || isEditor) && <AdminQuickActions onDelete={() => deleteItem(item.id)} />}
                                     <h3 className="font-black text-base text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
                                     <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                                         {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />}
