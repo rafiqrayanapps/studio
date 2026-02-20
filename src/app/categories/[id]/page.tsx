@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import Header from '@/components/layout/Header';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { cn } from '@/lib/utils';
+import { cn, getDirectDriveLink } from '@/lib/utils';
 import CategorySkeleton from '@/components/skeletons/CategorySkeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
@@ -24,16 +24,36 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 type FavoriteItem = WithId<ContentItem> & { displayStyle?: DisplayStyle };
 
-const AudioPlayerRow = ({ item, isFavorite, onToggleFavorite, onAction }: { 
+const AudioPlayerRow = ({ 
+    item, 
+    isFavorite, 
+    onToggleFavorite, 
+    onAction,
+    activeId,
+    onPlay
+}: { 
     item: WithId<ContentItem>, 
     isFavorite: boolean, 
     onToggleFavorite: () => void,
-    onAction: (action: () => void) => void 
+    onAction: (action: () => void) => void,
+    activeId: string | null,
+    onPlay: (id: string | null) => void
 }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    // Automatic link conversion
+    const directAudioUrl = useMemo(() => getDirectDriveLink(item.audioUrl), [item.audioUrl]);
+
+    // Handle global playing state
+    useEffect(() => {
+        if (activeId !== item.id && isPlaying) {
+            audioRef.current?.pause();
+            setIsPlaying(false);
+        }
+    }, [activeId, item.id, isPlaying]);
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -41,7 +61,10 @@ const AudioPlayerRow = ({ item, isFavorite, onToggleFavorite, onAction }: {
 
         const setAudioData = () => setDuration(audio.duration);
         const setAudioTime = () => setCurrentTime(audio.currentTime);
-        const onEnded = () => setIsPlaying(false);
+        const onEnded = () => {
+            setIsPlaying(false);
+            if (activeId === item.id) onPlay(null);
+        };
 
         audio.addEventListener('loadeddata', setAudioData);
         audio.addEventListener('timeupdate', setAudioTime);
@@ -52,17 +75,19 @@ const AudioPlayerRow = ({ item, isFavorite, onToggleFavorite, onAction }: {
             audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', onEnded);
         };
-    }, []);
+    }, [activeId, item.id, onPlay]);
 
     const togglePlay = () => {
         if (!audioRef.current) return;
         if (isPlaying) {
             audioRef.current.pause();
+            setIsPlaying(false);
+            onPlay(null);
         } else {
-            // Stop other audios if needed (future implementation)
             audioRef.current.play();
+            setIsPlaying(true);
+            onPlay(item.id);
         }
-        setIsPlaying(!isPlaying);
     };
 
     const handleSliderChange = (value: number[]) => {
@@ -74,15 +99,13 @@ const AudioPlayerRow = ({ item, isFavorite, onToggleFavorite, onAction }: {
 
     return (
         <div className="flex items-center gap-4 p-4 bg-primary/5 backdrop-blur-xl rounded-[2rem] border border-white/10 group animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <audio ref={audioRef} src={item.audioUrl} preload="metadata" />
+            <audio ref={audioRef} src={directAudioUrl} preload="metadata" />
             
-            {/* Music Icon (Right) */}
             <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner">
                 <Music className={cn("h-6 w-6 transition-transform duration-500", isPlaying && "animate-bounce")} />
-                {item.isNew && <div className="absolute top-0 right-0 bg-green-500 w-2 h-2 rounded-full" />}
+                {item.isNew && <div className="absolute top-0 right-0 bg-green-500 w-2.5 h-2.5 rounded-full border-2 border-white" />}
             </div>
 
-            {/* Title & Progress (Center) */}
             <div className="flex-1 min-w-0 space-y-2">
                 <p className="font-black text-sm truncate px-1">{item.title}</p>
                 <div className="flex items-center gap-3">
@@ -99,7 +122,6 @@ const AudioPlayerRow = ({ item, isFavorite, onToggleFavorite, onAction }: {
                 </div>
             </div>
 
-            {/* Controls (Left) */}
             <div className="flex items-center gap-2 shrink-0">
                 <button 
                     onClick={togglePlay}
@@ -152,6 +174,7 @@ export default function CategoryPage() {
   const { toast } = useToast();
   const { isPro, isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
 
   const categoryRef = useMemoFirebase(() => id ? doc(firestore!, 'categories', id) : null, [firestore, id]);
   const { data: category, isLoading: isCategoryLoading } = useDoc<CategoryType>(categoryRef);
@@ -302,6 +325,8 @@ export default function CategoryPage() {
                                     isFavorite={isFavorite(item.id)} 
                                     onToggleFavorite={() => toggleFavorite(item)}
                                     onAction={(action) => handleAction(item, action)}
+                                    activeId={activeAudioId}
+                                    onPlay={setActiveAudioId}
                                 />
                             ))}
                         </div>
