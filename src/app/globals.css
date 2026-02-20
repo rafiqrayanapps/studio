@@ -60,4 +60,24 @@
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  @keyframes walk {
+    0%, 100% { transform: translateX(0) translateY(0) rotate(0); }
+    25% { transform: translateX(-5px) translateY(-5px) rotate(-2deg); }
+    50% { transform: translateX(-10px) translateY(0) rotate(0); }
+    75% { transform: translateX(-5px) translateY(-5px) rotate(2deg); }
+  }
+
+  .animate-walk {
+    animation: walk 1.5s ease-in-out infinite;
+  }
+
+  @keyframes float-shadow {
+    0%, 100% { transform: scaleX(1); opacity: 0.2; }
+    50% { transform: scaleX(0.8); opacity: 0.1; }
+  }
+
+  .animate-float-shadow {
+    animation: float-shadow 1.5s ease-in-out infinite;
+  }
 }
