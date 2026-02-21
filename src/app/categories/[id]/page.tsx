@@ -22,6 +22,18 @@ import { useCategories } from '@/components/providers/CategoryProvider';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useUnityAds } from '@/components/ads/UnityAdsProvider';
 
+const FavoriteButton = ({ isFavorite, onClick, className }: { isFavorite: boolean, onClick: (e: any) => void, className?: string }) => (
+    <button 
+        className={cn(
+            "absolute top-4 left-4 h-10 w-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all z-20 border border-black/5",
+            className
+        )} 
+        onClick={onClick}
+    >
+        <Heart className={cn("h-5 w-5 transition-colors", isFavorite ? "fill-primary text-primary" : "text-gray-500")} />
+    </button>
+);
+
 const AudioPlayerRow = ({ 
     item, 
     isFavorite, 
@@ -124,7 +136,9 @@ const AudioPlayerRow = ({
             </div>
             <div className="flex items-center gap-4">
                 <div className="flex gap-1.5">
-                    <button onClick={onToggleFavorite} className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center"><Heart className={cn("h-3.5 w-3.5", isFavorite && "text-primary fill-primary")} /></button>
+                    <button onClick={onToggleFavorite} className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center border active:scale-90 transition-transform">
+                        <Heart className={cn("h-4 w-4 transition-colors", isFavorite ? "text-primary fill-primary" : "text-gray-400")} />
+                    </button>
                     {item.downloadUrl && <button onClick={() => onAction(() => window.open(item.downloadUrl, '_blank'))} className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-primary"><Download className="h-3.5 w-3.5" /></button>}
                 </div>
                 <Slider value={[currentTime]} max={duration || 100} step={0.1} onValueChange={(v) => { if(audioRef.current) audioRef.current.currentTime = v[0]; }} className="flex-1" />
@@ -189,6 +203,8 @@ export default function CategoryPage() {
 
   const renderItem = (item: any) => {
     const style = category?.displayStyle || 'style1';
+    const isFav = favorites.some(f => f.id === item.id);
+
     switch(style) {
         case 'style3':
             return (
@@ -196,7 +212,7 @@ export default function CategoryPage() {
                     <h3 className="font-black text-sm text-center text-primary">{item.title}</h3>
                     <div className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted shadow-2xl border-4 border-white/5" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-auto" />}
-                        <button className="absolute top-4 left-4 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}><Heart className={cn("h-5 w-5", favorites.some(f => f.id === item.id) && "fill-primary text-primary")} /></button>
+                        <FavoriteButton isFavorite={isFav} onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} />
                     </div>
                     <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted/50 rounded-2xl text-xs font-mono p-4 shadow-inner" dir="ltr" />
                     <div className="flex gap-3">
@@ -214,7 +230,7 @@ export default function CategoryPage() {
                         <div className="absolute inset-0 flex items-center justify-center">
                             <div className="bg-primary/90 text-white p-4 rounded-full shadow-2xl backdrop-blur-sm scale-90 active:scale-110 transition-transform"><PlayCircle className="h-12 w-12" /></div>
                         </div>
-                        <button className="absolute top-4 left-4 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}><Heart className={cn("h-5 w-5", favorites.some(f => f.id === item.id) && "fill-primary text-primary")} /></button>
+                        <FavoriteButton isFavorite={isFav} onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} />
                     </div>
                 </div>
             );
@@ -230,7 +246,7 @@ export default function CategoryPage() {
                                 <h3 className="text-lg font-black leading-tight truncate">{item.title}</h3>
                                 {item.appVersion && <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">إصدار {item.appVersion}</span>}
                             </div>
-                            <button onClick={() => toggleFavorite(item)} className="h-8 w-8 bg-card rounded-full flex items-center justify-center shadow-sm"><Heart className={cn("h-4 w-4", favorites.some(f => f.id === item.id) && "fill-primary text-primary")} /></button>
+                            <button onClick={() => toggleFavorite(item)} className="h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform border border-black/5"><Heart className={cn("h-5 w-5 transition-colors", isFav ? "fill-primary text-primary" : "text-gray-400")} /></button>
                         </div>
                         {item.screenshots && item.screenshots.length > 0 && (
                             <div className="mb-6 -mx-2">
@@ -257,7 +273,7 @@ export default function CategoryPage() {
                     <div className="relative aspect-video w-full rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-pointer border-4 border-white/5" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="object-cover w-full h-full" />}
                         <div className="absolute inset-0 bg-primary/20 flex items-center justify-center backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity"><ExternalLink className="text-white h-10 w-10" /></div>
-                        <button className="absolute top-4 left-4 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}><Heart className={cn("h-5 w-5", favorites.some(f => f.id === item.id) && "fill-primary text-primary")} /></button>
+                        <FavoriteButton isFavorite={isFav} onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} />
                     </div>
                     <Button className="w-full rounded-2xl font-black h-14 shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>زيارة الموقع الآن</Button>
                 </div>
@@ -268,7 +284,7 @@ export default function CategoryPage() {
                     <h3 className="font-black text-sm text-center">{item.title}</h3>
                     <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-auto" />}
-                        <button className="absolute top-4 left-4 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}><Heart className={cn("h-5 w-5", favorites.some(f => f.id === item.id) && "fill-primary text-primary")} /></button>
+                        <FavoriteButton isFavorite={isFav} onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} />
                     </div>
                     <Button className="w-full rounded-2xl font-black h-14 shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}><Download className="ml-2 h-5 w-5" /> تحميل الآن</Button>
                 </div>
@@ -279,7 +295,7 @@ export default function CategoryPage() {
                     <h3 className="font-black text-xs text-center truncate px-1">{item.title}</h3>
                     <div className="relative aspect-square rounded-[2rem] overflow-hidden shadow-xl border-4 border-white/5" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />}
-                        <button className="absolute top-3 left-3 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}><Heart className={cn("h-4 w-4", favorites.some(f => f.id === item.id) && "fill-primary text-primary")} /></button>
+                        <FavoriteButton isFavorite={isFav} onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} className="top-3 left-3 h-8 w-8" />
                     </div>
                     <Button className="w-full h-12 rounded-[1.2rem] font-black text-xs" onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}><Download className="ml-1 h-3.5 w-3.5" /> تحميل</Button>
                 </div>

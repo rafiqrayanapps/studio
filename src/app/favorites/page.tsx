@@ -22,7 +22,7 @@ type FavoriteItem = WithId<ContentItem> & { displayStyle?: DisplayStyle };
 const RemoveButton = ({ onRemove }: { onRemove: () => void }) => (
   <Button
     size="icon"
-    className="absolute top-4 left-4 z-20 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-destructive hover:scale-110 transition-all shadow-lg"
+    className="absolute top-4 left-4 z-20 h-10 w-10 bg-white/90 backdrop-blur-sm rounded-full text-destructive hover:bg-destructive hover:text-white hover:scale-110 transition-all shadow-lg border border-black/5"
     onClick={(e) => { e.stopPropagation(); e.preventDefault(); onRemove(); }}
   >
     <Trash2 className="h-5 w-5" />
@@ -190,7 +190,7 @@ const AudioPlayerRow = ({
             <div className="flex items-center gap-4 pt-1">
                 <button 
                     onClick={onRemove}
-                    className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center text-destructive transition-all active:scale-90"
+                    className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center text-destructive transition-all active:scale-90 shadow-sm border border-destructive/5"
                     title="إزالة من المفضلة"
                 >
                     <Trash2 className="h-4 w-4" />
