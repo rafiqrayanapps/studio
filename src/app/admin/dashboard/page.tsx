@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -229,7 +228,7 @@ export default function AdminDashboard() {
           ...values,
           screenshots: screenshotsArray,
           updatedAt: serverTimestamp(),
-          status: isAdmin ? 'approved' : 'pending' // المحرر دائماً يضيف معلقاً
+          status: isAdmin ? 'approved' : 'pending'
       };
 
       if (editingItem && isAdmin) {
@@ -929,8 +928,7 @@ export default function AdminDashboard() {
                 </Tabs>
             </div>
         )}
-
-      </header>
+      </main>
     </div>
   );
 }

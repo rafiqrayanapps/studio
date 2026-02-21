@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy, where } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, Settings, Wrench, Cog, Construction } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, Settings, Wrench, Cog, Construction, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -220,12 +220,12 @@ export default function CategoryPage() {
   const categoryRef = useMemoFirebase(() => id ? doc(firestore!, 'categories', id) : null, [firestore, id]);
   const { data: category, isLoading: isCategoryLoading } = useDoc<CategoryType>(categoryRef);
 
-  const { subCategories, categoryMap } = useCategories();
+  const { subCategories } = useCategories();
   
   const currentSubCategories = useMemo(() => {
       if (!id || !category) return [];
       
-      // If we are in Style 7 and it's a subcategory, show its siblings too
+      // If we are in Style 7 and it's a subcategory, show its siblings too for the tabs
       if (category.displayStyle === 'style7' && category.parentId) {
           return subCategories.get(category.parentId) || [];
       }
@@ -284,6 +284,7 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
+    // Show approved items, or items without status (legacy)
     const viewableItems = (isAdmin || isEditor) 
         ? rawItems 
         : rawItems.filter(item => item.status === 'approved' || !item.status);
@@ -297,37 +298,40 @@ export default function CategoryPage() {
   const renderContent = () => {
     if (isMaintenanceOn) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-8 sm:p-12 bg-card/40 backdrop-blur-3xl rounded-[3rem] mt-8 shadow-2xl border border-white/20 min-h-[550px] relative overflow-hidden group">
-            <div className="absolute top-10 left-10 opacity-10 group-hover:scale-110 transition-transform duration-1000">
-                <Cog className="h-32 w-32 animate-gear-rotate text-primary" />
-            </div>
-            <div className="absolute bottom-10 right-10 opacity-10 group-hover:scale-110 transition-transform duration-1000">
-                <Cog className="h-24 w-24 animate-gear-rotate-reverse text-primary" />
-            </div>
-
-            <div className="space-y-8 relative z-20">
-                <div className="relative inline-block">
-                    <div className="bg-primary/10 p-8 rounded-[2.5rem] relative z-10 animate-floating">
-                        <Wrench className="h-16 w-16 text-primary animate-wrench" />
+         <div className="flex flex-col items-center justify-center pt-12 animate-in fade-in zoom-in duration-700">
+            <Card className="w-full max-w-md overflow-hidden rounded-[3rem] border-none shadow-2xl bg-card">
+                <div className="relative aspect-[4/3] w-full bg-muted">
+                    <img 
+                        src="https://picsum.photos/seed/maintenance/800/600" 
+                        alt="Maintenance" 
+                        className="object-cover w-full h-full opacity-90"
+                        data-ai-hint="technical team maintenance"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
+                </div>
+                
+                <div className="px-8 pb-10 -mt-12 relative z-10 text-center space-y-6">
+                    <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-xs font-black border border-primary/20 shadow-sm animate-bounce">
+                        <ShieldCheck className="h-4 w-4" />
+                        تحسينات مستمرة
                     </div>
-                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/10 rounded-full blur-md animate-float-shadow" />
-                </div>
 
-                <div className="space-y-3">
-                    <h3 className="font-black text-2xl text-foreground tracking-tight">نطور من أجلك</h3>
-                    <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed font-bold opacity-80">
-                        فريقنا الفني يعمل الآن كخلية نحل لإضافة لمسات إبداعية لهذا القسم. سنكون جاهزين لاستقبالكم قريباً جداً!
-                    </p>
-                </div>
-
-                <div className="flex flex-col items-center gap-4 pt-4">
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary/60 bg-primary/5 px-4 py-2 rounded-full border border-primary/10">
-                        <Construction className="h-3 w-3" />
-                        الوضع: تحت التحسين
+                    <div className="space-y-2">
+                        <h3 className="text-2xl font-black text-foreground">إبداع قيد التحضير</h3>
+                        <p className="text-muted-foreground text-sm leading-relaxed font-medium">
+                            نحن نقوم الآن بضبط بعض التفاصيل التقنية والجمالية لنقدم لك أفضل نسخة من هذا القسم. انتظرنا، فالنتائج تستحق!
+                        </p>
                     </div>
-                    <Button variant="default" onClick={() => router.back()} className="rounded-2xl h-14 px-10 font-black shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95">العودة للرئيسية</Button>
+
+                    <Button 
+                        size="lg" 
+                        onClick={() => router.push('/home')}
+                        className="w-full h-16 rounded-[2rem] text-lg font-black bg-primary shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
+                    >
+                        العودة للرئيسية
+                    </Button>
                 </div>
-            </div>
+            </Card>
          </div>
        )
     }
