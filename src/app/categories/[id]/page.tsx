@@ -230,7 +230,7 @@ export default function CategoryPage() {
                             </div>
                             <div className="flex-1 pt-1">
                                 <h3 className="text-lg font-black leading-tight truncate">{item.title}</h3>
-                                {item.appVersion && <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">إصدار {item.appVersion}</span>}
+                                {item.appVersion && <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">إصدار {item.appVersion}</span>}
                             </div>
                             <button onClick={() => toggleFavorite(item)} className="h-8 w-8 bg-card rounded-full flex items-center justify-center shadow-sm"><Heart className={cn("h-4 w-4", favorites.some(f => f.id === item.id) && "fill-primary text-primary")} /></button>
                         </div>

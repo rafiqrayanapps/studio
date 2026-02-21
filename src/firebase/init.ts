@@ -20,10 +20,10 @@ export const initializeFirebase = (() => {
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // تفعيل إعدادات الاتصال القصوى لضمان جلب البيانات حتى في أصعب ظروف الشبكة
+    // تفعيل إعدادات الاتصال المستقرة لحل مشكلة 'unavailable'
+    // تم إبقاء خيار واحد فقط لمنع التعارض البرمجي
     const firestore = initializeFirestore(app, {
       experimentalForceLongPolling: true,
-      experimentalAutoDetectLongPolling: true,
     });
 
     firebaseServices = {
