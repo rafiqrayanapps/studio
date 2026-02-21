@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Coins, Gift, Share2, Copy, Loader2, Info, CheckCircle2, Crown, Zap, AlertCircle, LogIn, PlayCircle } from 'lucide-react';
+import { Coins, Gift, Share2, Copy, Loader2, Info, CheckCircle2, Crown, Zap, AlertCircle, LogIn, PlayCircle, ExternalLink } from 'lucide-react';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, increment, getDoc, arrayUnion, setDoc } from 'firebase/firestore';
@@ -21,7 +21,7 @@ function ReferralDialogContent() {
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { showRewarded, isInitialized } = useUnityAds();
+    const { showRewarded, config: adsConfig } = useUnityAds();
     
     const [referralCodeInput, setReferralCodeInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +62,7 @@ function ReferralDialogContent() {
                 await updateDocumentNonBlocking(doc(firestore!, 'users', user.uid), {
                     points: increment(1)
                 });
-                toast({ title: "مبروك! 🎉", description: "حصلت على نقطة واحدة لمشاهدتك الإعلان." });
+                toast({ title: "مبروك! 🎉", description: "حصلت على نقطة واحدة لدعمك لنا." });
             } catch (e) {
                 console.error("Ad point increment failed:", e);
             } finally {
@@ -251,21 +251,24 @@ function ReferralDialogContent() {
 
                         <div className="space-y-6">
                             {/* Rewarded Ad Section */}
-                            <div className="bg-yellow-50 p-5 rounded-[2rem] border border-yellow-200 space-y-3 text-center">
-                                <div className="flex items-center justify-center gap-2 text-yellow-700 text-xs font-black uppercase">
-                                    <PlayCircle className="h-4 w-4" />
-                                    <span>نقاط مجانية</span>
+                            {(adsConfig?.adsterraEnabled || adsConfig?.manualAdsEnabled) && (
+                                <div className="bg-yellow-50 p-5 rounded-[2rem] border border-yellow-200 space-y-3 text-center relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><Coins className="h-12 w-12" /></div>
+                                    <div className="flex items-center justify-center gap-2 text-yellow-700 text-xs font-black uppercase relative z-10">
+                                        <Zap className="h-4 w-4 animate-pulse" />
+                                        <span>نقاط مجانية</span>
+                                    </div>
+                                    <p className="text-[10px] text-yellow-800/70 font-medium relative z-10">ادعمنا بمشاهدة إعلان سريع واحصل على 1 نقطة فورية!</p>
+                                    <Button 
+                                        className="w-full rounded-2xl h-12 bg-yellow-500 hover:bg-yellow-600 text-white font-black shadow-lg shadow-yellow-200 relative z-10"
+                                        onClick={handleWatchAd}
+                                        disabled={isWatchingAd}
+                                    >
+                                        {isWatchingAd ? <Loader2 className="animate-spin ml-2 h-4 w-4" /> : <ExternalLink className="ml-2 h-5 w-5" />}
+                                        افتح الإعلان واحصل على نقطة
+                                    </Button>
                                 </div>
-                                <p className="text-[10px] text-yellow-800/70 font-medium">شاهد إعلان فيديو قصير واحصل على 1 نقطة مجانية لرصيدك!</p>
-                                <Button 
-                                    className="w-full rounded-2xl h-12 bg-yellow-500 hover:bg-yellow-600 text-white font-black shadow-lg shadow-yellow-200"
-                                    onClick={handleWatchAd}
-                                    disabled={isWatchingAd || !isInitialized}
-                                >
-                                    {isWatchingAd ? <Loader2 className="animate-spin ml-2 h-4 w-4" /> : <PlayCircle className="ml-2 h-5 w-5" />}
-                                    شاهد واحصل على نقطة
-                                </Button>
-                            </div>
+                            )}
 
                             {/* User's Own Code */}
                             <div className="bg-muted/50 p-5 rounded-[2rem] space-y-3 text-center border-2 border-dashed border-primary/20 relative group">

@@ -32,7 +32,8 @@ import {
     Hammer,
     Music,
     Save,
-    Play
+    Play,
+    Globe
 } from 'lucide-react';
 
 import { 
@@ -719,7 +720,7 @@ export default function AdminDashboard() {
                     <ScrollArea className="w-full">
                         <TabsList className="flex w-full min-w-max bg-white shadow-sm border rounded-2xl p-1 h-14">
                             <TabsTrigger value="appearance" className="rounded-xl font-black text-xs gap-2 px-6"><Palette className="h-4 w-4" /> المظهر</TabsTrigger>
-                            <TabsTrigger value="ads" className="rounded-xl font-black text-xs gap-2 px-6"><Play className="h-4 w-4" /> الإعلانات</TabsTrigger>
+                            <TabsTrigger value="ads" className="rounded-xl font-black text-xs gap-2 px-6"><Globe className="h-4 w-4" /> إعلانات Adsterra</TabsTrigger>
                             <TabsTrigger value="notifications" className="rounded-xl font-black text-xs gap-2 px-6"><Bell className="h-4 w-4" /> التنبيهات</TabsTrigger>
                             <TabsTrigger value="dialog" className="rounded-xl font-black text-xs gap-2 px-6"><Layout className="h-4 w-4" /> نافذة الاشتراك</TabsTrigger>
                             <TabsTrigger value="users" className="rounded-xl font-black text-xs gap-2 px-6"><Users className="h-4 w-4" /> المستخدمين</TabsTrigger>
@@ -738,8 +739,8 @@ export default function AdminDashboard() {
                     <TabsContent value="ads">
                         <Card className="rounded-[2.5rem] p-8 border-none shadow-xl">
                             <CardHeader className="px-0">
-                                <CardTitle className="flex items-center gap-3"><Play className="h-6 w-6 text-primary" /> إعدادات الإعلانات</CardTitle>
-                                <p className="text-xs text-muted-foreground mt-1">تحكم في Unity Ads أو الإعلانات اليدوية الاحتياطية للمواقع.</p>
+                                <CardTitle className="flex items-center gap-3"><Globe className="h-6 w-6 text-primary" /> إعدادات Adsterra</CardTitle>
+                                <p className="text-xs text-muted-foreground mt-1">قم بلصق أكواد الإعلانات من لوحة تحكم Adsterra مباشرة.</p>
                             </CardHeader>
                             <FormAdsControl />
                         </Card>
@@ -894,13 +895,11 @@ function FormAdsControl() {
     const { data: ads } = useDoc<AdsConfig>(adsRef);
     const [config, setConfig] = useState<AdsConfig>({
         enabled: false,
-        gameId: '5670767',
-        bannerEnabled: false,
-        bannerPlacement: 'banner',
-        interstitialEnabled: false,
-        interstitialPlacement: 'video',
-        rewardedEnabled: false,
-        rewardedPlacement: 'rewardedVideo',
+        adsterraEnabled: false,
+        socialBarScript: '',
+        popunderScript: '',
+        nativeBannerScript: '',
+        directLinkUrl: '',
         interstitialFrequency: 6,
         manualAdsEnabled: false,
         manualBannerImg: '',
@@ -914,67 +913,64 @@ function FormAdsControl() {
 
     const save = async () => {
         await setDoc(adsRef!, config, { merge: true });
-        toast({ title: "تم تحديث إعدادات الإعلانات" });
+        toast({ title: "تم تحديث إعدادات Adsterra" });
     };
 
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
                 <div className="space-y-0.5">
-                    <p className="text-sm font-black">تفعيل الإعلانات بالكامل</p>
-                    <p className="text-[10px] text-muted-foreground">تعطيل هذا الخيار يوقف جميع الإعلانات (يونتي واليدوية).</p>
+                    <p className="text-sm font-black">تفعيل نظام الإعلانات</p>
+                    <p className="text-[10px] text-muted-foreground">تعطيل هذا الخيار يوقف جميع الإعلانات في الموقع.</p>
                 </div>
                 <Switch checked={config.enabled} onCheckedChange={v => setConfig({...config, enabled: v})} />
             </div>
 
-            <div className="space-y-4">
-                <h4 className="font-black text-xs text-primary px-1">إعدادات Unity Ads (للتطبيقات)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-xs font-black">Unity Game ID</label>
-                        <Input value={config.gameId} onChange={e => setConfig({...config, gameId: e.target.value})} dir="ltr" />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-black">تكرار الإعلانات البينية (كل X منشور)</label>
-                        <Input type="number" value={config.interstitialFrequency} onChange={e => setConfig({...config, interstitialFrequency: parseInt(e.target.value)})} dir="ltr" />
-                    </div>
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h4 className="font-black text-xs text-primary px-1">إعدادات Adsterra (الويب)</h4>
+                    <Switch checked={config.adsterraEnabled} onCheckedChange={v => setConfig({...config, adsterraEnabled: v})} />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="p-4 space-y-4">
-                        <div className="flex items-center justify-between"><p className="text-xs font-black">إعلان بانر</p><Switch checked={config.bannerEnabled} onCheckedChange={v => setConfig({...config, bannerEnabled: v})} /></div>
-                        <Input placeholder="Placement ID" value={config.bannerPlacement} onChange={e => setConfig({...config, bannerPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
-                    </Card>
-                    <Card className="p-4 space-y-4">
-                        <div className="flex items-center justify-between"><p className="text-xs font-black">إعلان بيني</p><Switch checked={config.interstitialEnabled} onCheckedChange={v => setConfig({...config, interstitialEnabled: v})} /></div>
-                        <Input placeholder="Placement ID" value={config.interstitialPlacement} onChange={e => setConfig({...config, interstitialPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
-                    </Card>
-                    <Card className="p-4 space-y-4">
-                        <div className="flex items-center justify-between"><p className="text-xs font-black">إعلان مكافأة</p><Switch checked={config.rewardedEnabled} onCheckedChange={v => setConfig({...config, rewardedEnabled: v})} /></div>
-                        <Input placeholder="Placement ID" value={config.rewardedPlacement} onChange={e => setConfig({...config, rewardedPlacement: e.target.value})} dir="ltr" className="h-9 text-xs" />
-                    </Card>
+                
+                <div className="grid grid-cols-1 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-xs font-black">رابط الـ Direct Link (لجمع النقاط)</label>
+                        <Input value={config.directLinkUrl} onChange={e => setConfig({...config, directLinkUrl: e.target.value})} dir="ltr" placeholder="https://www.highperformanceformat.com/..." />
+                        <p className="text-[9px] text-muted-foreground">سيتم توجيه المستخدم لهذا الرابط ومنحه نقطة بعد 15 ثانية.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-black">كود Social Bar</label>
+                        <Textarea value={config.socialBarScript} onChange={e => setConfig({...config, socialBarScript: e.target.value})} dir="ltr" placeholder="<script ...></script>" className="h-20 font-mono text-[10px]" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-black">كود Native Banner (للبانر السفلي)</label>
+                        <Textarea value={config.nativeBannerScript} onChange={e => setConfig({...config, nativeBannerScript: e.target.value})} dir="ltr" placeholder="<script ...></script>" className="h-20 font-mono text-[10px]" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-black">كود Popunder</label>
+                        <Textarea value={config.popunderScript} onChange={e => setConfig({...config, popunderScript: e.target.value})} dir="ltr" placeholder="<script ...></script>" className="h-20 font-mono text-[10px]" />
+                    </div>
                 </div>
             </div>
 
             <div className="space-y-4 border-t pt-6">
                 <div className="flex items-center justify-between">
-                    <h4 className="font-black text-xs text-orange-600 px-1">إعدادات الإعلانات اليدوية (للمتصفحات والمواقع)</h4>
+                    <h4 className="font-black text-xs text-orange-600 px-1">إعلانات يدوية إضافية</h4>
                     <Switch checked={config.manualAdsEnabled} onCheckedChange={v => setConfig({...config, manualAdsEnabled: v})} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3 p-4 bg-muted/30 rounded-2xl border">
                         <p className="text-[10px] font-black uppercase text-muted-foreground">إعلان البانر اليدوي</p>
-                        <Input placeholder="رابط صورة البانر (Horizontal)" value={config.manualBannerImg} onChange={e => setConfig({...config, manualBannerImg: e.target.value})} dir="ltr" className="text-xs" />
+                        <Input placeholder="رابط صورة البانر" value={config.manualBannerImg} onChange={e => setConfig({...config, manualBannerImg: e.target.value})} dir="ltr" className="text-xs" />
                         <Input placeholder="رابط النقر" value={config.manualBannerLink} onChange={e => setConfig({...config, manualBannerLink: e.target.value})} dir="ltr" className="text-xs" />
                     </div>
                     <div className="space-y-3 p-4 bg-muted/30 rounded-2xl border">
                         <p className="text-[10px] font-black uppercase text-muted-foreground">الإعلان البيني اليدوي</p>
-                        <Input placeholder="رابط صورة الإعلان (Vertical/Square)" value={config.manualInterstitialImg} onChange={e => setConfig({...config, manualInterstitialImg: e.target.value})} dir="ltr" className="text-xs" />
+                        <Input placeholder="رابط صورة الإعلان" value={config.manualInterstitialImg} onChange={e => setConfig({...config, manualInterstitialImg: e.target.value})} dir="ltr" className="text-xs" />
                         <Input placeholder="رابط النقر" value={config.manualInterstitialLink} onChange={e => setConfig({...config, manualInterstitialLink: e.target.value})} dir="ltr" className="text-xs" />
-                    </div>
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-2xl border">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground">إعلان المكافأة اليدوي</p>
-                        <Input placeholder="رابط صورة الإعلان" value={config.manualRewardedImg} onChange={e => setConfig({...config, manualRewardedImg: e.target.value})} dir="ltr" className="text-xs" />
-                        <p className="text-[9px] text-muted-foreground italic">سيظهر كصورة مع عداد تنازلي لمدة 10 ثوانٍ قبل منح النقاط.</p>
                     </div>
                 </div>
             </div>

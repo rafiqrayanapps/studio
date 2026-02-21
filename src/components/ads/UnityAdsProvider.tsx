@@ -4,22 +4,20 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { AdsConfig } from '@/lib/definitions';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, X, Clock, Coins } from 'lucide-react';
+import { ExternalLink, X, Clock, Coins, MousePointer2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface UnityAdsContextType {
-  isInitialized: boolean;
+interface AdsContextType {
   config: AdsConfig | null;
   showInterstitial: () => void;
   showRewarded: (onComplete: () => void) => void;
 }
 
-const UnityAdsContext = createContext<UnityAdsContextType | undefined>(undefined);
+const AdsContext = createContext<AdsContextType | undefined>(undefined);
 
 export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
-  const [isInitialized, setIsInitialized] = useState(false);
   const [showManualInterstitial, setShowManualInterstitial] = useState(false);
   const [showManualRewarded, setShowManualRewarded] = useState(false);
   const [rewardedCountdown, setRewardedCountdown] = useState(0);
@@ -30,45 +28,43 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
   const adsConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'ads') : null, [firestore]);
   const { data: config } = useDoc<AdsConfig>(adsConfigRef);
 
+  // Handle Adsterra Scripts Injection
   useEffect(() => {
-    if (!config?.enabled || !config.gameId || isInitialized) return;
+    if (!config?.enabled || !config.adsterraEnabled) return;
 
-    const script = document.createElement('script');
-    script.src = 'https://web-sdk.unityads.unity3d.com/v1/UnityAds.js';
-    script.async = true;
-    script.onload = () => {
-      const unityAds = (window as any).UnityAds;
-      if (unityAds) {
-        try {
-            unityAds.init(config.gameId, false, {
-                onComplete: () => {
-                    console.log('Unity Ads Initialized Successfully');
-                    setIsInitialized(true);
-                },
-                onFailed: (error: any, message: any) => {
-                    console.error('Unity Ads Init Failed:', error, message);
-                }
-            });
-        } catch (e) {
-            console.error('Unity Ads SDK call error:', e);
-        }
-      }
-    };
-    script.onerror = () => {
-        console.error('Failed to load Unity Ads script.');
-    };
-    document.head.appendChild(script);
-  }, [config, isInitialized]);
+    // Inject Social Bar
+    if (config.socialBarScript) {
+        const div = document.createElement('div');
+        div.innerHTML = config.socialBarScript;
+        const scripts = div.querySelectorAll('script');
+        scripts.forEach(s => {
+            const newScript = document.createElement('script');
+            if (s.src) newScript.src = s.src;
+            if (s.innerHTML) newScript.innerHTML = s.innerHTML;
+            document.body.appendChild(newScript);
+        });
+    }
+
+    // Inject Popunder
+    if (config.popunderScript) {
+        const div = document.createElement('div');
+        div.innerHTML = config.popunderScript;
+        const scripts = div.querySelectorAll('script');
+        scripts.forEach(s => {
+            const newScript = document.createElement('script');
+            if (s.src) newScript.src = s.src;
+            if (s.innerHTML) newScript.innerHTML = s.innerHTML;
+            document.body.appendChild(newScript);
+        });
+    }
+  }, [config]);
 
   const showInterstitial = () => {
     if (!config?.enabled) return;
     
-    const unityAds = (window as any).UnityAds;
-    const placement = config.interstitialPlacement || 'video';
-
-    if (isInitialized && config.interstitialEnabled && unityAds?.isReady(placement)) {
-        unityAds.show(placement);
-    } else if (config.manualAdsEnabled && config.manualInterstitialImg) {
+    // Adsterra interstitial is usually popunder or social bar (automatic)
+    // Here we handle manual fallback if provided
+    if (config.manualAdsEnabled && config.manualInterstitialImg) {
         setShowManualInterstitial(true);
     }
   };
@@ -79,32 +75,23 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
         return;
     }
 
-    const unityAds = (window as any).UnityAds;
-    const placement = config.rewardedPlacement || 'rewardedVideo';
-    
-    if (isInitialized && config.rewardedEnabled && unityAds?.isReady(placement)) {
-        unityAds.show(placement, {
-          onComplete: () => onComplete(),
-          onSkipped: () => toast({ title: "تم تخطي الإعلان", description: "لم يتم إضافة نقاط لأنك لم تكمل المشاهدة." }),
-          onError: () => {
-              if (config.manualAdsEnabled) {
-                  startManualRewarded(onComplete);
-              } else {
-                  toast({ title: "عذراً", description: "الإعلانات غير متوفرة حالياً." });
-              }
-          }
-        });
+    // Adsterra doesn't have a "Rewarded" SDK for Web, so we simulate it with Direct Link + Timer
+    if (config.adsterraEnabled && config.directLinkUrl) {
+        // 1. Open Direct Link in new tab
+        window.open(config.directLinkUrl, '_blank');
+        
+        // 2. Start internal timer
+        setOnRewardedComplete(() => onComplete);
+        setRewardedCountdown(15); // 15 seconds wait for Adsterra rewards
+        setShowManualRewarded(true);
     } else if (config.manualAdsEnabled) {
-        startManualRewarded(onComplete);
+        // Fallback to manual rewarded image
+        setOnRewardedComplete(() => onComplete);
+        setRewardedCountdown(10);
+        setShowManualRewarded(true);
     } else {
-        toast({ title: "الإعلان غير جاهز", description: "يرجى المحاولة مرة أخرى بعد قليل." });
+        toast({ title: "عذراً", description: "نظام المكافآت غير متوفر حالياً." });
     }
-  };
-
-  const startManualRewarded = (callback: () => void) => {
-      setOnRewardedComplete(() => callback);
-      setRewardedCountdown(10); // 10 seconds for manual rewarded
-      setShowManualRewarded(true);
   };
 
   useEffect(() => {
@@ -115,14 +102,14 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
           if (onRewardedComplete) {
               onRewardedComplete();
               setOnRewardedComplete(null);
-              toast({ title: "مبروك! 🎉", description: "اكتمل الإعلان وحصلت على نقطة." });
+              toast({ title: "تمت المهمة! 🎉", description: "حصلت على نقطة مكافأة." });
               setShowManualRewarded(false);
           }
       }
   }, [showManualRewarded, rewardedCountdown, onRewardedComplete, toast]);
 
   return (
-    <UnityAdsContext.Provider value={{ isInitialized, config: config || null, showInterstitial, showRewarded }}>
+    <AdsContext.Provider value={{ config: config || null, showInterstitial, showRewarded }}>
       {children}
 
       {/* Manual Interstitial Ad Dialog */}
@@ -136,7 +123,7 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
                       <img src={config?.manualInterstitialImg} alt="Ad" className="w-full h-auto object-cover" />
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[80%]">
                           <Button className="w-full rounded-2xl h-14 font-black shadow-xl bg-primary text-white">
-                              تعرف على المزيد <ExternalLink className="mr-2 h-4 w-4" />
+                              تصفح الآن <ExternalLink className="mr-2 h-4 w-4" />
                           </Button>
                       </div>
                   </a>
@@ -144,37 +131,41 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
           </DialogContent>
       </Dialog>
 
-      {/* Manual Rewarded Ad Dialog */}
-      <Dialog open={showManualRewarded} onOpenChange={(open) => !open && rewardedCountdown > 0 ? toast({title: "أكمل المشاهدة للحصول على النقطة"}) : setShowManualRewarded(open)}>
+      {/* Rewarded Ad Timer Dialog */}
+      <Dialog open={showManualRewarded} onOpenChange={(open) => !open && rewardedCountdown > 0 ? toast({title: "أكمل المهمة للحصول على النقطة"}) : setShowManualRewarded(open)}>
           <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-sm overflow-hidden rounded-[2.5rem]">
-              <div className="bg-card p-6 text-center space-y-6">
-                  <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted">
-                      {config?.manualRewardedImg ? (
-                          <img src={config.manualRewardedImg} alt="Ad" className="w-full h-full object-cover" />
-                      ) : (
-                          <div className="w-full h-full flex items-center justify-center text-primary/20"><Coins className="h-20 w-20" /></div>
-                      )}
-                      <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white">
-                          <Clock className="h-10 w-10 mb-2 animate-spin" />
-                          <p className="text-2xl font-black">{rewardedCountdown}</p>
-                          <p className="text-xs font-bold opacity-80">انتظر قليلاً للحصول على الجائزة</p>
+              <div className="bg-card p-8 text-center space-y-6">
+                  <div className="relative aspect-video rounded-3xl overflow-hidden bg-primary/5 border-2 border-dashed border-primary/20 flex flex-col items-center justify-center">
+                      <div className="relative">
+                          <Clock className="h-16 w-16 text-primary/20 animate-spin-slow" />
+                          <div className="absolute inset-0 flex items-center justify-center font-black text-2xl text-primary">
+                              {rewardedCountdown}
+                          </div>
+                      </div>
+                      <div className="mt-4 flex flex-col items-center gap-1">
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">انتظر قليلاً</p>
+                          <p className="text-[10px] text-primary/60 font-black">جاري تفعيل النقطة...</p>
                       </div>
                   </div>
-                  <div className="space-y-2">
-                      <h3 className="text-xl font-black">شاهد لتربح!</h3>
-                      <p className="text-sm text-muted-foreground">احصل على نقاط مجانية مقابل وقتك الثمين.</p>
+                  <div className="space-y-3">
+                      <div className="bg-green-50 text-green-700 px-4 py-2 rounded-full inline-flex items-center gap-2 text-xs font-black">
+                          <MousePointer2 className="h-3.5 w-3.5" />
+                          تأكد من فتح صفحة الإعلان
+                      </div>
+                      <h3 className="text-xl font-black">شكراً لدعمك!</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">مشاهدة الإعلانات تساعدنا على استمرار تقديم المحتوى المجاني لكم.</p>
                   </div>
               </div>
           </DialogContent>
       </Dialog>
-    </UnityAdsContext.Provider>
+    </AdsContext.Provider>
   );
 }
 
 export function useUnityAds() {
-  const context = useContext(UnityAdsContext);
+  const context = useContext(AdsContext);
   if (context === undefined) {
-    throw new Error('useUnityAds must be used within a UnityAdsProvider');
+    throw new Error('useAds must be used within a AdsProvider');
   }
   return context;
 }

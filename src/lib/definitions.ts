@@ -55,13 +55,13 @@ export interface ThemeConfig {
 
 export interface AdsConfig {
   enabled: boolean;
-  gameId: string;
-  bannerEnabled: boolean;
-  bannerPlacement: string;
-  interstitialEnabled: boolean;
-  interstitialPlacement: string;
-  rewardedEnabled: boolean;
-  rewardedPlacement: string;
+  // Adsterra Settings
+  adsterraEnabled: boolean;
+  socialBarScript?: string;
+  popunderScript?: string;
+  nativeBannerScript?: string;
+  directLinkUrl?: string;
+  
   interstitialFrequency: number;
   // Manual Ad Fallbacks
   manualAdsEnabled: boolean;
