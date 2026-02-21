@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, AlertCircle, ShieldCheck, Settings } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, AlertCircle, ShieldCheck, Settings, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -119,7 +119,7 @@ const AudioPlayerRow = ({
                     </p>
                 </div>
                 <div className="h-12 w-12 rounded-[1.2rem] bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    {loadError ? <AlertCircle className="h-6 w-6" /> : <Music className={cn("h-6 w-6", isPlaying && "animate-bounce")} />}
+                    {loadError ? <button onClick={() => audioRef.current?.load()}><RefreshCw className="h-5 w-5" /></button> : <Music className={cn("h-6 w-6", isPlaying && "animate-bounce")} />}
                 </div>
             </div>
             <div className="flex items-center gap-4">
@@ -289,7 +289,7 @@ export default function CategoryPage() {
 
   const renderContent = () => {
     if (isMaintenanceOn) return (
-        <div className="flex flex-col items-center justify-center pt-4 animate-in fade-in zoom-in duration-700">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 animate-in fade-in zoom-in duration-700">
             <Card className="w-full max-w-md overflow-hidden rounded-[3rem] border-none shadow-2xl bg-card">
                 <div className="relative aspect-[4/3] w-full bg-muted">
                     <img src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=800&auto=format&fit=crop" alt="Maintenance" className="object-cover w-full h-full opacity-90" />

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
-    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink
+    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Category, ContentItem, AdsConfig, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification } from '@/lib/definitions';
+import type { Category, ContentItem, AdsConfig, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan } from '@/lib/definitions';
 
 const categorySchema = z.object({ 
     name: z.string().min(2, "الاسم مطلوب"), 
@@ -48,13 +48,24 @@ const itemSchema = z.object({
     isNew: z.boolean().default(false) 
 });
 
+const planSchema = z.object({
+    name: z.string().min(2, "الاسم مطلوب"),
+    price: z.string().min(1, "السعر مطلوب"),
+    currency: z.string().default("ر.س"),
+    description: z.string().min(5, "الوصف مطلوب"),
+    features: z.string().describe("المميزات مفصولة بفاصلة"),
+    isFeatured: z.boolean().default(false),
+    enabled: z.boolean().default(true),
+    link: z.string().optional()
+});
+
 export default function AdminDashboard() {
   const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
   
-  const [activeTool, setActiveTool] = useState<'content' | 'settings' | 'notifications'>('content');
+  const [activeTool, setActiveTool] = useState<'content' | 'settings' | 'notifications' | 'plans'>('content');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
@@ -128,6 +139,7 @@ export default function AdminDashboard() {
             <nav className="flex gap-1 bg-secondary/50 p-1 rounded-2xl border">
                 {[
                     { id: 'content', label: 'المحتوى', icon: Layers }, 
+                    { id: 'plans', label: 'الباقات', icon: Package },
                     { id: 'settings', label: 'الإعدادات', icon: Settings },
                     { id: 'notifications', label: 'الإشعارات', icon: Bell }
                 ].map(tool => (
@@ -165,7 +177,7 @@ export default function AdminDashboard() {
                                             <FormField control={catForm.control} name="displayStyle" render={({field})=><FormItem><FormLabel className="text-xs font-black">نمط العرض</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl">
                                                 {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
                                             </SelectContent></Select></FormItem>} />
-                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
+                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></Select></FormItem>} />
                                         </div>
                                         <FormField control={catForm.control} name="fileTypes" render={({field})=><FormItem><FormLabel className="text-xs font-black">صيغ الملفات (مثلاً: PSD, AI)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         <FormField control={catForm.control} name="isUnderMaintenance" render={({field})=><FormItem className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border"><div className="space-y-0.5"><FormLabel className="font-black text-xs">وضع الصيانة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
@@ -192,7 +204,7 @@ export default function AdminDashboard() {
                                         <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (Style 3)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl></FormItem>} />
                                         <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط المعرض (Style 5 - مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl></FormItem>} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
+                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></Select></FormItem>} />
                                             <FormField control={itemForm.control} name="isNew" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl h-12"><FormLabel className="font-black text-xs">جديد؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                                         </div>
                                         <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">نشر الآن</Button>
@@ -296,6 +308,12 @@ export default function AdminDashboard() {
             </div>
         )}
 
+        {isAdmin && activeTool === 'plans' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+                <FormPlansControl />
+            </div>
+        )}
+
         {isAdmin && activeTool === 'settings' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Tabs defaultValue="ads" dir="rtl" className="space-y-6">
@@ -335,6 +353,92 @@ export default function AdminDashboard() {
       </main>
     </div>
   );
+}
+
+function FormPlansControl() {
+    const firestore = useFirestore();
+    const plansQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pricingPlans'), orderBy('order', 'asc')) : null, [firestore]);
+    const { data: plans, isLoading } = useCollection<PricingPlan>(plansQuery);
+    const { toast } = useToast();
+    const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
+
+    const form = useForm({
+        resolver: zodResolver(planSchema),
+        defaultValues: { name: '', price: '', currency: 'ر.س', description: '', features: '', isFeatured: false, enabled: true, link: '' }
+    });
+
+    const onSave = async (values: any) => {
+        if (!firestore) return;
+        try {
+            const planId = editingPlan?.id || doc(collection(firestore, 'pricingPlans')).id;
+            const features = values.features.split(',').map((f: string) => f.trim());
+            await setDoc(doc(firestore, 'pricingPlans', planId), {
+                ...values,
+                features,
+                order: editingPlan ? editingPlan.order : (plans?.length || 0)
+            }, { merge: true });
+            toast({ title: "تم حفظ الخطة" });
+            setEditingPlan(null);
+            form.reset();
+        } catch (e) { toast({ title: "فشل الحفظ", variant: "destructive" }); }
+    };
+
+    if (isLoading) return <div className="text-center py-10"><Loader2 className="animate-spin h-10 w-10 mx-auto" /></div>;
+
+    return (
+        <div className="space-y-8">
+            <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white">
+                <CardHeader className="p-0 mb-6">
+                    <CardTitle className="font-black text-xl flex items-center gap-2">
+                        <Package className="h-6 w-6 text-primary" /> {editingPlan ? 'تعديل باقة' : 'إضافة باقة اشتراك جديدة'}
+                    </CardTitle>
+                </CardHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField control={form.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم الباقة</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
+                            <div className="grid grid-cols-2 gap-2">
+                                <FormField control={form.control} name="price" render={({field})=><FormItem><FormLabel className="text-xs font-black">السعر</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
+                                <FormField control={form.control} name="currency" render={({field})=><FormItem><FormLabel className="text-xs font-black">العملة</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
+                            </div>
+                        </div>
+                        <FormField control={form.control} name="description" render={({field})=><FormItem><FormLabel className="text-xs font-black">وصف قصير</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
+                        <FormField control={form.control} name="features" render={({field})=><FormItem><FormLabel className="text-xs font-black">المميزات (مفصولة بفاصلة ,)</FormLabel><FormControl><Textarea {...field}/></FormControl></FormItem>} />
+                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط دفع خارجي (اختياري)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
+                        <div className="flex gap-4">
+                            <FormField control={form.control} name="isFeatured" render={({field})=><FormItem className="flex-1 flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تمييز الباقة؟</FormLabel><Switch checked={field.value} onCheckedChange={field.onChange}/></FormItem>} />
+                            <FormField control={form.control} name="enabled" render={({field})=><FormItem className="flex-1 flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تفعيل؟</FormLabel><Switch checked={field.value} onCheckedChange={field.onChange}/></FormItem>} />
+                        </div>
+                        <div className="flex gap-2">
+                            <Button type="submit" className="flex-1 h-12 rounded-xl font-black">حفظ الباقة</Button>
+                            {editingPlan && <Button variant="ghost" type="button" onClick={()=>{setEditingPlan(null); form.reset();}}>إلغاء</Button>}
+                        </div>
+                    </form>
+                </Form>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {plans?.map(plan => (
+                    <Card key={plan.id} className="p-6 rounded-[2rem] border-2 border-muted hover:border-primary/20 transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 className="font-black text-lg">{plan.name}</h4>
+                                <p className="text-primary font-black text-2xl">{plan.price} <span className="text-xs">{plan.currency}</span></p>
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button size="icon" variant="ghost" onClick={()=>{setEditingPlan(plan); form.reset({...plan, features: plan.features.join(', ')});}}><Edit2 className="h-4 w-4"/></Button>
+                                <Button size="icon" variant="ghost" className="text-destructive" onClick={()=>confirm("حذف الباقة؟") && deleteDocumentNonBlocking(doc(firestore!, 'pricingPlans', plan.id))}><Trash2 className="h-4 w-4"/></Button>
+                            </div>
+                        </div>
+                        <ul className="space-y-1 mb-4">
+                            {plan.features.slice(0, 3).map((f, i)=><li key={i} className="text-[10px] text-muted-foreground flex items-center gap-1"><Check className="h-3 w-3 text-green-500"/> {f}</li>)}
+                        </ul>
+                        <Badge variant={plan.enabled ? 'default' : 'secondary'}>{plan.enabled ? 'نشطة' : 'معطلة'}</Badge>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
 }
 
 function FormAdsControl() {
