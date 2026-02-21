@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -28,42 +29,43 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
   const adsConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'ads') : null, [firestore]);
   const { data: config } = useDoc<AdsConfig>(adsConfigRef);
 
-  // Handle Adsterra Scripts Injection
+  // Handle Global Adsterra Scripts (Social Bar, Popunder)
   useEffect(() => {
     if (!config?.enabled || !config.adsterraEnabled) return;
 
-    // Inject Social Bar
-    if (config.socialBarScript) {
-        const div = document.createElement('div');
-        div.innerHTML = config.socialBarScript;
-        const scripts = div.querySelectorAll('script');
+    const injectScript = (scriptHtml: string | undefined, id: string) => {
+        if (!scriptHtml || document.getElementById(id)) return;
+        
+        const container = document.createElement('div');
+        container.id = id;
+        container.style.display = 'none';
+        container.innerHTML = scriptHtml;
+        
+        const scripts = container.querySelectorAll('script');
         scripts.forEach(s => {
             const newScript = document.createElement('script');
-            if (s.src) newScript.src = s.src;
-            if (s.innerHTML) newScript.innerHTML = s.innerHTML;
+            Array.from(s.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+            newScript.innerHTML = s.innerHTML;
             document.body.appendChild(newScript);
         });
-    }
+        
+        document.body.appendChild(container);
+    };
 
-    // Inject Popunder
-    if (config.popunderScript) {
-        const div = document.createElement('div');
-        div.innerHTML = config.popunderScript;
-        const scripts = div.querySelectorAll('script');
-        scripts.forEach(s => {
-            const newScript = document.createElement('script');
-            if (s.src) newScript.src = s.src;
-            if (s.innerHTML) newScript.innerHTML = s.innerHTML;
-            document.body.appendChild(newScript);
-        });
-    }
+    // Delay injection slightly to prioritize page content
+    const timer = setTimeout(() => {
+        injectScript(config.socialBarScript, 'adsterra-social-bar');
+        injectScript(config.popunderScript, 'adsterra-popunder');
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, [config]);
 
   const showInterstitial = () => {
     if (!config?.enabled) return;
     
-    // Adsterra interstitial is usually popunder or social bar (automatic)
-    // Here we handle manual fallback if provided
+    // Adsterra interstitial is automatic via Social Bar / Popunder
+    // Manual fallback if needed
     if (config.manualAdsEnabled && config.manualInterstitialImg) {
         setShowManualInterstitial(true);
     }
@@ -75,17 +77,12 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
         return;
     }
 
-    // Adsterra doesn't have a "Rewarded" SDK for Web, so we simulate it with Direct Link + Timer
     if (config.adsterraEnabled && config.directLinkUrl) {
-        // 1. Open Direct Link in new tab
         window.open(config.directLinkUrl, '_blank');
-        
-        // 2. Start internal timer
         setOnRewardedComplete(() => onComplete);
-        setRewardedCountdown(15); // 15 seconds wait for Adsterra rewards
+        setRewardedCountdown(15); 
         setShowManualRewarded(true);
     } else if (config.manualAdsEnabled) {
-        // Fallback to manual rewarded image
         setOnRewardedComplete(() => onComplete);
         setRewardedCountdown(10);
         setShowManualRewarded(true);
@@ -112,7 +109,6 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
     <AdsContext.Provider value={{ config: config || null, showInterstitial, showRewarded }}>
       {children}
 
-      {/* Manual Interstitial Ad Dialog */}
       <Dialog open={showManualInterstitial} onOpenChange={setShowManualInterstitial}>
           <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-sm overflow-hidden rounded-[2.5rem]">
               <div className="relative group">
@@ -131,7 +127,6 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
           </DialogContent>
       </Dialog>
 
-      {/* Rewarded Ad Timer Dialog */}
       <Dialog open={showManualRewarded} onOpenChange={(open) => !open && rewardedCountdown > 0 ? toast({title: "أكمل المهمة للحصول على النقطة"}) : setShowManualRewarded(open)}>
           <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-sm overflow-hidden rounded-[2.5rem]">
               <div className="bg-card p-8 text-center space-y-6">
