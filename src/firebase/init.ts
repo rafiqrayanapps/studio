@@ -20,7 +20,8 @@ export const initializeFirebase = (() => {
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // Disable experimentalAutoDetectLongPolling if forceLongPolling is true to avoid FirebaseError
+    // Use experimentalForceLongPolling to ensure stability in various network conditions
+    // and to load configuration documents reliably.
     const firestore = initializeFirestore(app, {
       experimentalForceLongPolling: true,
     });

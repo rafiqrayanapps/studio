@@ -156,7 +156,7 @@ export default function AdminDashboard() {
                     <div className="flex gap-3">
                         {isAdmin && !selectedParentId && (
                             <Dialog open={!!editingCategory} onOpenChange={o => !o && setEditingCategory(null)}>
-                                <DialogTrigger asChild><Button className="rounded-2xl h-12 px-6 font-black" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: selectedParentId }); setEditingCategory({id:''} as any); }}><Plus className="ml-2 h-5 w-5" /> قسم جديد</Button></DialogTrigger>
+                                <DialogTrigger asChild><Button className="rounded-2xl h-12 px-6 font-black" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: null }); setEditingCategory({id:''} as any); }}><Plus className="ml-2 h-5 w-5" /> قسم جديد</Button></DialogTrigger>
                                 <DialogContent className="rounded-[2.5rem] max-w-md" dir="rtl">
                                     <DialogHeader><DialogTitle className="font-black text-xl">إعدادات القسم</DialogTitle></DialogHeader>
                                     <Form {...catForm}><form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
