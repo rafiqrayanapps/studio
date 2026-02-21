@@ -252,7 +252,7 @@ export default function AdminDashboard() {
                                             <div key={item.id} className="p-5 flex items-center justify-between hover:bg-muted/30 transition-colors">
                                                 <div className="flex items-center gap-4">
                                                     <div className="h-14 w-14 rounded-2xl bg-muted overflow-hidden border shadow-inner">
-                                                        {item.imageUrl ? <img src={item.imageUrl} className="h-full w-full object-cover" /> : <ImageIcon className="h-full w-full p-4 opacity-20" />}
+                                                        {item.imageUrl ? <img src={item.imageUrl} className="h-full w-full object-cover" alt="" /> : <ImageIcon className="h-full w-full p-4 opacity-20" />}
                                                     </div>
                                                     <div>
                                                         <p className="font-black text-sm leading-tight">{item.title}</p>
