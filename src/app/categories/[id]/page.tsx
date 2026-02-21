@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, AlertCircle, ShieldCheck, Settings, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, AlertCircle, Settings, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';

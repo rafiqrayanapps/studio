@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -65,7 +65,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const router = useRouter();
   
-  const [activeTool, setActiveTool] = useState<'content' | 'settings' | 'notifications' | 'plans'>('content');
+  const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'settings' | 'notifications'>('content');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
@@ -117,58 +117,54 @@ export default function AdminDashboard() {
     } catch (e) { toast({ title: "خطأ في الحفظ", variant: "destructive" }); }
   };
 
-  const approveItem = async (item: ContentItem) => {
-      if (!firestore || !isAdmin || !selectedParentId) return;
-      try { 
-          await updateDocumentNonBlocking(doc(firestore, 'categories', selectedParentId, 'items', item.id), { status: 'approved' }); 
-          toast({ title: "تم اعتماد المنشور" }); 
-      }
-      catch (e) { toast({ title: "فشل الاعتماد", variant: "destructive" }); }
-  };
-
   if (isUserLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-foreground pb-24" dir="rtl">
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b">
-        <div className="container mx-auto max-w-6xl px-4 h-20 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className="bg-primary text-primary-foreground p-2 rounded-xl shadow-lg shadow-primary/20"><Monitor className="h-5 w-5" /></div>
-                <div><h1 className="text-sm font-black tracking-tight">إدارة المنصة</h1><p className="text-[9px] text-muted-foreground font-bold">لوحة التحكم</p></div>
+        <div className="container mx-auto max-w-6xl px-4 h-20 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 shrink-0">
+                <div className="bg-primary text-primary-foreground p-2 rounded-xl"><Monitor className="h-5 w-5" /></div>
+                <h1 className="text-xs font-black hidden sm:block">إدارة المنصة</h1>
             </div>
-            <nav className="flex gap-1 bg-secondary/50 p-1 rounded-2xl border">
-                {[
-                    { id: 'content', label: 'المحتوى', icon: Layers }, 
-                    { id: 'plans', label: 'الباقات', icon: Package },
-                    { id: 'settings', label: 'الإعدادات', icon: Settings },
-                    { id: 'notifications', label: 'الإشعارات', icon: Bell }
-                ].map(tool => (
-                    isAdmin || (tool.id === 'content' && isEditor) ? (
-                        <button key={tool.id} onClick={() => { setActiveTool(tool.id as any); setSelectedParentId(null); }} className={cn("flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] transition-all", activeTool === tool.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50")}>
-                            <tool.icon className="h-3.5 w-3.5" /> {tool.label}
-                        </button>
-                    ) : null
-                ))}
-            </nav>
-            <Button variant="ghost" size="sm" onClick={() => router.push('/home')} className="font-black text-xs gap-2">الموقع <ArrowRight className="h-3.5 w-3.5" /></Button>
+            
+            <ScrollArea className="flex-1 max-w-full">
+                <nav className="flex gap-1 bg-secondary/50 p-1 rounded-2xl border whitespace-nowrap">
+                    {[
+                        { id: 'content', label: 'المحتوى', icon: Layers }, 
+                        { id: 'plans', label: 'الباقات', icon: Package },
+                        { id: 'settings', label: 'الإعدادات', icon: Settings },
+                        { id: 'notifications', label: 'الإشعارات', icon: Bell }
+                    ].map(tool => (
+                        isAdmin || (tool.id === 'content' && isEditor) ? (
+                            <button key={tool.id} onClick={() => { setActiveTool(tool.id as any); setSelectedParentId(null); }} className={cn("flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] transition-all", activeTool === tool.id ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:bg-white/50")}>
+                                <tool.icon className="h-3.5 w-3.5" /> {tool.label}
+                            </button>
+                        ) : null
+                    ))}
+                </nav>
+                <ScrollBar orientation="horizontal" className="hidden" />
+            </ScrollArea>
+
+            <Button variant="ghost" size="sm" onClick={() => router.push('/home')} className="font-black text-[10px] gap-1 shrink-0 px-2">الموقع <ArrowRight className="h-3 w-3" /></Button>
         </div>
       </header>
 
       <main className="container mx-auto max-w-6xl px-4 py-8">
         {activeTool === 'content' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] border shadow-sm">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-[2.5rem] border shadow-sm gap-4">
                     <div className="flex items-center gap-4">
                         {selectedParentId && <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setSelectedParentId(currentCategory?.parentId || null)}><ChevronRight className="h-6 w-6" /></Button>}
                         <div>
                             <h2 className="text-2xl font-black">{selectedParentId ? currentCategory?.name : 'إدارة المحتوى'}</h2>
-                            <p className="text-xs text-muted-foreground font-bold mt-1">{selectedParentId ? 'تعديل المحتوى والأقسام الفرعية' : 'تحكم في أقسام الموقع الرئيسية'}</p>
+                            <p className="text-[10px] text-muted-foreground font-bold mt-1">{selectedParentId ? 'تعديل المحتوى والأقسام الفرعية' : 'تحكم في أقسام الموقع الرئيسية'}</p>
                         </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 w-full sm:w-auto">
                         {isAdmin && !selectedParentId && (
                             <Dialog open={!!editingCategory} onOpenChange={o => !o && setEditingCategory(null)}>
-                                <DialogTrigger asChild><Button className="rounded-2xl h-12 px-6 font-black" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: null }); setEditingCategory({id:''} as any); }}><Plus className="ml-2 h-5 w-5" /> قسم جديد</Button></DialogTrigger>
+                                <DialogTrigger asChild><Button className="flex-1 sm:flex-none rounded-2xl h-12 px-6 font-black" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: null }); setEditingCategory({id:''} as any); }}><Plus className="ml-2 h-5 w-5" /> قسم جديد</Button></DialogTrigger>
                                 <DialogContent className="rounded-[2.5rem] max-w-md" dir="rtl">
                                     <DialogHeader><DialogTitle className="font-black text-xl">إعدادات القسم</DialogTitle></DialogHeader>
                                     <Form {...catForm}><form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
@@ -177,7 +173,7 @@ export default function AdminDashboard() {
                                             <FormField control={catForm.control} name="displayStyle" render={({field})=><FormItem><FormLabel className="text-xs font-black">نمط العرض</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl">
                                                 {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
                                             </SelectContent></Select></FormItem>} />
-                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></Select></FormItem>} />
+                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
                                         </div>
                                         <FormField control={catForm.control} name="fileTypes" render={({field})=><FormItem><FormLabel className="text-xs font-black">صيغ الملفات (مثلاً: PSD, AI)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         <FormField control={catForm.control} name="isUnderMaintenance" render={({field})=><FormItem className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border"><div className="space-y-0.5"><FormLabel className="font-black text-xs">وضع الصيانة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
@@ -188,23 +184,23 @@ export default function AdminDashboard() {
                         )}
                         {selectedParentId && (
                             <Dialog open={isAddingItem} onOpenChange={o => { setIsAddingItem(o); if(!o) setEditingItem(null); }}>
-                                <DialogTrigger asChild><Button variant="outline" className="rounded-2xl h-12 px-6 font-black border-2"><Send className="ml-2 h-5 w-5" /> منشور جديد</Button></DialogTrigger>
+                                <DialogTrigger asChild><Button variant="outline" className="flex-1 sm:flex-none rounded-2xl h-12 px-6 font-black border-2"><Send className="ml-2 h-5 w-5" /> منشور جديد</Button></DialogTrigger>
                                 <DialogContent className="rounded-[2.5rem] max-w-2xl" dir="rtl">
                                     <DialogHeader><DialogTitle className="font-black text-xl">إضافة محتوى جديد</DialogTitle></DialogHeader>
                                     <ScrollArea className="max-h-[80vh] px-1"><Form {...itemForm}><form onSubmit={itemForm.handleSubmit(onSaveItem)} className="space-y-5 pt-4 pb-6">
                                         <FormField control={itemForm.control} name="title" render={({field})=><FormItem><FormLabel className="text-xs font-black">العنوان</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField control={itemForm.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصورة</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                             <FormField control={itemForm.control} name="downloadUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط التحميل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField control={itemForm.control} name="audioUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصوت (Style 7)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                             <FormField control={itemForm.control} name="videoUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الفيديو (Style 4)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         </div>
                                         <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (Style 3)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl></FormItem>} />
                                         <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط المعرض (Style 5 - مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl></FormItem>} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></Select></FormItem>} />
+                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
                                             <FormField control={itemForm.control} name="isNew" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl h-12"><FormLabel className="font-black text-xs">جديد؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                                         </div>
                                         <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">نشر الآن</Button>
@@ -216,7 +212,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {!selectedParentId ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {mainCategories.map(cat => (
                             <Card key={cat.id} className="rounded-[2.5rem] overflow-hidden shadow-xl border-none transition-all hover:scale-[1.02]">
                                 <CardHeader className="bg-primary text-primary-foreground p-8">
@@ -248,7 +244,7 @@ export default function AdminDashboard() {
                             {subCategories.map(sub => (
                                 <div key={sub.id} className="bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm hover:border-primary/30 transition-colors group">
                                     <span className="font-black text-sm">{sub.name}</span>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex gap-1">
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => setSelectedParentId(sub.id)}><Layers className="h-4 w-4" /></Button>
                                         {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف القسم الفرعي؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', sub.id))}><Trash2 className="h-4 w-4" /></Button>}
                                     </div>
@@ -281,7 +277,7 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     {isAdmin && item.status === 'pending' && (
-                                                        <Button variant="outline" size="sm" className="bg-green-50 text-green-600 border-green-200 rounded-xl font-black h-9 px-4" onClick={() => approveItem(item)}>
+                                                        <Button variant="outline" size="sm" className="bg-green-50 text-green-600 border-green-200 rounded-xl font-black h-9 px-4" onClick={() => updateDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId, 'items', item.id), { status: 'approved' })}>
                                                             <Check className="h-4 w-4 ml-1.5" /> اعتماد
                                                         </Button>
                                                     )}
@@ -317,26 +313,29 @@ export default function AdminDashboard() {
         {isAdmin && activeTool === 'settings' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Tabs defaultValue="ads" dir="rtl" className="space-y-6">
-                    <TabsList className="bg-white rounded-2xl p-1 h-16 border shadow-sm max-w-2xl mx-auto grid grid-cols-3">
-                        <TabsTrigger value="ads" className="rounded-xl font-black text-sm">الإعلانات (Adsterra)</TabsTrigger>
-                        <TabsTrigger value="theme" className="rounded-xl font-black text-sm">المظهر والألوان</TabsTrigger>
-                        <TabsTrigger value="general" className="rounded-xl font-black text-sm">روابط ونوافذ</TabsTrigger>
-                    </TabsList>
+                    <ScrollArea className="w-full">
+                        <TabsList className="bg-white rounded-2xl p-1 h-16 border shadow-sm mx-auto grid grid-cols-3 min-w-[400px]">
+                            <TabsTrigger value="ads" className="rounded-xl font-black text-xs sm:text-sm">الإعلانات (Adsterra)</TabsTrigger>
+                            <TabsTrigger value="theme" className="rounded-xl font-black text-xs sm:text-sm">المظهر والألوان</TabsTrigger>
+                            <TabsTrigger value="general" className="rounded-xl font-black text-xs sm:text-sm">روابط ونوافذ</TabsTrigger>
+                        </TabsList>
+                        <ScrollBar orientation="horizontal" className="hidden" />
+                    </ScrollArea>
                     
                     <TabsContent value="ads">
-                        <Card className="rounded-[2.5rem] p-10 border-none shadow-xl bg-white max-w-3xl mx-auto">
+                        <Card className="rounded-[2.5rem] p-6 sm:p-10 border-none shadow-xl bg-white max-w-3xl mx-auto">
                             <FormAdsControl />
                         </Card>
                     </TabsContent>
 
                     <TabsContent value="theme">
-                        <Card className="rounded-[2.5rem] p-10 border-none shadow-xl bg-white max-w-3xl mx-auto">
+                        <Card className="rounded-[2.5rem] p-6 sm:p-10 border-none shadow-xl bg-white max-w-3xl mx-auto">
                             <FormThemeControl />
                         </Card>
                     </TabsContent>
 
                     <TabsContent value="general">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
                             <FormPopupControl />
                             <FormLinksControl />
                         </div>
@@ -387,7 +386,7 @@ function FormPlansControl() {
 
     return (
         <div className="space-y-8">
-            <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white">
+            <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white">
                 <CardHeader className="p-0 mb-6">
                     <CardTitle className="font-black text-xl flex items-center gap-2">
                         <Package className="h-6 w-6 text-primary" /> {editingPlan ? 'تعديل باقة' : 'إضافة باقة اشتراك جديدة'}
@@ -395,7 +394,7 @@ function FormPlansControl() {
                 </CardHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم الباقة</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
                             <div className="grid grid-cols-2 gap-2">
                                 <FormField control={form.control} name="price" render={({field})=><FormItem><FormLabel className="text-xs font-black">السعر</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
@@ -405,19 +404,19 @@ function FormPlansControl() {
                         <FormField control={form.control} name="description" render={({field})=><FormItem><FormLabel className="text-xs font-black">وصف قصير</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
                         <FormField control={form.control} name="features" render={({field})=><FormItem><FormLabel className="text-xs font-black">المميزات (مفصولة بفاصلة ,)</FormLabel><FormControl><Textarea {...field}/></FormControl></FormItem>} />
                         <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط دفع خارجي (اختياري)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
-                        <div className="flex gap-4">
-                            <FormField control={form.control} name="isFeatured" render={({field})=><FormItem className="flex-1 flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تمييز الباقة؟</FormLabel><Switch checked={field.value} onCheckedChange={field.onChange}/></FormItem>} />
-                            <FormField control={form.control} name="enabled" render={({field})=><FormItem className="flex-1 flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تفعيل؟</FormLabel><Switch checked={field.value} onCheckedChange={field.onChange}/></FormItem>} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={form.control} name="isFeatured" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تمييز الباقة؟</FormLabel><Switch checked={field.value} onCheckedChange={field.onChange}/></FormItem>} />
+                            <FormField control={form.control} name="enabled" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تفعيل؟</FormLabel><Switch checked={field.value} onCheckedChange={field.onChange}/></FormItem>} />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                             <Button type="submit" className="flex-1 h-12 rounded-xl font-black">حفظ الباقة</Button>
-                            {editingPlan && <Button variant="ghost" type="button" onClick={()=>{setEditingPlan(null); form.reset();}}>إلغاء</Button>}
+                            {editingPlan && <Button variant="outline" type="button" className="rounded-xl h-12" onClick={()=>{setEditingPlan(null); form.reset();}}>إلغاء</Button>}
                         </div>
                     </form>
                 </Form>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {plans?.map(plan => (
                     <Card key={plan.id} className="p-6 rounded-[2rem] border-2 border-muted hover:border-primary/20 transition-all group">
                         <div className="flex justify-between items-start mb-4">
@@ -425,7 +424,7 @@ function FormPlansControl() {
                                 <h4 className="font-black text-lg">{plan.name}</h4>
                                 <p className="text-primary font-black text-2xl">{plan.price} <span className="text-xs">{plan.currency}</span></p>
                             </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex gap-1">
                                 <Button size="icon" variant="ghost" onClick={()=>{setEditingPlan(plan); form.reset({...plan, features: plan.features.join(', ')});}}><Edit2 className="h-4 w-4"/></Button>
                                 <Button size="icon" variant="ghost" className="text-destructive" onClick={()=>confirm("حذف الباقة؟") && deleteDocumentNonBlocking(doc(firestore!, 'pricingPlans', plan.id))}><Trash2 className="h-4 w-4"/></Button>
                             </div>
@@ -468,7 +467,7 @@ function FormAdsControl() {
 
     return (
         <div className="space-y-8">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border">
                     <p className="text-xs font-black">تفعيل الإعلانات</p>
                     <Switch checked={config.enabled} onCheckedChange={v => setConfig({...config, enabled: v})} />
@@ -487,10 +486,10 @@ function FormAdsControl() {
                 ))}
                 <div className="space-y-2">
                     <div className="flex items-center gap-2"><Link2 className="h-4 w-4 text-primary" /><label className="text-[10px] font-black">رابط Direct Link</label></div>
-                    <Input value={config.directLinkUrl} onChange={e => setConfig({...config, directLinkUrl: e.target.value})} dir="ltr" className="h-12" />
+                    <Input value={config.directLinkUrl || ''} onChange={e => setConfig({...config, directLinkUrl: e.target.value})} dir="ltr" className="h-12" />
                 </div>
             </div>
-            <Button onClick={handleSave} className="w-full h-14 rounded-2xl font-black shadow-xl"><Save className="ml-2" /> حفظ إعدادات الإعلانات</Button>
+            <Button onClick={handleSave} className="w-full h-14 rounded-2xl font-black shadow-xl"><Save className="ml-2 h-5 w-5" /> حفظ إعدادات الإعلانات</Button>
         </div>
     );
 }
@@ -509,15 +508,15 @@ function FormThemeControl() {
         try { await setDoc(themeRef, config, { merge: true }); toast({ title: "تم تحديث المظهر" }); } catch (e) { toast({ title: "فشل الحفظ" }); }
     };
 
-    if (isLoading) return <Loader2 className="animate-spin h-8 w-8 mx-auto" />;
+    if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
     return (
         <div className="space-y-8">
             <div className="space-y-6">
                 <div className="space-y-2"><label className="text-xs font-black">اللون الأساسي (الفاتح) - بصيغة HSL</label><Input value={config.primaryColor} onChange={e => setConfig({...config, primaryColor: e.target.value})} dir="ltr" placeholder="350 72% 51%" /></div>
-                <div className="space-y-2"><label className="text-xs font-black">اللون الأساسي (الداكن) - بصيغة HSL</label><Input value={config.primaryColorDark} onChange={e => setConfig({...config, primaryColorDark: e.target.value || config.primaryColor})} dir="ltr" placeholder="350 72% 51%" /></div>
+                <div className="space-y-2"><label className="text-xs font-black">اللون الأساسي (الداكن) - بصيغة HSL</label><Input value={config.primaryColorDark || ''} onChange={e => setConfig({...config, primaryColorDark: e.target.value})} dir="ltr" placeholder="350 72% 51%" /></div>
             </div>
-            <Button onClick={handleSave} className="w-full h-14 rounded-2xl font-black shadow-xl"><Palette className="ml-2" /> تطبيق الألوان</Button>
+            <Button onClick={handleSave} className="w-full h-14 rounded-2xl font-black shadow-xl"><Palette className="ml-2 h-5 w-5" /> تطبيق الألوان</Button>
         </div>
     );
 }
@@ -536,10 +535,10 @@ function FormPopupControl() {
         try { await setDoc(popupRef, config, { merge: true }); toast({ title: "تم تحديث النافذة" }); } catch (e) { toast({ title: "فشل الحفظ" }); }
     };
 
-    if (isLoading) return <Loader2 className="animate-spin h-8 w-8 mx-auto" />;
+    if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
     return (
-        <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white">
+        <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white h-fit">
             <div className="space-y-6">
                 <div className="flex items-center justify-between"><h3 className="font-black text-lg">نافذة الاشتراك</h3><Switch checked={config.enabled} onCheckedChange={v => setConfig({...config, enabled: v})} /></div>
                 <div className="space-y-2"><label className="text-xs font-black">العنوان</label><Input value={config.title} onChange={e => setConfig({...config, title: e.target.value})} /></div>
@@ -572,7 +571,7 @@ function FormLinksControl() {
     };
 
     return (
-        <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white space-y-8">
+        <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white space-y-8">
             <div className="space-y-6">
                 <div className="flex items-center justify-between"><h3 className="font-black text-lg">روابط المشاركة وطلب التصميم</h3></div>
                 <div className="space-y-4 p-4 bg-muted/30 rounded-2xl border">
@@ -607,12 +606,12 @@ function FormNotificationsControl() {
 
     return (
         <div className="space-y-8">
-            <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white">
+            <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white">
                 <CardHeader className="p-0 mb-6"><CardTitle className="font-black">إرسال إشعار جديد للجميع</CardTitle></CardHeader>
                 <div className="space-y-4">
                     <div className="space-y-2"><label className="text-xs font-black">عنوان الإشعار</label><Input value={title} onChange={e => setTitle(e.target.value)} /></div>
                     <div className="space-y-2"><label className="text-xs font-black">نص الإشعار</label><Textarea value={desc} onChange={e => setDesc(e.target.value)} /></div>
-                    <Button onClick={send} className="w-full h-14 rounded-2xl font-black shadow-xl"><Send className="ml-2" /> إرسال الآن</Button>
+                    <Button onClick={send} className="w-full h-14 rounded-2xl font-black shadow-xl"><Send className="ml-2 h-5 w-5" /> إرسال الآن</Button>
                 </div>
             </Card>
             <div className="space-y-4">
