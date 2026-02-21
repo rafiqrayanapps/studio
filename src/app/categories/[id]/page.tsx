@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, Eye, X, Sparkles, Music, Play, Pause, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, AlertCircle, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +21,6 @@ import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useUnityAds } from '@/components/ads/UnityAdsProvider';
-import Image from 'next/image';
 
 const AudioPlayerRow = ({ 
     item, 
@@ -292,10 +291,10 @@ export default function CategoryPage() {
 
   const renderContent = () => {
     if (isMaintenanceOn) return (
-        <div className="flex flex-col items-center justify-center pt-12">
+        <div className="flex flex-col items-center justify-center pt-12 animate-in fade-in zoom-in duration-700">
             <Card className="w-full max-w-md overflow-hidden rounded-[3rem] border-none shadow-2xl bg-card">
                 <div className="relative aspect-[4/3] w-full bg-muted">
-                    <img src="https://picsum.photos/seed/maintenance/800/600" alt="" className="object-cover w-full h-full opacity-90" />
+                    <img src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=800&auto=format&fit=crop" alt="Maintenance" className="object-cover w-full h-full opacity-90" />
                     <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
                 </div>
                 <div className="px-8 pb-10 -mt-12 relative z-10 text-center space-y-6">

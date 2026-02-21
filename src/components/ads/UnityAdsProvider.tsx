@@ -56,8 +56,8 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
 
     // حقن الإعلانات التلقائية بعد مهلة بسيطة لضمان سرعة تحميل الموقع
     const timer = setTimeout(() => {
-        injectAdsterraScript(config.socialBarScript, 'adsterra-social-bar');
-        injectAdsterraScript(config.popunderScript, 'adsterra-popunder');
+        if (config.socialBarScript) injectAdsterraScript(config.socialBarScript, 'adsterra-social-bar');
+        if (config.popunderScript) injectAdsterraScript(config.popunderScript, 'adsterra-popunder');
     }, 3000);
 
     return () => clearTimeout(timer);
@@ -112,7 +112,6 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
     <AdsContext.Provider value={{ config: config || null, showInterstitial, showRewarded }}>
       {children}
 
-      {/* نافذة الإعلان البيني اليدوي */}
       <Dialog open={showManualInterstitial} onOpenChange={setShowManualInterstitial}>
           <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-sm overflow-hidden rounded-[2.5rem]">
               <div className="relative group">
@@ -120,7 +119,7 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
                       <X className="h-5 w-5" />
                   </button>
                   <a href={config?.manualInterstitialLink || '#'} target="_blank" rel="noopener noreferrer" className="block">
-                      <img src={config?.manualInterstitialImg} alt="Ad" className="w-full h-auto object-cover" />
+                      {config?.manualInterstitialImg && <img src={config.manualInterstitialImg} alt="Ad" className="w-full h-auto object-cover" />}
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[80%]">
                           <Button className="w-full rounded-2xl h-14 font-black shadow-xl bg-primary text-white">
                               تصفح الآن <ExternalLink className="mr-2 h-4 w-4" />
@@ -131,7 +130,6 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
           </DialogContent>
       </Dialog>
 
-      {/* نافذة العداد التنازلي للنقاط */}
       <Dialog open={showManualRewarded} onOpenChange={(open) => !open && rewardedCountdown > 0 ? toast({title: "أكمل المهمة للحصول على النقطة"}) : setShowManualRewarded(open)}>
           <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-sm overflow-hidden rounded-[2.5rem]">
               <div className="bg-card p-8 text-center space-y-6">

@@ -17,7 +17,7 @@ export interface ContentItem {
   title: string;
   imageUrl: string;
   downloadUrl?: string;
-  audioUrl?: string; // New field for direct audio links
+  audioUrl?: string;
   prompt?: string;
   videoUrl?: string;
   instructions?: string;
@@ -55,15 +55,12 @@ export interface ThemeConfig {
 
 export interface AdsConfig {
   enabled: boolean;
-  // Adsterra Settings
   adsterraEnabled: boolean;
   socialBarScript?: string;
   popunderScript?: string;
   nativeBannerScript?: string;
   directLinkUrl?: string;
-  
   interstitialFrequency: number;
-  // Manual Ad Fallbacks
   manualAdsEnabled: boolean;
   manualBannerImg?: string;
   manualBannerLink?: string;

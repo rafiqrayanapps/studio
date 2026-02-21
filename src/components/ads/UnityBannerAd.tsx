@@ -28,20 +28,20 @@ export default function UnityBannerAd() {
             const doc = parser.parseFromString(`<div>${config.nativeBannerScript}</div>`, 'text/html');
             const scripts = doc.querySelectorAll('script');
             
-            // 1. البحث عن أي حاوية Adsterra (container-id)
+            // 1. البحث عن أي حاوية Adsterra (container-id) وإضافتها للـ DOM
             const adsterraContainer = doc.querySelector('div[id^="container-"]');
             if (adsterraContainer) {
                 const newDiv = document.createElement('div');
                 newDiv.id = adsterraContainer.id;
                 container.appendChild(newDiv);
             } else {
-                // إضافة العناصر العادية الأخرى
+                // إضافة العناصر العادية الأخرى إذا لم تكن Adsterra التقليدية
                 doc.querySelector('div')?.childNodes.forEach(node => {
                     if (node.nodeName !== 'SCRIPT') container.appendChild(node.cloneNode(true));
                 });
             }
 
-            // 2. حقن السكريبتات برمجياً لضمان التنفيذ الفوري
+            // 2. حقن السكريبتات برمجياً لضمان التنفيذ الفوري بعد وجود الـ div
             scripts.forEach(oldScript => {
                 const newScript = document.createElement('script');
                 Array.from(oldScript.attributes).forEach(attr => {
@@ -57,7 +57,7 @@ export default function UnityBannerAd() {
         }
     };
 
-    // تأخير لضمان استقرار الـ DOM
+    // تأخير لضمان استقرار الـ DOM وجاهزية المتصفح
     const timer = setTimeout(injectAd, 1500);
 
     return () => {
@@ -72,7 +72,7 @@ export default function UnityBannerAd() {
     <div className="fixed bottom-24 left-0 right-0 flex justify-center pointer-events-none z-40 px-4">
         <div 
             ref={bannerRef}
-            className="w-full max-w-sm min-h-[50px] pointer-events-auto flex flex-col items-center justify-center transition-all bg-card/5 rounded-xl"
+            className="w-full max-w-sm min-h-[50px] pointer-events-auto flex flex-col items-center justify-center transition-all bg-card/5 rounded-xl overflow-hidden"
         />
     </div>
   );
