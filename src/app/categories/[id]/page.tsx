@@ -1,10 +1,11 @@
+
 'use client';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, AlertCircle, ShieldCheck, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -154,6 +155,7 @@ export default function CategoryPage() {
   
   const currentSubCategories = useMemo(() => {
       if (!id || !category) return [];
+      // In style 7, if we are in a subcategory, we want to see siblings
       if (category.displayStyle === 'style7' && category.parentId) return subCategories.get(category.parentId) || [];
       return subCategories.get(id) || [];
   }, [subCategories, id, category]);
@@ -180,6 +182,7 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
+    // Show approved items, or items without status (legacy) for regular users. Admin/Editor see everything.
     const viewable = (isAdmin || isEditor) ? rawItems : rawItems.filter(i => i.status === 'approved' || !i.status);
     return viewable.filter(i => (i.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
   }, [rawItems, searchTerm, isAdmin, isEditor]);
@@ -291,15 +294,15 @@ export default function CategoryPage() {
 
   const renderContent = () => {
     if (isMaintenanceOn) return (
-        <div className="flex flex-col items-center justify-center pt-12 animate-in fade-in zoom-in duration-700">
+        <div className="flex flex-col items-center justify-center pt-4 animate-in fade-in zoom-in duration-700">
             <Card className="w-full max-w-md overflow-hidden rounded-[3rem] border-none shadow-2xl bg-card">
                 <div className="relative aspect-[4/3] w-full bg-muted">
                     <img src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=800&auto=format&fit=crop" alt="Maintenance" className="object-cover w-full h-full opacity-90" />
                     <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
                 </div>
                 <div className="px-8 pb-10 -mt-12 relative z-10 text-center space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-full text-xs font-black shadow-md">
-                        <ShieldCheck className="h-4 w-4" /> تحسينات مستمرة
+                    <div className="inline-flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-full text-[10px] font-black shadow-md">
+                        <Settings className="h-3.5 w-3.5 animate-spin" /> تحسينات مستمرة
                     </div>
                     <div className="space-y-2">
                         <h3 className="text-2xl font-black text-foreground">إبداع قيد التحضير</h3>

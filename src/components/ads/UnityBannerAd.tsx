@@ -1,11 +1,13 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { useUnityAds } from './UnityAdsProvider';
 
 /**
- * مكون عرض إعلانات Adsterra المطور.
- * يقوم بتهيئة الحاوية أولاً ثم حقن السكريبت برمجياً لضمان توافق التنفيذ.
+ * Matured Adsterra injection component.
+ * It strictly creates script elements manually to ensure immediate execution
+ * once the data is loaded from Firebase.
  */
 export default function UnityBannerAd() {
   const { config } = useUnityAds();
@@ -28,20 +30,20 @@ export default function UnityBannerAd() {
             const doc = parser.parseFromString(`<div>${config.nativeBannerScript}</div>`, 'text/html');
             const scripts = doc.querySelectorAll('script');
             
-            // 1. البحث عن أي حاوية Adsterra (container-id) وإضافتها للـ DOM
+            // 1. Find and inject any static HTML container from Adsterra
             const adsterraContainer = doc.querySelector('div[id^="container-"]');
             if (adsterraContainer) {
                 const newDiv = document.createElement('div');
                 newDiv.id = adsterraContainer.id;
                 container.appendChild(newDiv);
             } else {
-                // إضافة العناصر العادية الأخرى إذا لم تكن Adsterra التقليدية
+                // If not a standard container, inject other non-script nodes
                 doc.querySelector('div')?.childNodes.forEach(node => {
                     if (node.nodeName !== 'SCRIPT') container.appendChild(node.cloneNode(true));
                 });
             }
 
-            // 2. حقن السكريبتات برمجياً لضمان التنفيذ الفوري بعد وجود الـ div
+            // 2. Programmatically create and execute script tags
             scripts.forEach(oldScript => {
                 const newScript = document.createElement('script');
                 Array.from(oldScript.attributes).forEach(attr => {
@@ -57,7 +59,6 @@ export default function UnityBannerAd() {
         }
     };
 
-    // تأخير لضمان استقرار الـ DOM وجاهزية المتصفح
     const timer = setTimeout(injectAd, 1500);
 
     return () => {

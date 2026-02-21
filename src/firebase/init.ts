@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -20,8 +21,7 @@ export const initializeFirebase = (() => {
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // تفعيل إعدادات الاتصال المستقرة لضمان الوصول لقاعدة البيانات
-    // تم الإبقاء على forceLongPolling فقط لتجنب التعارض
+    // Use stable pooling settings for reliable connectivity on mobile devices
     const firestore = initializeFirestore(app, {
       experimentalForceLongPolling: true,
     });
