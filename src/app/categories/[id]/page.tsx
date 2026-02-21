@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import Header from '@/components/layout/Header';
@@ -246,7 +247,12 @@ export default function CategoryPage() {
                                 <h3 className="text-lg font-black leading-tight truncate">{item.title}</h3>
                                 {item.appVersion && <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black">إصدار {item.appVersion}</span>}
                             </div>
-                            <button onClick={() => toggleFavorite(item)} className="h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform border border-black/5"><Heart className={cn("h-5 w-5 transition-colors", isFav ? "fill-primary text-primary" : "text-gray-400")} /></button>
+                            <button 
+                                onClick={() => toggleFavorite(item)} 
+                                className="h-10 w-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform border border-black/5"
+                            >
+                                <Heart className={cn("h-5 w-5 transition-colors", isFav ? "fill-primary text-primary" : "text-gray-400")} />
+                            </button>
                         </div>
                         {item.screenshots && item.screenshots.length > 0 && (
                             <div className="mb-6 -mx-2">
@@ -388,6 +394,7 @@ export default function CategoryPage() {
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none overflow-hidden rounded-3xl">
+          <DialogTitle className="sr-only">معاينة الصورة</DialogTitle>
           <button className="absolute top-4 right-4 text-white bg-black/50 p-3 rounded-full z-50 backdrop-blur-md" onClick={() => setSelectedImage(null)}><X className="h-6 w-6" /></button>
           {selectedImage && <div className="relative w-full h-[85vh] flex items-center justify-center"><img src={selectedImage} alt="" className="max-w-full max-h-full object-contain" /></div>}
         </DialogContent>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -11,7 +12,7 @@ import { Download, Copy, Trash2, Heart, PlayCircle, Lock, Crown, Eye, ExternalLi
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { WithId } from '@/firebase';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 import { cn, getDirectDriveLink } from '@/lib/utils';
@@ -155,7 +156,6 @@ const AudioPlayerRow = ({
             />
             
             <div className="flex items-center gap-4">
-                {/* Left Side: Play Control (to match image layout in RTL) */}
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={togglePlay}
@@ -169,7 +169,6 @@ const AudioPlayerRow = ({
                     </button>
                 </div>
 
-                {/* Center: Title & Time */}
                 <div className="flex-1 min-w-0 text-center">
                     <p className={cn("font-black text-base truncate leading-tight", loadError ? "text-destructive" : "text-foreground")}>{item.title}</p>
                     <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
@@ -177,7 +176,6 @@ const AudioPlayerRow = ({
                     </p>
                 </div>
 
-                {/* Right Side: Music Icon */}
                 <div className={cn(
                     "h-14 w-14 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shrink-0 relative overflow-hidden shadow-inner border border-primary/5",
                     loadError && "bg-destructive/10 text-destructive"
@@ -186,7 +184,6 @@ const AudioPlayerRow = ({
                 </div>
             </div>
 
-            {/* Bottom Row: Slider & Remove */}
             <div className="flex items-center gap-4 pt-1">
                 <button 
                     onClick={onRemove}
@@ -388,7 +385,6 @@ export default function FavoritesPage() {
         );
     }
 
-    // Default Style 1 (Grid)
     return (
         <div key={item.id} className="flex flex-col gap-4 animate-in fade-in duration-500">
             <h3 className="font-black text-sm text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
@@ -422,7 +418,7 @@ export default function FavoritesPage() {
       </main>
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none overflow-hidden rounded-3xl">
-          <div className="sr-only">معاينة الصورة</div>
+          <DialogTitle className="sr-only">معاينة الصورة</DialogTitle>
           <button className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full transition-colors z-50 backdrop-blur-md" onClick={() => setSelectedImage(null)}>
             <X className="h-6 w-6" />
           </button>
