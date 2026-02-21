@@ -41,19 +41,22 @@ service cloud.firestore {
     }
 
     match /categories/{categoryId}/items/{itemId} {
-      // Allow everyone to read all items. UI will handle filtering based on status.
+      // Allow everyone to read all items.
       allow read: if true;
-      // An 'admin' can create/update/delete any item.
-      // An 'editor' can only create items, and they must be in 'pending' status.
+      
+      // CREATE: Admin can create any status. Editor can only create 'pending'.
       allow create: if isAdmin() || (isEditor() && request.resource.data.status == 'pending');
-      allow update, delete: if isAdmin();
+      
+      // UPDATE: Admin can update anything. Editors cannot update items.
+      allow update: if isAdmin();
+      
+      // DELETE: Only admins can delete.
+      allow delete: if isAdmin();
     }
 
     // --- App Configuration Rules ---
     match /pricingPlans/{planId} {
-        // Pricing plans are public to read.
         allow read: if true;
-        // Only admins can manage pricing plans.
         allow write: if isAdmin();
     }
     
@@ -69,36 +72,35 @@ service cloud.firestore {
     
     // --- User Data Rules ---
     match /users/{userId} {
-        // Users can read and write their own profile.
         allow read, write: if isOwner(userId);
-        // A newly created user (during activation) can create their own profile.
         allow create: if request.auth.uid == userId;
     }
     
     match /users/{userId}/suggestions/{suggestionId} {
-        // Users can manage their own suggestions.
         allow read, write: if isOwner(userId);
     }
 
     match /subscriptionRequests/{requestId} {
-      // Anyone can create a subscription request.
       allow create: if true;
-      // Only admins can read or manage requests.
       allow read, write: if isAdmin();
     }
 
     match /whitelist/{email} {
       allow read: if true;
-
-      // CREATE: Only an existing admin can create any entry.
       allow create: if isAdmin();
-
-      // UPDATE: An admin can update any entry, OR a pro user can claim their activation.
       allow update: if isAdmin() || 
                      (request.auth.uid != null && request.resource.data.activatedByUid == request.auth.uid && resource.data.activatedByUid == null);
-
-      // DELETE: Only admins can delete.
       allow delete: if isAdmin();
+    }
+    
+    match /used_invitations/{fingerprint} {
+        allow read: if true;
+        allow create: if isSignedIn();
+    }
+    
+    match /paymentMethods/{methodId} {
+        allow read: if true;
+        allow write: if isAdmin();
     }
   }
 }

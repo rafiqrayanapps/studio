@@ -33,7 +33,9 @@ import {
     Music,
     Save,
     Play,
-    Globe
+    Globe,
+    Check,
+    Clock
 } from 'lucide-react';
 
 import { 
@@ -42,7 +44,8 @@ import {
     useMemoFirebase, 
     addDocumentNonBlocking, 
     deleteDocumentNonBlocking, 
-    useDoc
+    useDoc,
+    updateDocumentNonBlocking
 } from '@/firebase';
 import { 
     collection, 
@@ -159,9 +162,9 @@ export default function AdminDashboard() {
   const currentCategory = useMemo(() => selectedParentId ? allCategories.find(c => c.id === selectedParentId) : null, [selectedParentId, allCategories]);
   const subCategories = useMemo(() => selectedParentId ? allCategories.filter(c => c.parentId === selectedParentId) : [], [allCategories, selectedParentId]);
 
-  const itemsQuery = useMemoFirebase(() => selectedParentId ? query(collection(firestore!, 'categories', selectedParentId, 'items')) : null, [firestore, selectedParentId]);
+  const itemsQuery = useMemoFirebase(() => selectedParentId ? query(collection(firestore!, 'categories', selectedParentId, 'items'), orderBy('order', 'asc')) : null, [firestore, selectedParentId]);
   const { data: rawItems } = useCollection<ContentItem>(itemsQuery);
-  const currentItems = useMemo(() => rawItems ? [...rawItems].sort((a, b) => (a.order ?? 999) - (b.order ?? 999)) : [], [rawItems]);
+  const currentItems = rawItems || [];
 
   const plansQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pricingPlans'), orderBy('order', 'asc')) : null, [firestore]);
   const { data: plans } = useCollection<PricingPlan>(plansQuery);
@@ -200,7 +203,7 @@ export default function AdminDashboard() {
 
   // Handlers
   const onUpdateCategory = async (values: z.infer<typeof categorySchema>) => {
-      if (!firestore) return;
+      if (!firestore || !isAdmin) return;
       try {
           const isNew = !editingCategory?.id;
           const catId = isNew ? doc(collection(firestore, 'categories')).id : editingCategory!.id;
@@ -228,7 +231,7 @@ export default function AdminDashboard() {
           status: isAdmin ? 'approved' : 'pending' 
       };
 
-      if (editingItem) {
+      if (editingItem && isAdmin) {
           await setDoc(doc(firestore, 'categories', selectedParentId, 'items', editingItem.id), itemData, { merge: true });
           toast({ title: "تم التحديث بنجاح" });
       } else {
@@ -246,7 +249,20 @@ export default function AdminDashboard() {
     } catch (e) { toast({ title: "خطأ في الحفظ", variant: "destructive" }); }
   };
 
+  const approveItem = async (item: ContentItem) => {
+      if (!firestore || !isAdmin || !selectedParentId) return;
+      try {
+          await updateDocumentNonBlocking(doc(firestore, 'categories', selectedParentId, 'items', item.id), {
+              status: 'approved'
+          });
+          toast({ title: "تم اعتماد المنشور بنجاح" });
+      } catch (e) {
+          toast({ title: "فشل الاعتماد", variant: "destructive" });
+      }
+  };
+
   const onCreateUser = async (values: z.infer<typeof newUserSchema>) => {
+      if (!isAdmin) return;
       try {
           const res = await createUserByAdmin(values);
           if (res.success) {
@@ -260,7 +276,7 @@ export default function AdminDashboard() {
   };
 
   const moveItem = async (list: any[], index: number, direction: 'up' | 'down', path: string[]) => {
-      if (!firestore) return;
+      if (!firestore || !isAdmin) return;
       const newIndex = direction === 'up' ? index - 1 : index + 1;
       if (newIndex < 0 || newIndex >= list.length) return;
       
@@ -311,8 +327,10 @@ export default function AdminDashboard() {
                         <nav className="flex items-center gap-1 bg-secondary/50 p-1 rounded-2xl border whitespace-nowrap">
                             {[
                                 { id: 'content', label: 'المحتوى', icon: Layers },
-                                { id: 'plans', label: 'الباقات', icon: CreditCard },
-                                { id: 'settings', label: 'الإعدادات', icon: Settings },
+                                ...(isAdmin ? [
+                                    { id: 'plans', label: 'الباقات', icon: CreditCard },
+                                    { id: 'settings', label: 'الإعدادات', icon: Settings }
+                                ] : []),
                             ].map(tool => (
                                 <button
                                     key={tool.id}
@@ -352,96 +370,100 @@ export default function AdminDashboard() {
                             )}
                             <h2 className="text-2xl font-black">{selectedParentId ? currentCategory?.name : 'إدارة المحتوى'}</h2>
                         </div>
-                        <p className="text-xs text-muted-foreground font-medium">تحكم في الأقسام والمنشورات.</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                            {isAdmin ? 'تحكم كامل في الأقسام والمنشورات.' : 'يمكنك إضافة منشورات جديدة ليتم مراجعتها من قبل المدير.'}
+                        </p>
                     </div>
 
                     <div className="flex gap-2">
-                        <Dialog open={!!editingCategory} onOpenChange={(o) => !o && setEditingCategory(null)}>
-                            <DialogTrigger asChild>
-                                <Button size="lg" className="rounded-2xl font-black px-6 shadow-xl shadow-primary/20" onClick={() => {
-                                    catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: selectedParentId });
-                                    setEditingCategory({ id: '' } as any);
-                                }}>
-                                    <Plus className="ml-2 h-5 w-5" /> {selectedParentId ? 'قسم فرعي' : 'قسم رئيسي'}
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
-                                <DialogHeader>
-                                    <DialogTitle className="text-xl font-black">إعدادات القسم</DialogTitle>
-                                </DialogHeader>
-                                <Form {...catForm}>
-                                    <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
-                                        <FormField 
-                                            control={catForm.control} 
-                                            name="name" 
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-black text-xs">اسم القسم</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} className="h-12 rounded-xl" />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )} 
-                                        />
-                                        <FormField 
-                                            control={catForm.control} 
-                                            name="fileTypes" 
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-black text-xs flex items-center gap-2">
-                                                        <FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (مثل PSD, AI)
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} className="h-12 rounded-xl" />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )} 
-                                        />
-                                        <FormField 
-                                            control={catForm.control} 
-                                            name="displayStyle" 
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-black text-xs">نمط العرض</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger className="h-12 rounded-xl">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent className="rounded-xl">
-                                                            <SelectItem value="style1">أفقي (Style 1)</SelectItem>
-                                                            <SelectItem value="style2">عمودي (Style 2)</SelectItem>
-                                                            <SelectItem value="style3">برومبت (Style 3)</SelectItem>
-                                                            <SelectItem value="style4">فيديو (Style 4)</SelectItem>
-                                                            <SelectItem value="style5">تطبيقات (Style 5)</SelectItem>
-                                                            <SelectItem value="style6">موقع (Style 6)</SelectItem>
-                                                            <SelectItem value="style7">صوتيات (Style 7)</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormItem>
-                                            )} 
-                                        />
-                                        <div className="p-4 bg-muted/50 rounded-2xl flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <p className="text-xs font-black">وضع الصيانة</p>
-                                                <p className="text-[10px] text-muted-foreground">يخفي القسم عن المستخدمين</p>
-                                            </div>
+                        {isAdmin && (
+                            <Dialog open={!!editingCategory} onOpenChange={(o) => !o && setEditingCategory(null)}>
+                                <DialogTrigger asChild>
+                                    <Button size="lg" className="rounded-2xl font-black px-6 shadow-xl shadow-primary/20" onClick={() => {
+                                        catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: selectedParentId });
+                                        setEditingCategory({ id: '' } as any);
+                                    }}>
+                                        <Plus className="ml-2 h-5 w-5" /> {selectedParentId ? 'قسم فرعي' : 'قسم رئيسي'}
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md rounded-[2.5rem] p-8" dir="rtl">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-xl font-black">إعدادات القسم</DialogTitle>
+                                    </DialogHeader>
+                                    <Form {...catForm}>
+                                        <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
                                             <FormField 
                                                 control={catForm.control} 
-                                                name="isUnderMaintenance" 
+                                                name="name" 
                                                 render={({ field }) => (
-                                                    <FormControl>
-                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                    </FormControl>
+                                                    <FormItem>
+                                                        <FormLabel className="font-black text-xs">اسم القسم</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} className="h-12 rounded-xl" />
+                                                        </FormControl>
+                                                    </FormItem>
                                                 )} 
                                             />
-                                        </div>
-                                        <Button type="submit" className="w-full h-14 rounded-2xl font-black">حفظ القسم</Button>
-                                    </form>
-                                </Form>
-                            </DialogContent>
-                        </Dialog>
+                                            <FormField 
+                                                control={catForm.control} 
+                                                name="fileTypes" 
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="font-black text-xs flex items-center gap-2">
+                                                            <FileCode className="h-4 w-4 text-primary" /> صيغ الملفات (مثل PSD, AI)
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} className="h-12 rounded-xl" />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )} 
+                                            />
+                                            <FormField 
+                                                control={catForm.control} 
+                                                name="displayStyle" 
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="font-black text-xs">نمط العرض</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-12 rounded-xl">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent className="rounded-xl">
+                                                                <SelectItem value="style1">أفقي (Style 1)</SelectItem>
+                                                                <SelectItem value="style2">عمودي (Style 2)</SelectItem>
+                                                                <SelectItem value="style3">برومبت (Style 3)</SelectItem>
+                                                                <SelectItem value="style4">فيديو (Style 4)</SelectItem>
+                                                                <SelectItem value="style5">تطبيقات (Style 5)</SelectItem>
+                                                                <SelectItem value="style6">موقع (Style 6)</SelectItem>
+                                                                <SelectItem value="style7">صوتيات (Style 7)</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </FormItem>
+                                                )} 
+                                            />
+                                            <div className="p-4 bg-muted/50 rounded-2xl flex items-center justify-between">
+                                                <div className="space-y-0.5">
+                                                    <p className="text-xs font-black">وضع الصيانة</p>
+                                                    <p className="text-[10px] text-muted-foreground">يخفي القسم عن المستخدمين</p>
+                                                </div>
+                                                <FormField 
+                                                    control={catForm.control} 
+                                                    name="isUnderMaintenance" 
+                                                    render={({ field }) => (
+                                                        <FormControl>
+                                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        </FormControl>
+                                                    )} 
+                                                />
+                                            </div>
+                                            <Button type="submit" className="w-full h-14 rounded-2xl font-black">حفظ القسم</Button>
+                                        </form>
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
+                        )}
 
                         {selectedParentId && (
                             <Dialog open={isAddingItem} onOpenChange={(open) => {
@@ -534,27 +556,31 @@ export default function AdminDashboard() {
                                             </div>
                                             <Badge className="bg-white/20 text-white border-none font-bold text-[9px] uppercase">{cat.displayStyle}</Badge>
                                         </div>
-                                        <div className="flex flex-col gap-1">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => moveItem(mainCategories, idx, 'up', ['categories'])} disabled={idx === 0}>
-                                                <ChevronUp className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => moveItem(mainCategories, idx, 'down', ['categories'])} disabled={idx === mainCategories.length - 1}>
-                                                <ChevronDown className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                        {isAdmin && (
+                                            <div className="flex flex-col gap-1">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => moveItem(mainCategories, idx, 'up', ['categories'])} disabled={idx === 0}>
+                                                    <ChevronUp className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => moveItem(mainCategories, idx, 'down', ['categories'])} disabled={idx === mainCategories.length - 1}>
+                                                    <ChevronDown className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </CardHeader>
                                 <CardFooter className="p-4 bg-muted/30 flex gap-2">
                                     <Button className="flex-1 rounded-xl font-black h-11 text-xs" onClick={() => setSelectedParentId(cat.id)}>
                                         إدارة القسم <ChevronLeft className="mr-2 h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-primary hover:bg-primary/10" onClick={() => { setEditingCategory(cat); catForm.reset(cat); }}>
-                                        <Edit2 className="h-4 w-4" />
-                                    </Button>
                                     {isAdmin && (
-                                        <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-destructive hover:bg-destructive/10" onClick={() => confirm("حذف القسم؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', cat.id))}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <>
+                                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-primary hover:bg-primary/10" onClick={() => { setEditingCategory(cat); catForm.reset(cat); }}>
+                                                <Edit2 className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-destructive hover:bg-destructive/10" onClick={() => confirm("حذف القسم؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', cat.id))}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </>
                                     )}
                                 </CardFooter>
                             </Card>
@@ -571,10 +597,12 @@ export default function AdminDashboard() {
                                     subCategories.map((sub, idx) => (
                                         <div key={sub.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border group">
                                             <div className="flex items-center gap-3">
-                                                <div className="flex flex-col">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === 0} onClick={() => moveItem(subCategories, idx, 'up', ['categories'])}><ChevronUp className="h-3 w-3" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === subCategories.length - 1} onClick={() => moveItem(subCategories, idx, 'down', ['categories'])}><ChevronDown className="h-3 w-3" /></Button>
-                                                </div>
+                                                {isAdmin && (
+                                                    <div className="flex flex-col">
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === 0} onClick={() => moveItem(subCategories, idx, 'up', ['categories'])}><ChevronUp className="h-3 w-3" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" disabled={idx === subCategories.length - 1} onClick={() => moveItem(subCategories, idx, 'down', ['categories'])}><ChevronDown className="h-3 w-3" /></Button>
+                                                    </div>
+                                                )}
                                                 <div className="flex flex-col">
                                                     <span className="font-black text-sm">{sub.name}</span>
                                                     {sub.isUnderMaintenance && <span className="text-[8px] text-yellow-600 font-bold flex items-center gap-1"><Hammer className="h-2 w-2" /> تحت الصيانة</span>}
@@ -582,8 +610,12 @@ export default function AdminDashboard() {
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => setSelectedParentId(sub.id)} title="إدارة هذا القسم الفرعي"><Layers className="h-3.5 w-3.5" /></Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setEditingCategory(sub); catForm.reset(sub); }}><Edit2 className="h-3.5 w-3.5" /></Button>
-                                                {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', sub.id))}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                                                {isAdmin && (
+                                                    <>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setEditingCategory(sub); catForm.reset(sub); }}><Edit2 className="h-3.5 w-3.5" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', sub.id))}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     ))
@@ -600,40 +632,54 @@ export default function AdminDashboard() {
                                         <div className="divide-y">
                                             {currentItems.map((item, idx) => (
                                                 <div key={item.id} className="flex items-center gap-4 p-5 hover:bg-secondary/20 transition-colors group">
-                                                    <div className="flex flex-col bg-muted/50 rounded-xl overflow-hidden border">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={idx === 0} onClick={() => moveItem(currentItems, idx, 'up', ['categories', selectedParentId!, 'items'])}><ChevronUp className="h-4 w-4" /></Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={idx === currentItems.length - 1} onClick={() => moveItem(currentItems, idx, 'down', ['categories', selectedParentId!, 'items'])}><ChevronDown className="h-4 w-4" /></Button>
-                                                    </div>
+                                                    {isAdmin && (
+                                                        <div className="flex flex-col bg-muted/50 rounded-xl overflow-hidden border">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={idx === 0} onClick={() => moveItem(currentItems, idx, 'up', ['categories', selectedParentId!, 'items'])}><ChevronUp className="h-4 w-4" /></Button>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={idx === currentItems.length - 1} onClick={() => moveItem(currentItems, idx, 'down', ['categories', selectedParentId!, 'items'])}><ChevronDown className="h-4 w-4" /></Button>
+                                                        </div>
+                                                    )}
                                                     <div className="h-14 w-14 rounded-2xl overflow-hidden border-2 relative shrink-0 flex items-center justify-center bg-muted">
                                                         {item.imageUrl ? <img src={item.imageUrl} alt="" className="object-cover h-full w-full" /> : (item.audioUrl ? <Music className="h-6 w-6 text-primary" /> : <ImageIcon className="h-6 w-6 text-muted-foreground" />)}
                                                         {item.visibility === 'pro' && <div className="absolute top-0 right-0 bg-yellow-500 text-white p-0.5 rounded-bl-lg"><Zap className="h-2.5 w-2.5 fill-white" /></div>}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="font-black text-sm truncate">{item.title}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-black text-sm truncate">{item.title}</p>
+                                                            {item.status === 'pending' && <Badge className="bg-yellow-500 text-white text-[8px] h-4 flex gap-1"><Clock className="h-2 w-2" /> مراجعة</Badge>}
+                                                        </div>
                                                         <div className="flex items-center gap-2 mt-1">
                                                             {item.isNew && <Badge className="bg-green-500 text-white text-[8px] h-4">جديد</Badge>}
                                                             <span className="text-[10px] opacity-40 font-bold uppercase">{item.visibility}</span>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="ghost" size="icon" className="text-primary h-10 w-10" onClick={() => {
-                                                            setEditingItem(item);
-                                                            itemForm.reset({
-                                                                ...item,
-                                                                screenshots: item.screenshots?.join(', ') || '',
-                                                                imageUrl: item.imageUrl || '',
-                                                                audioUrl: item.audioUrl || '',
-                                                                downloadUrl: item.downloadUrl || '',
-                                                                prompt: item.prompt || '',
-                                                                instructions: item.instructions || '',
-                                                                videoUrl: item.videoUrl || '',
-                                                                appVersion: item.appVersion || ''
-                                                            });
-                                                            setIsAddingItem(true);
-                                                        }}>
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </Button>
-                                                        {isAdmin && <Button variant="ghost" size="icon" className="text-destructive h-10 w-10" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId!, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button>}
+                                                        {isAdmin && item.status === 'pending' && (
+                                                            <Button variant="ghost" size="icon" className="text-green-600 h-10 w-10 bg-green-50 hover:bg-green-100 rounded-xl" onClick={() => approveItem(item)} title="اعتماد">
+                                                                <Check className="h-5 w-5" />
+                                                            </Button>
+                                                        )}
+                                                        {isAdmin && (
+                                                            <>
+                                                                <Button variant="ghost" size="icon" className="text-primary h-10 w-10" onClick={() => {
+                                                                    setEditingItem(item);
+                                                                    itemForm.reset({
+                                                                        ...item,
+                                                                        screenshots: item.screenshots?.join(', ') || '',
+                                                                        imageUrl: item.imageUrl || '',
+                                                                        audioUrl: item.audioUrl || '',
+                                                                        downloadUrl: item.downloadUrl || '',
+                                                                        prompt: item.prompt || '',
+                                                                        instructions: item.instructions || '',
+                                                                        videoUrl: item.videoUrl || '',
+                                                                        appVersion: item.appVersion || ''
+                                                                    });
+                                                                    setIsAddingItem(true);
+                                                                }}>
+                                                                    <Edit2 className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="text-destructive h-10 w-10" onClick={() => confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId!, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
@@ -647,7 +693,7 @@ export default function AdminDashboard() {
             </div>
         )}
 
-        {activeTool === 'plans' && (
+        {isAdmin && activeTool === 'plans' && (
             <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="flex items-center justify-between">
                     <div>
@@ -714,7 +760,7 @@ export default function AdminDashboard() {
             </div>
         )}
 
-        {activeTool === 'settings' && (
+        {isAdmin && activeTool === 'settings' && (
             <div className="animate-in fade-in duration-500">
                 <Tabs defaultValue="appearance" className="w-full space-y-8" dir="rtl">
                     <ScrollArea className="w-full">
