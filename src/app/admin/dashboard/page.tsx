@@ -4,10 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
-    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package
+    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package, ShieldCheck, Mail, User
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, doc, setDoc, serverTimestamp, orderBy, getDocs, where } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Category, ContentItem, AdsConfig, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan } from '@/lib/definitions';
+import type { Category, ContentItem, AdsConfig, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry } from '@/lib/definitions';
+import { createUserByAdmin } from '@/lib/user-actions';
 
 const categorySchema = z.object({ 
     name: z.string().min(2, "الاسم مطلوب"), 
@@ -59,13 +60,20 @@ const planSchema = z.object({
     link: z.string().optional()
 });
 
+const userSchema = z.object({
+    email: z.string().email("بريد غير صالح"),
+    role: z.enum(['admin', 'editor', 'pro']).default('pro'),
+    displayName: z.string().min(3, "الاسم مطلوب"),
+    password: z.string().min(6, "كلمة المرور 6 أحرف على الأقل")
+});
+
 export default function AdminDashboard() {
   const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
   
-  const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'settings' | 'notifications'>('content');
+  const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'users' | 'settings' | 'notifications'>('content');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
@@ -133,6 +141,7 @@ export default function AdminDashboard() {
                     {[
                         { id: 'content', label: 'المحتوى', icon: Layers }, 
                         { id: 'plans', label: 'الباقات', icon: Package },
+                        { id: 'users', label: 'المستخدمين', icon: Users },
                         { id: 'settings', label: 'الإعدادات', icon: Settings },
                         { id: 'notifications', label: 'الإشعارات', icon: Bell }
                     ].map(tool => (
@@ -164,7 +173,11 @@ export default function AdminDashboard() {
                     <div className="flex gap-3 w-full sm:w-auto">
                         {isAdmin && !selectedParentId && (
                             <Dialog open={!!editingCategory} onOpenChange={o => !o && setEditingCategory(null)}>
-                                <DialogTrigger asChild><Button className="flex-1 sm:flex-none rounded-2xl h-12 px-6 font-black" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: null }); setEditingCategory({id:''} as any); }}><Plus className="ml-2 h-5 w-5" /> قسم جديد</Button></DialogTrigger>
+                                <DialogTrigger asChild>
+                                    <Button className="flex-1 sm:flex-none rounded-2xl h-12 px-6 font-black" onClick={() => { catForm.reset({ name: '', displayStyle: 'style1', visibility: 'public', isUnderMaintenance: false, fileTypes: '', parentId: null }); setEditingCategory({id:''} as any); }}>
+                                        <Plus className="ml-2 h-5 w-5" /> قسم جديد
+                                    </Button>
+                                </DialogTrigger>
                                 <DialogContent className="rounded-[2.5rem] max-w-md" dir="rtl">
                                     <DialogHeader><DialogTitle className="font-black text-xl">إعدادات القسم</DialogTitle></DialogHeader>
                                     <Form {...catForm}><form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
@@ -173,7 +186,7 @@ export default function AdminDashboard() {
                                             <FormField control={catForm.control} name="displayStyle" render={({field})=><FormItem><FormLabel className="text-xs font-black">نمط العرض</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl">
                                                 {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
                                             </SelectContent></Select></FormItem>} />
-                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
+                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></Select></FormItem>} />
                                         </div>
                                         <FormField control={catForm.control} name="fileTypes" render={({field})=><FormItem><FormLabel className="text-xs font-black">صيغ الملفات (مثلاً: PSD, AI)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         <FormField control={catForm.control} name="isUnderMaintenance" render={({field})=><FormItem className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border"><div className="space-y-0.5"><FormLabel className="font-black text-xs">وضع الصيانة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
@@ -200,7 +213,7 @@ export default function AdminDashboard() {
                                         <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (Style 3)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl></FormItem>} />
                                         <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط المعرض (Style 5 - مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl></FormItem>} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
+                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></Select></FormItem>} />
                                             <FormField control={itemForm.control} name="isNew" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl h-12"><FormLabel className="font-black text-xs">جديد؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                                         </div>
                                         <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">نشر الآن</Button>
@@ -310,11 +323,17 @@ export default function AdminDashboard() {
             </div>
         )}
 
+        {isAdmin && activeTool === 'users' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+                <FormUsersControl />
+            </div>
+        )}
+
         {isAdmin && activeTool === 'settings' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Tabs defaultValue="ads" dir="rtl" className="space-y-6">
                     <ScrollArea className="w-full">
-                        <TabsList className="bg-white rounded-2xl p-1 h-16 border shadow-sm mx-auto grid grid-cols-3 min-w-[400px]">
+                        <TabsList className="bg-white rounded-2xl p-1 h-16 border shadow-sm mx-auto grid grid-cols-3 min-w-[450px]">
                             <TabsTrigger value="ads" className="rounded-xl font-black text-xs sm:text-sm">الإعلانات (Adsterra)</TabsTrigger>
                             <TabsTrigger value="theme" className="rounded-xl font-black text-xs sm:text-sm">المظهر والألوان</TabsTrigger>
                             <TabsTrigger value="general" className="rounded-xl font-black text-xs sm:text-sm">روابط ونوافذ</TabsTrigger>
@@ -436,6 +455,84 @@ function FormPlansControl() {
                     </Card>
                 ))}
             </div>
+        </div>
+    );
+}
+
+function FormUsersControl() {
+    const firestore = useFirestore();
+    const whitelistQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'whitelist'), orderBy('createdAt', 'desc')) : null, [firestore]);
+    const { data: users, isLoading } = useCollection<WhitelistEntry>(whitelistQuery);
+    const { toast } = useToast();
+    const [isAdding, setIsAdding] = useState(false);
+
+    const form = useForm({
+        resolver: zodResolver(userSchema),
+        defaultValues: { email: '', role: 'pro', displayName: '', password: '' }
+    });
+
+    const onAddUser = async (values: any) => {
+        try {
+            const res = await createUserByAdmin(values);
+            if (res.success) {
+                toast({ title: "تم إضافة المستخدم بنجاح" });
+                setIsAdding(false);
+                form.reset();
+            } else {
+                toast({ title: res.error || "فشل الإضافة", variant: "destructive" });
+            }
+        } catch (e) { toast({ title: "حدث خطأ غير متوقع", variant: "destructive" }); }
+    };
+
+    if (isLoading) return <div className="text-center py-10"><Loader2 className="animate-spin h-10 w-10 mx-auto" /></div>;
+
+    return (
+        <div className="space-y-8">
+            <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white">
+                <div className="flex justify-between items-center mb-6">
+                    <CardTitle className="font-black text-xl flex items-center gap-2">
+                        <Users className="h-6 w-6 text-primary" /> إدارة طاقم العمل والمشتركين
+                    </CardTitle>
+                    <Dialog open={isAdding} onOpenChange={setIsAdding}>
+                        <DialogTrigger asChild><Button className="rounded-xl h-12 font-black px-6"><UserPlus className="ml-2 h-5 w-5" /> إضافة مستخدم</Button></DialogTrigger>
+                        <DialogContent className="rounded-[2.5rem] max-w-md" dir="rtl">
+                            <DialogHeader><DialogTitle className="font-black text-xl">إضافة مستخدم جديد للنظام</DialogTitle></DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onAddUser)} className="space-y-4 pt-4">
+                                    <FormField control={form.control} name="displayName" render={({field})=><FormItem><FormLabel className="text-xs font-black">الاسم الكامل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
+                                    <FormField control={form.control} name="email" render={({field})=><FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} className="rounded-xl h-12" dir="ltr"/></FormControl></FormItem>} />
+                                    <FormField control={form.control} name="password" render={({field})=><FormItem><FormLabel className="text-xs font-black">كلمة المرور المؤقتة</FormLabel><FormControl><Input {...field} type="password" className="rounded-xl h-12" dir="ltr"/></FormControl></FormItem>} />
+                                    <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="admin">مدير (Admin)</SelectItem><SelectItem value="editor">محرر (Editor)</SelectItem><SelectItem value="pro">عضو برو (Pro)</SelectItem></SelectContent></Select></FormItem>} />
+                                    <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl" disabled={form.formState.isSubmitting}>
+                                        {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'إنشاء الحساب فوراً'}
+                                    </Button>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
+                <div className="bg-card border rounded-2xl overflow-hidden">
+                    <ScrollArea className="h-[500px]">
+                        <div className="divide-y">
+                            {users?.map(u => (
+                                <div key={u.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn("h-10 w-10 rounded-full flex items-center justify-center text-white", u.role === 'admin' ? 'bg-red-500' : u.role === 'editor' ? 'bg-blue-500' : 'bg-yellow-500')}>
+                                            {u.role === 'admin' ? <ShieldCheck className="h-5 w-5" /> : u.role === 'editor' ? <FileCode className="h-5 w-5" /> : <Crown className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-sm">{u.email}</p>
+                                            <Badge variant="outline" className="text-[8px] h-4 mt-1">{u.role.toUpperCase()}</Badge>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => confirm("حذف صلاحيات المستخدم؟") && deleteDocumentNonBlocking(doc(firestore!, 'whitelist', u.id!))}><Trash2 className="h-4 w-4"/></Button>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </div>
+            </Card>
         </div>
     );
 }
