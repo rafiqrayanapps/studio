@@ -13,12 +13,12 @@ import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { WhitelistEntry } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 
 const formSchema = z.object({
-  email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
+  email: z.string().email({ message: "الرجاء إدخل بريد إلكتروني صالح" }),
   password: z.string().min(1, { message: 'كلمة المرور مطلوبة' }),
 });
 
@@ -51,30 +51,35 @@ export default function ProLoginForm() {
             throw new Error("خدمة قاعدة البيانات غير متاحة.");
         }
 
-        // Check if the user is an Admin or Editor in Whitelist
+        const currentFingerprint = await getDeviceFingerprint();
+
+        // Check Whitelist for Admins/Editors/Pro
         const whitelistRef = doc(firestore, 'whitelist', email);
         const whitelistSnap = await getDoc(whitelistRef);
 
         if (whitelistSnap.exists()) {
             const whitelistData = whitelistSnap.data() as WhitelistEntry;
+            
+            // Update device fingerprint to take over the session
+            // This will trigger logout on other devices via useUserProfile listener
+            await updateDoc(whitelistRef, {
+                deviceFingerprints: arrayUnion(currentFingerprint),
+                lastActiveFingerprint: currentFingerprint
+            });
 
-            // If user has internal roles, redirect to Admin Dashboard
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
                 router.push('/admin/dashboard');
                 return;
             }
-            
-            // If user is a PRO user, check device fingerprint
-            if (whitelistData.role === 'pro' && whitelistData.deviceFingerprint) {
-                const currentFingerprint = await getDeviceFingerprint();
-                if (whitelistData.deviceFingerprint !== currentFingerprint) {
-                    await auth.signOut();
-                    throw new Error("عذراً، هذا الحساب مرتبط بجهاز آخر.");
-                }
-            }
         }
 
-        // Default redirect for regular users
+        // Also update the general user profile fingerprint
+        const userRef = doc(firestore, 'users', user.uid);
+        await updateDoc(userRef, {
+            deviceFingerprint: currentFingerprint,
+            lastLogin: new Date()
+        }).catch(() => {}); // Ignore error if profile doesn't exist yet
+
         router.push('/home');
 
     } catch (e: any) {

@@ -12,10 +12,10 @@ export function useUserProfile() {
     const firestore = useFirestore();
     const auth = useAuth();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [tempReferralCode, setTempReferralCode] = useState<string | null>(null);
     const [deviceFingerprint, setDeviceFingerprint] = useState<string | null>(null);
+    const [tempReferralCode, setTempReferralCode] = useState<string | null>(null);
 
-    // Initial fingerprint generation
+    // 1. Initial fingerprint generation
     useEffect(() => {
         getDeviceFingerprint().then(fp => {
             setDeviceFingerprint(fp);
@@ -24,11 +24,11 @@ export function useUserProfile() {
         });
     }, []);
 
-    // Auto sign-in anonymously if no user session exists
+    // 2. Auto sign-in anonymously if no user session exists
     useEffect(() => {
         if (!isAuthLoading && !user && !isLoggingOut && auth) {
             signInAnonymously(auth).catch(err => {
-                console.warn("Anonymous auth restricted. Please enable it in Firebase Console if needed.", err);
+                console.warn("Anonymous auth restricted.", err);
             });
         }
     }, [user, isAuthLoading, auth, isLoggingOut]);
@@ -40,7 +40,7 @@ export function useUserProfile() {
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-    // Create user profile if it doesn't exist
+    // 3. Create user profile if it doesn't exist
     useEffect(() => {
         if (firestore && user && !isProfileLoading && deviceFingerprint && tempReferralCode && !userProfile) {
             const createProfile = async () => {
@@ -72,31 +72,29 @@ export function useUserProfile() {
 
     const { data: whitelistEntry, isLoading: isWhitelistLoading } = useDoc<WhitelistEntry>(whitelistRef);
     
-    // Security: Single Device Enforcement
+    // 4. Security: Single Device Enforcement (New Session kicks Old Session)
     useEffect(() => {
-        if (!firestore || !user || !whitelistEntry || isLoggingOut || !whitelistRef) return;
+        if (!firestore || !user || !whitelistEntry || isLoggingOut || !whitelistRef || !deviceFingerprint) return;
 
         const unsubscribe = onSnapshot(whitelistRef as any, async (snapshot) => {
             if (snapshot.exists()) {
-                const data = snapshot.data() as WhitelistEntry;
-                const currentFingerprint = await getDeviceFingerprint();
+                const data = snapshot.data();
+                // Check 'lastActiveFingerprint' or the last element in 'deviceFingerprints'
+                const fingerprints = data.deviceFingerprints || [];
+                const latestFingerprint = data.lastActiveFingerprint || (fingerprints.length > 0 ? fingerprints[fingerprints.length - 1] : null);
                 
-                const fingerprints = data.deviceFingerprints || (data.deviceFingerprint ? [data.deviceFingerprint] : []);
-                
-                if (fingerprints.length > 0) {
-                    const latestFingerprint = fingerprints[fingerprints.length - 1];
-                    if (latestFingerprint !== currentFingerprint && fingerprints.includes(currentFingerprint)) {
-                        console.warn("Session started on another device. Signing out...");
-                        setIsLoggingOut(true);
-                        await auth.signOut();
-                        window.location.reload();
-                    }
+                if (latestFingerprint && latestFingerprint !== deviceFingerprint) {
+                    // Someone else logged in from another device
+                    console.warn("New session started on another device. Signing out this session...");
+                    setIsLoggingOut(true);
+                    await auth.signOut();
+                    window.location.href = '/login?error=session_expired';
                 }
             }
         });
 
         return () => unsubscribe();
-    }, [firestore, user, whitelistEntry, whitelistRef, auth, isLoggingOut]);
+    }, [firestore, user, whitelistEntry, whitelistRef, auth, isLoggingOut, deviceFingerprint]);
 
     const isAdmin = whitelistEntry?.role === 'admin';
     const isEditor = whitelistEntry?.role === 'editor';
@@ -112,19 +110,16 @@ export function useUserProfile() {
         return false;
     }, [isAdmin, isEditor, userProfile]);
     
-    const finalLoading = isAuthLoading || (user && isProfileLoading && !tempReferralCode) || (!!user?.email && isWhitelistLoading);
+    // Auth is loading, or we have a user but haven't loaded their profile/whitelist yet
+    const isLoading = isAuthLoading || (user && !user.isAnonymous && (isProfileLoading || isWhitelistLoading));
 
     return { 
         user, 
-        userProfile: userProfile || (user && tempReferralCode ? { 
-            referralCode: tempReferralCode, 
-            points: userProfile?.points ?? 0, 
-            subscriptionTier: 'free' 
-        } as any : null), 
+        userProfile, 
         isPro, 
         isAdmin, 
         isEditor,
         points: userProfile?.points ?? 0,
-        isLoading: finalLoading
+        isLoading
     };
 }

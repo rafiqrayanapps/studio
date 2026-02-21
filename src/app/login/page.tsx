@@ -8,7 +8,7 @@ import ConversionForm from '@/components/auth/ConversionForm';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Crown, Coins, Loader2, UserPlus, LogIn } from 'lucide-react';
+import { Crown, Coins, Loader2, UserPlus, LogIn, AlertCircle } from 'lucide-react';
 import { useUserProfile } from '@/hooks/use-user-profile';
 
 function LoginContent() {
@@ -16,6 +16,7 @@ function LoginContent() {
   const router = useRouter();
   const { user, isAdmin, isEditor, isLoading } = useUserProfile();
   const [activeTab, setActiveTab] = useState('pro');
+  const errorParam = searchParams.get('error');
 
   // Auto-redirect if user is already logged in (non-anonymous)
   useEffect(() => {
@@ -39,9 +40,9 @@ function LoginContent() {
 
   if (isLoading) {
       return (
-        <div className="flex flex-col items-center gap-4">
-            <Loader2 className="animate-spin text-primary h-10 w-10" />
-            <p className="font-bold text-muted-foreground">جاري التحقق من الجلسة...</p>
+        <div className="flex flex-col items-center gap-4 py-20">
+            <Loader2 className="animate-spin text-primary h-12 w-12" />
+            <p className="font-black text-muted-foreground animate-pulse">جاري التحقق من الجلسة...</p>
         </div>
       );
   }
@@ -55,6 +56,13 @@ function LoginContent() {
             <h1 className="text-3xl font-black text-foreground tracking-tighter">رفيق المصمم</h1>
             <p className="text-muted-foreground text-sm font-medium">بوابتك لعالم الإبداع والجوائز</p>
         </div>
+
+        {errorParam === 'session_expired' && (
+            <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                <AlertCircle className="h-5 w-5 text-orange-600 shrink-0" />
+                <p className="text-xs font-bold text-orange-800">تم تسجيل الدخول من جهاز آخر، يرجى تسجيل الدخول مجدداً هنا.</p>
+            </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
             <TabsList className="grid w-full grid-cols-3 h-14 bg-card shadow-sm rounded-2xl p-1 border">
