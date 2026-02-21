@@ -21,6 +21,7 @@ import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useUnityAds } from '@/components/ads/UnityAdsProvider';
+import Image from 'next/image';
 
 const AudioPlayerRow = ({ 
     item, 
@@ -224,6 +225,7 @@ export default function CategoryPage() {
   const currentSubCategories = useMemo(() => {
       if (!id || !category) return [];
       
+      // If we are in Style 7 and it's a subcategory, show its siblings too
       if (category.displayStyle === 'style7' && category.parentId) {
           return subCategories.get(category.parentId) || [];
       }
@@ -282,8 +284,6 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
-    // السماح بظهور المنشورات المعتمدة أو المنشورات التي لا تملك حالة (البيانات القديمة) للجمهور
-    // والسماح للمدراء برؤية كل شيء
     const viewableItems = (isAdmin || isEditor) 
         ? rawItems 
         : rawItems.filter(item => item.status === 'approved' || !item.status);
@@ -426,6 +426,77 @@ export default function CategoryPage() {
                                         <Button className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 text-sm" onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ بنجاح"}); } })}>نسخ البرومبت</Button>
                                         {item.downloadUrl && <Button variant="outline" className="h-14 w-14 rounded-2xl border-2 border-primary/20" onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}><Download className="h-6 w-6 text-primary" /></Button>}
                                     </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : displayStyle === 'style4' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {typedItems.map(item => (
+                                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <h3 className="font-black text-sm text-center truncate px-2">{item.title}</h3>
+                                    <div className="relative aspect-video w-full rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-pointer" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
+                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />}
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
+                                            <div className="bg-primary/90 text-white p-4 rounded-full shadow-2xl scale-90 group-hover:scale-100 transition-all">
+                                                <PlayCircle className="h-10 w-10" />
+                                            </div>
+                                        </div>
+                                        <button className="absolute top-4 left-4 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}>
+                                            <Heart className={cn("h-5 w-5 text-white transition-all", isFavorite(item.id) && "fill-white scale-110")} />
+                                        </button>
+                                    </div>
+                                    <Button className="w-full rounded-[1.5rem] h-14 font-black shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}><PlayCircle className="ml-2 h-5 w-5" /> مشاهدة الآن</Button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : displayStyle === 'style5' ? (
+                        <div className="space-y-10">
+                            {typedItems.map(item => (
+                                <Card key={item.id} className="overflow-hidden rounded-[3rem] border-none bg-primary/5 backdrop-blur-xl shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="p-6 space-y-6">
+                                        <div className="flex items-start gap-4">
+                                            <div className="h-20 w-24 rounded-[1.8rem] bg-card relative overflow-hidden shrink-0 shadow-lg border-2 border-primary/5">
+                                                {item.imageUrl && <img src={item.imageUrl} alt="" className="object-cover h-full w-full" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0 pt-1">
+                                                <h3 className="text-lg font-black leading-tight truncate">{item.title}</h3>
+                                                {item.appVersion && <span className="inline-flex items-center gap-1 mt-1 px-3 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase">v{item.appVersion}</span>}
+                                            </div>
+                                            <button onClick={() => toggleFavorite(item)} className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-muted-foreground transition-all">
+                                                <Heart className={cn("h-5 w-5", isFavorite(item.id) && "text-primary fill-primary")} />
+                                            </button>
+                                        </div>
+                                        {item.screenshots && item.screenshots.length > 0 && (
+                                            <div className="relative -mx-6 overflow-hidden">
+                                                <ScrollArea className="w-full" dir="rtl">
+                                                    <div className="flex gap-3 px-6 pb-2">
+                                                        {item.screenshots.map((shot, idx) => (
+                                                            <div key={idx} className="relative h-48 w-28 rounded-2xl overflow-hidden bg-muted shrink-0 shadow-md cursor-zoom-in" onClick={() => setSelectedImage(shot)}>
+                                                                <img src={shot} alt="" className="object-cover h-full w-full" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <ScrollBar orientation="horizontal" className="hidden" />
+                                                </ScrollArea>
+                                            </div>
+                                        )}
+                                        <Button className="w-full h-14 rounded-[1.8rem] font-black shadow-lg" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}><Download className="ml-2 h-5 w-5" /> تحميل التطبيق</Button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : displayStyle === 'style2' ? (
+                        <div className="space-y-10">
+                            {typedItems.map(item => (
+                                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <h3 className="font-black text-base text-center px-4 leading-tight">{item.title}</h3>
+                                    <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-zoom-in" onClick={() => { if (item.imageUrl) setSelectedImage(item.imageUrl); incrementInteraction(); }}>
+                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto object-contain" />}
+                                        <button className="absolute top-4 left-4 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}>
+                                            <Heart className={cn("h-5 w-5 text-white", isFavorite(item.id) && "fill-white scale-110")} />
+                                        </button>
+                                    </div>
+                                    <Button className="w-full rounded-[1.8rem] h-16 font-black shadow-xl text-lg" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}><Download className="ml-2 h-6 w-6" /> تحميل الآن</Button>
                                 </div>
                             ))}
                         </div>
