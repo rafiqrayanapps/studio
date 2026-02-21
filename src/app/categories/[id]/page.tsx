@@ -221,11 +221,9 @@ export default function CategoryPage() {
 
   const { subCategories, categoryMap } = useCategories();
   
-  // منطق ذكي للأقسام الفرعية: إذا كان النمط صوتيات، نبحث عن الإخوة أيضاً
   const currentSubCategories = useMemo(() => {
       if (!id || !category) return [];
       
-      // إذا كان النمط صوتيات، وكان القسم له أب، نعرض الإخوة (بمن فيهم نفسه لتمييز النشط)
       if (category.displayStyle === 'style7' && category.parentId) {
           return subCategories.get(category.parentId) || [];
       }
@@ -284,9 +282,11 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
+    // السماح بظهور المنشورات المعتمدة أو المنشورات التي لا تملك حالة (البيانات القديمة) للجمهور
+    // والسماح للمدراء برؤية كل شيء
     const viewableItems = (isAdmin || isEditor) 
         ? rawItems 
-        : rawItems.filter(item => item.status === 'approved');
+        : rawItems.filter(item => item.status === 'approved' || !item.status);
         
     return viewableItems.filter((item) => (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
   }, [rawItems, searchTerm, isAdmin, isEditor]);
@@ -298,7 +298,6 @@ export default function CategoryPage() {
     if (isMaintenanceOn) {
        return (
          <div className="flex flex-col items-center justify-center text-center p-8 sm:p-12 bg-card/40 backdrop-blur-3xl rounded-[3rem] mt-8 shadow-2xl border border-white/20 min-h-[550px] relative overflow-hidden group">
-            {/* Animated Background Elements */}
             <div className="absolute top-10 left-10 opacity-10 group-hover:scale-110 transition-transform duration-1000">
                 <Cog className="h-32 w-32 animate-gear-rotate text-primary" />
             </div>
@@ -347,7 +346,6 @@ export default function CategoryPage() {
         <div className="space-y-8">
             {currentSubCategories.length > 0 && (
                 displayStyle === 'style7' ? (
-                    // العرض الأفقي لنمط الصوتيات
                     <div className="relative -mx-6">
                         <ScrollArea className="w-full" dir="rtl">
                             <div className="flex gap-3 px-6 pb-2">
@@ -377,7 +375,6 @@ export default function CategoryPage() {
                         </ScrollArea>
                     </div>
                 ) : (
-                    // العرض الشبكي لبقية الأنماط
                     <div className="grid grid-cols-2 gap-4">
                         {currentSubCategories.map((sub, idx) => {
                             const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
@@ -385,8 +382,16 @@ export default function CategoryPage() {
                                 <div key={sub.id} onClick={() => handleSubCategoryClick(sub)} className="animate-in fade-in zoom-in-95 duration-500 fill-mode-both" style={{ animationDelay: `${idx * 50}ms` }}>
                                     <div className="relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg hover:shadow-primary/20 aspect-square text-center active:scale-95 group overflow-hidden border-4 border-white/5">
                                         <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-700" />
+                                        
                                         {isLocked && <Crown className="absolute top-4 left-4 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
-                                        <p className="font-bold text-sm relative z-10 leading-snug px-2">{sub.name}</p>
+                                        
+                                        {sub.fileTypes && (
+                                            <div className="absolute top-4 right-4 bg-black/20 text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm z-20">
+                                                {sub.fileTypes}
+                                            </div>
+                                        )}
+
+                                        <p className="font-bold text-sm relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{sub.name}</p>
                                     </div>
                                 </div>
                             );
