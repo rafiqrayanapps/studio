@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -155,7 +154,6 @@ export default function CategoryPage() {
   
   const currentSubCategories = useMemo(() => {
       if (!id || !category) return [];
-      // In style 7, if we are in a subcategory, we want to see siblings
       if (category.displayStyle === 'style7' && category.parentId) return subCategories.get(category.parentId) || [];
       return subCategories.get(id) || [];
   }, [subCategories, id, category]);
@@ -182,7 +180,6 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
-    // Show approved items, or items without status (legacy) for regular users. Admin/Editor see everything.
     const viewable = (isAdmin || isEditor) ? rawItems : rawItems.filter(i => i.status === 'approved' || !i.status);
     return viewable.filter(i => (i.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
   }, [rawItems, searchTerm, isAdmin, isEditor]);
@@ -192,9 +189,8 @@ export default function CategoryPage() {
 
   const renderItem = (item: any) => {
     const style = category?.displayStyle || 'style1';
-    
     switch(style) {
-        case 'style3': // Prompt
+        case 'style3':
             return (
                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <h3 className="font-black text-sm text-center text-primary">{item.title}</h3>
@@ -209,7 +205,7 @@ export default function CategoryPage() {
                     </div>
                 </div>
             );
-        case 'style4': // Video
+        case 'style4':
             return (
                 <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <h3 className="font-black text-sm text-center">{item.title}</h3>
@@ -222,7 +218,7 @@ export default function CategoryPage() {
                     </div>
                 </div>
             );
-        case 'style5': // App Card
+        case 'style5':
             return (
                 <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border border-white/20 bg-primary/5 backdrop-blur-3xl shadow-xl transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
                     <div className="p-6">
@@ -254,7 +250,7 @@ export default function CategoryPage() {
                     </div>
                 </Card>
             );
-        case 'style6': // Website Style
+        case 'style6':
             return (
                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <h3 className="font-black text-sm text-center">{item.title}</h3>
@@ -266,7 +262,7 @@ export default function CategoryPage() {
                     <Button className="w-full rounded-2xl font-black h-14 shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>زيارة الموقع الآن</Button>
                 </div>
             );
-        case 'style2': // Vertical List
+        case 'style2':
             return (
                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <h3 className="font-black text-sm text-center">{item.title}</h3>
@@ -277,7 +273,6 @@ export default function CategoryPage() {
                     <Button className="w-full rounded-2xl font-black h-14 shadow-xl" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}><Download className="ml-2 h-5 w-5" /> تحميل الآن</Button>
                 </div>
             );
-        case 'style1': // Standard Grid
         default:
             return (
                 <div key={item.id} className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -333,9 +328,13 @@ export default function CategoryPage() {
                                         displayStyle === 'style7' ? "whitespace-nowrap px-6 py-3 rounded-full font-black text-xs border-2 " + (isActive ? "bg-primary text-primary-foreground border-primary shadow-lg" : "bg-card text-muted-foreground border-transparent shadow-sm") : 
                                         "relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center aspect-square text-center overflow-hidden border-4 border-white/5 shadow-lg active:scale-95"
                                     )}>
-                                        {displayStyle !== 'style7' && sub.fileTypes && <div className="absolute top-4 right-4 bg-black/20 text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase z-20">{sub.fileTypes}</div>}
+                                        {displayStyle !== 'style7' && sub.fileTypes && (
+                                            <div className="absolute top-4 right-4 bg-black/20 text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase z-20">
+                                                {sub.fileTypes}
+                                            </div>
+                                        )}
                                         {isLocked && <Crown className={cn("h-4 w-4 text-yellow-400", displayStyle === 'style7' ? "ml-2 inline" : "absolute top-4 left-4")} />}
-                                        <p className={cn("font-black", displayStyle === 'style7' ? "text-xs" : "text-sm relative z-10")}>{sub.name}</p>
+                                        <p className={cn("font-black", displayStyle === 'style7' ? "text-xs" : "text-sm relative z-10 leading-snug")}>{sub.name}</p>
                                     </div>
                                 );
                             })}

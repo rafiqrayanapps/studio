@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -21,7 +20,7 @@ export const initializeFirebase = (() => {
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // Use stable pooling settings for reliable connectivity on mobile devices
+    // Disable experimentalAutoDetectLongPolling if forceLongPolling is true to avoid FirebaseError
     const firestore = initializeFirestore(app, {
       experimentalForceLongPolling: true,
     });
