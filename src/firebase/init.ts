@@ -20,7 +20,8 @@ export const initializeFirebase = (() => {
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // تفعيل إعدادات الاتصال المستقرة لضمان الوصول لقاعدة البيانات من أي مكان
+    // تفعيل إعدادات الاتصال المستقرة لضمان الوصول لقاعدة البيانات
+    // تم الإبقاء على forceLongPolling فقط لتجنب التعارض
     const firestore = initializeFirestore(app, {
       experimentalForceLongPolling: true,
     });
