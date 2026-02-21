@@ -1,13 +1,12 @@
-
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { AdsConfig } from '@/lib/definitions';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, X, Clock, Coins, MousePointer2 } from 'lucide-react';
+import { ExternalLink, X, Clock, MousePointer2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface AdsContextType {
@@ -29,43 +28,46 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
   const adsConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'ads') : null, [firestore]);
   const { data: config } = useDoc<AdsConfig>(adsConfigRef);
 
-  // Handle Global Adsterra Scripts (Social Bar, Popunder)
-  useEffect(() => {
-    if (!config?.enabled || !config.adsterraEnabled) return;
-
-    const injectScript = (scriptHtml: string | undefined, id: string) => {
-        if (!scriptHtml || document.getElementById(id)) return;
-        
+  /**
+   * وظيفة ذكية لحقن سكريبتات Adsterra (Social Bar / Popunder)
+   * تضمن تنفيذ الكود البرمجي فور إضافته للجسم (Body).
+   */
+  const injectAdsterraScript = useCallback((scriptHtml: string | undefined, id: string) => {
+    if (!scriptHtml || typeof document === 'undefined' || document.getElementById(id)) return;
+    
+    try {
         const container = document.createElement('div');
         container.id = id;
         container.style.display = 'none';
-        container.innerHTML = scriptHtml;
-        
-        const scripts = container.querySelectorAll('script');
-        scripts.forEach(s => {
-            const newScript = document.createElement('script');
-            Array.from(s.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-            newScript.innerHTML = s.innerHTML;
-            document.body.appendChild(newScript);
-        });
-        
         document.body.appendChild(container);
-    };
 
-    // Delay injection slightly to prioritize page content
+        // استخدام Fragment لضمان تنفيذ السكريبتات
+        const range = document.createRange();
+        range.selectNode(container);
+        const fragment = range.createContextualFragment(scriptHtml);
+        container.appendChild(fragment);
+    } catch (e) {
+        console.error(`Failed to inject Adsterra script (${id}):`, e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!config?.enabled || !config.adsterraEnabled) return;
+
+    // حقن الإعلانات التلقائية بعد مهلة بسيطة لضمان سرعة تحميل الموقع
     const timer = setTimeout(() => {
-        injectScript(config.socialBarScript, 'adsterra-social-bar');
-        injectScript(config.popunderScript, 'adsterra-popunder');
-    }, 2000);
+        injectAdsterraScript(config.socialBarScript, 'adsterra-social-bar');
+        injectAdsterraScript(config.popunderScript, 'adsterra-popunder');
+    }, 3000);
 
     return () => clearTimeout(timer);
-  }, [config]);
+  }, [config, injectAdsterraScript]);
 
   const showInterstitial = () => {
     if (!config?.enabled) return;
     
-    // Adsterra interstitial is automatic via Social Bar / Popunder
-    // Manual fallback if needed
+    // إعلانات Adsterra البينية تظهر تلقائياً عبر السكريبتات المحقونة
+    // الإعلان اليدوي يظهر كخيار احتياطي
     if (config.manualAdsEnabled && config.manualInterstitialImg) {
         setShowManualInterstitial(true);
     }
@@ -78,6 +80,7 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (config.adsterraEnabled && config.directLinkUrl) {
+        // نظام المحاكاة للرابط المباشر
         window.open(config.directLinkUrl, '_blank');
         setOnRewardedComplete(() => onComplete);
         setRewardedCountdown(15); 
@@ -109,6 +112,7 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
     <AdsContext.Provider value={{ config: config || null, showInterstitial, showRewarded }}>
       {children}
 
+      {/* نافذة الإعلان البيني اليدوي */}
       <Dialog open={showManualInterstitial} onOpenChange={setShowManualInterstitial}>
           <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-sm overflow-hidden rounded-[2.5rem]">
               <div className="relative group">
@@ -127,6 +131,7 @@ export function UnityAdsProvider({ children }: { children: React.ReactNode }) {
           </DialogContent>
       </Dialog>
 
+      {/* نافذة العداد التنازلي للنقاط */}
       <Dialog open={showManualRewarded} onOpenChange={(open) => !open && rewardedCountdown > 0 ? toast({title: "أكمل المهمة للحصول على النقطة"}) : setShowManualRewarded(open)}>
           <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-sm overflow-hidden rounded-[2.5rem]">
               <div className="bg-card p-8 text-center space-y-6">

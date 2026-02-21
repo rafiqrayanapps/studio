@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -6,7 +5,7 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore, initializeFirestore } from 'firebase/firestore';
 
-// This is a safer singleton pattern using a closure.
+// نمط Singleton لضمان استقرار خدمات Firebase عبر التطبيق
 export const initializeFirebase = (() => {
   let firebaseServices: {
     firebaseApp: FirebaseApp;
@@ -15,24 +14,22 @@ export const initializeFirebase = (() => {
   } | null = null;
 
   return () => {
-    // If services are already initialized, return them.
     if (firebaseServices) {
       return firebaseServices;
     }
 
-    // Initialize Firebase App.
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-    
-    // Initialize Auth.
     const auth = getAuth(app);
     
-    // Initialize Firestore with specific settings to avoid "code=unavailable" errors
-    // in restricted environments (like cloud workstations/proxies).
+    /**
+     * تفعيل Long Polling هو الحل الجذري لمشكلة "Could not reach backend".
+     * يضمن هذا الإعداد استقرار الاتصال حتى في بيئات التطوير المقيدة أو الشبكات الضعيفة،
+     * مما يسمح بتحميل إعدادات الإعلانات فوراً وبدون فشل.
+     */
     const firestore = initializeFirestore(app, {
-      experimentalForceLongPolling: true, // Key fix for "Could not reach backend"
+      experimentalForceLongPolling: true,
     });
 
-    // Store the initialized services in the closure.
     firebaseServices = {
       firebaseApp: app,
       auth,
