@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, ShieldAlert, AlertCircle } from 'lucide-react';
+import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
@@ -27,6 +27,7 @@ type LoginFormValues = z.infer<typeof formSchema>;
 export default function ProLoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -50,17 +51,20 @@ export default function ProLoginForm() {
             throw new Error("خدمة قاعدة البيانات غير متاحة.");
         }
 
+        // Check if the user is an Admin or Editor in Whitelist
         const whitelistRef = doc(firestore, 'whitelist', email);
         const whitelistSnap = await getDoc(whitelistRef);
 
         if (whitelistSnap.exists()) {
             const whitelistData = whitelistSnap.data() as WhitelistEntry;
 
+            // If user has internal roles, redirect to Admin Dashboard
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
                 router.push('/admin/dashboard');
                 return;
             }
             
+            // If user is a PRO user, check device fingerprint
             if (whitelistData.role === 'pro' && whitelistData.deviceFingerprint) {
                 const currentFingerprint = await getDeviceFingerprint();
                 if (whitelistData.deviceFingerprint !== currentFingerprint) {
@@ -70,6 +74,7 @@ export default function ProLoginForm() {
             }
         }
 
+        // Default redirect for regular users
         router.push('/home');
 
     } catch (e: any) {
@@ -92,7 +97,7 @@ export default function ProLoginForm() {
   return (
     <>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
+        <CardTitle className="text-2xl font-black">تسجيل الدخول</CardTitle>
         <CardDescription>أهلاً بعودتك! سجل الدخول للمتابعة</CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -103,11 +108,11 @@ export default function ProLoginForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>البريد الإلكتروني</FormLabel>
+                  <FormLabel className="font-bold text-xs">البريد الإلكتروني</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input type="email" {...field} className="pl-10 text-left" dir="ltr" />
+                      <Input type="email" {...field} className="h-12 rounded-xl pl-10 text-left font-mono" dir="ltr" placeholder="example@email.com" />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -119,11 +124,24 @@ export default function ProLoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>كلمة المرور</FormLabel>
+                  <FormLabel className="font-bold text-xs">كلمة المرور</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input type="password" {...field} className="pl-10 text-left" dir="ltr" />
+                      <Input 
+                        type={showPassword ? 'text' : 'password'} 
+                        {...field} 
+                        className="h-12 rounded-xl pl-10 pr-10 text-left font-mono" 
+                        dir="ltr" 
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -132,15 +150,15 @@ export default function ProLoginForm() {
             />
             
             {error && (
-                <div className="bg-destructive/10 p-4 rounded-xl border border-destructive/20 flex gap-3 items-start">
+                <div className="bg-destructive/10 p-4 rounded-xl border border-destructive/20 flex gap-3 items-start animate-in fade-in">
                     <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                     <p className="text-xs font-bold text-destructive leading-relaxed">{error}</p>
                 </div>
             )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full h-12" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
+            <Button type="submit" className="w-full h-14 rounded-2xl text-lg font-black shadow-xl shadow-primary/20" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : 'تسجيل الدخول الآن'}
             </Button>
           </CardFooter>
         </form>

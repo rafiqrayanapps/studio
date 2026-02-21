@@ -2,18 +2,31 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from '@/components/ui/card';
-import AdminLoginForm from '@/components/auth/AdminLoginForm';
 import ProLoginForm from '@/components/auth/ProLoginForm';
 import UserSignupForm from '@/components/auth/UserSignupForm';
 import ConversionForm from '@/components/auth/ConversionForm';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { ShieldCheck, Crown, Coins, Loader2, UserPlus, LogIn, Lock } from 'lucide-react';
+import { Crown, Coins, Loader2, UserPlus, LogIn } from 'lucide-react';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 function LoginContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { user, isAdmin, isEditor, isLoading } = useUserProfile();
   const [activeTab, setActiveTab] = useState('pro');
+
+  // Auto-redirect if user is already logged in (non-anonymous)
+  useEffect(() => {
+    if (!isLoading && user && !user.isAnonymous) {
+        if (isAdmin || isEditor) {
+            router.replace('/admin/dashboard');
+        } else {
+            router.replace('/home');
+        }
+    }
+  }, [user, isAdmin, isEditor, isLoading, router]);
 
   useEffect(() => {
       const tab = searchParams.get('tab');
@@ -21,10 +34,17 @@ function LoginContent() {
           setActiveTab('convert');
       } else if (tab === 'signup') {
           setActiveTab('signup');
-      } else if (tab === 'admin') {
-          setActiveTab('admin');
       }
   }, [searchParams]);
+
+  if (isLoading) {
+      return (
+        <div className="flex flex-col items-center gap-4">
+            <Loader2 className="animate-spin text-primary h-10 w-10" />
+            <p className="font-bold text-muted-foreground">جاري التحقق من الجلسة...</p>
+        </div>
+      );
+  }
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -37,7 +57,7 @@ function LoginContent() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
-            <TabsList className="grid w-full grid-cols-4 h-14 bg-card shadow-sm rounded-2xl p-1 border">
+            <TabsList className="grid w-full grid-cols-3 h-14 bg-card shadow-sm rounded-2xl p-1 border">
                 <TabsTrigger value="pro" className="rounded-xl gap-1.5 text-[10px] font-bold">
                     <LogIn className="h-3.5 w-3.5" />
                     <span>دخول</span>
@@ -49,10 +69,6 @@ function LoginContent() {
                 <TabsTrigger value="convert" className="rounded-xl gap-1.5 text-[10px] font-bold">
                     <Coins className="h-3.5 w-3.5" />
                     <span>تحويل</span>
-                </TabsTrigger>
-                <TabsTrigger value="admin" className="rounded-xl gap-1.5 text-[10px] font-bold">
-                    <Lock className="h-3.5 w-3.5" />
-                    <span>إدارة</span>
                 </TabsTrigger>
             </TabsList>
 
@@ -71,15 +87,6 @@ function LoginContent() {
             <TabsContent value="convert" className="mt-6 animate-in fade-in slide-in-from-bottom-2">
                 <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
                     <ConversionForm />
-                </Card>
-            </TabsContent>
-
-            <TabsContent value="admin" className="mt-6 animate-in fade-in slide-in-from-bottom-2">
-                <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
-                    <AdminLoginForm 
-                        title="دخول الإدارة"
-                        description="هذا القسم مخصص للمديرين والمحررين فقط"
-                    />
                 </Card>
             </TabsContent>
         </Tabs>
