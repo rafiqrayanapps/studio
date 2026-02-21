@@ -65,6 +65,36 @@ export function useUserProfile() {
         }
     }, [firestore, user, isProfileLoading, userProfile, deviceFingerprint, tempReferralCode]);
 
+    // 4. Security: Single Device Enforcement (New Session kicks Old Session)
+    // This effect monitors the user document for fingerprint changes.
+    useEffect(() => {
+        if (!firestore || !user || user.isAnonymous || !userProfile || !deviceFingerprint || isLoggingOut) return;
+
+        // Monitor the user's specific document for fingerprint changes
+        const userRef = doc(firestore, 'users', user.uid);
+        const unsubscribe = onSnapshot(userRef, async (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.data() as UserProfile;
+                
+                // If the fingerprint in the database is different from the current device's fingerprint
+                // it means the user logged in from somewhere else.
+                if (data.deviceFingerprint && data.deviceFingerprint !== deviceFingerprint) {
+                    console.warn("Session started on another device. Signing out current session...");
+                    setIsLoggingOut(true);
+                    try {
+                        await auth.signOut();
+                        // Redirect to login with error message
+                        window.location.href = '/login?error=session_expired';
+                    } catch (e) {
+                        console.error("Error signing out:", e);
+                    }
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [firestore, user, userProfile, deviceFingerprint, auth, isLoggingOut]);
+
     const whitelistRef = useMemoFirebase(
         () => (firestore && user?.email ? doc(firestore, 'whitelist', user.email.toLowerCase()) : null),
         [firestore, user?.email]
@@ -72,30 +102,6 @@ export function useUserProfile() {
 
     const { data: whitelistEntry, isLoading: isWhitelistLoading } = useDoc<WhitelistEntry>(whitelistRef);
     
-    // 4. Security: Single Device Enforcement (New Session kicks Old Session)
-    useEffect(() => {
-        if (!firestore || !user || !whitelistEntry || isLoggingOut || !whitelistRef || !deviceFingerprint) return;
-
-        const unsubscribe = onSnapshot(whitelistRef as any, async (snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.data();
-                // Check 'lastActiveFingerprint' or the last element in 'deviceFingerprints'
-                const fingerprints = data.deviceFingerprints || [];
-                const latestFingerprint = data.lastActiveFingerprint || (fingerprints.length > 0 ? fingerprints[fingerprints.length - 1] : null);
-                
-                if (latestFingerprint && latestFingerprint !== deviceFingerprint) {
-                    // Someone else logged in from another device
-                    console.warn("New session started on another device. Signing out this session...");
-                    setIsLoggingOut(true);
-                    await auth.signOut();
-                    window.location.href = '/login?error=session_expired';
-                }
-            }
-        });
-
-        return () => unsubscribe();
-    }, [firestore, user, whitelistEntry, whitelistRef, auth, isLoggingOut, deviceFingerprint]);
-
     const isAdmin = whitelistEntry?.role === 'admin';
     const isEditor = whitelistEntry?.role === 'editor';
 

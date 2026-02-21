@@ -18,7 +18,7 @@ import type { WhitelistEntry } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 
 const formSchema = z.object({
-  email: z.string().email({ message: "الرجاء إدخل بريد إلكتروني صالح" }),
+  email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
   password: z.string().min(1, { message: 'كلمة المرور مطلوبة' }),
 });
 
@@ -53,32 +53,36 @@ export default function ProLoginForm() {
 
         const currentFingerprint = await getDeviceFingerprint();
 
-        // Check Whitelist for Admins/Editors/Pro
+        // 1. Update Whitelist Metadata if user is an admin/editor
         const whitelistRef = doc(firestore, 'whitelist', email);
         const whitelistSnap = await getDoc(whitelistRef);
 
         if (whitelistSnap.exists()) {
-            const whitelistData = whitelistSnap.data() as WhitelistEntry;
-            
-            // Update device fingerprint to take over the session
-            // This will trigger logout on other devices via useUserProfile listener
             await updateDoc(whitelistRef, {
                 deviceFingerprints: arrayUnion(currentFingerprint),
                 lastActiveFingerprint: currentFingerprint
             });
+        }
 
+        // 2. Update the main User Profile fingerprint.
+        // This is the trigger for the single-session logic in useUserProfile.
+        const userRef = doc(firestore, 'users', user.uid);
+        await updateDoc(userRef, {
+            deviceFingerprint: currentFingerprint,
+            lastLogin: serverTimestamp()
+        }).catch(() => {
+            // If the document doesn't exist yet, we don't block login
+            // useUserProfile will create it automatically.
+        });
+
+        // 3. Direct to appropriate page
+        if (whitelistSnap.exists()) {
+            const whitelistData = whitelistSnap.data() as WhitelistEntry;
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
                 router.push('/admin/dashboard');
                 return;
             }
         }
-
-        // Also update the general user profile fingerprint
-        const userRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userRef, {
-            deviceFingerprint: currentFingerprint,
-            lastLogin: new Date()
-        }).catch(() => {}); // Ignore error if profile doesn't exist yet
 
         router.push('/home');
 
