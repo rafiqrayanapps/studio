@@ -34,20 +34,17 @@ service cloud.firestore {
 
     // --- Content Rules ---
     match /categories/{categoryId} {
-      // Allow everyone to read all categories. UI will handle locking.
       allow read: if true;
-      // Only admins can create, update, or delete categories.
       allow write: if isAdmin();
     }
 
     match /categories/{categoryId}/items/{itemId} {
-      // Allow everyone to read all items.
       allow read: if true;
       
       // CREATE: Admin can create any status. Editor can only create 'pending'.
       allow create: if isAdmin() || (isEditor() && request.resource.data.status == 'pending');
       
-      // UPDATE: Admin can update anything. Editors cannot update items.
+      // UPDATE: Only admins can update (approve or modify).
       allow update: if isAdmin();
       
       // DELETE: Only admins can delete.

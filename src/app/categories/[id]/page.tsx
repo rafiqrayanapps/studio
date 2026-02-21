@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -200,35 +201,6 @@ const AudioPlayerRow = ({
     );
 };
 
-const MaintenanceArt = () => (
-    <div className="relative w-full max-w-[280px] h-[280px] mx-auto mb-8">
-        <div className="absolute top-4 right-4 text-primary/20 animate-gear-rotate">
-            <Cog size={120} strokeWidth={1} />
-        </div>
-        <div className="absolute bottom-10 left-4 text-primary/10 animate-gear-rotate-reverse">
-            <Settings size={80} strokeWidth={1} />
-        </div>
-        <div className="absolute top-10 left-10 text-primary/40 animate-floating" style={{ animationDelay: '0.5s' }}>
-            <Wrench size={32} />
-        </div>
-        <div className="absolute bottom-20 right-10 text-primary/40 animate-floating" style={{ animationDelay: '1.2s' }}>
-            <Hammer size={32} />
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-            <svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
-                <path d="M12 4C13.1046 4 14 3.10457 14 2C14 0.89543 13.1046 0 12 0C10.8954 0 10 0.89543 10 2C10 3.10457 10.8954 4 12 4Z" fill="currentColor" className="text-primary"/>
-                <path d="M15 5H9C7.34315 5 6 6.34315 6 8V14C6 14.5523 6.44772 15 7 15H8V21C8 22.6569 9.34315 24 11 24H13C14.6569 24 16 22.6569 16 21V15H17C17.5523 15 18 14.5523 18 14V8C18 6.34315 16.6569 5 15 5Z" fill="currentColor" className="text-primary opacity-90"/>
-                <g className="animate-wrench">
-                    <path d="M18 10L21 12M21 12L23 10M21 12L20 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-primary"/>
-                    <circle cx="21" cy="12" r="1.5" fill="white" className="opacity-40" />
-                </g>
-                <rect x="10" y="7" width="4" height="3" rx="1" fill="white" className="opacity-20"/>
-            </svg>
-        </div>
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-32 h-3 bg-black/5 rounded-[100%] blur-md animate-float-shadow" />
-    </div>
-);
-
 export default function CategoryPage() {
   const params = useParams();
   const router = useRouter();
@@ -244,7 +216,6 @@ export default function CategoryPage() {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
   
-  // Track interactions for interstitial ads
   const [interactionCount, setInteractionCount] = useState(0);
 
   const categoryRef = useMemoFirebase(() => id ? doc(firestore!, 'categories', id) : null, [firestore, id]);
@@ -304,45 +275,28 @@ export default function CategoryPage() {
 
   const filteredItems = useMemo(() => {
     if (!rawItems) return [];
-    const viewableItems = (isAdmin || isEditor) ? rawItems : rawItems.filter(item => !item.status || item.status === 'approved');
-    const searchedItems = viewableItems.filter((item) => (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
-    return searchedItems;
+    // للمستخدم العادي: نعرض فقط المعتمدة. للمدير والمحرر: نعرض كل شيء للمراجعة.
+    const viewableItems = (isAdmin || isEditor) 
+        ? rawItems 
+        : rawItems.filter(item => item.status === 'approved');
+        
+    return viewableItems.filter((item) => (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()));
   }, [rawItems, searchTerm, isAdmin, isEditor]);
 
   const isMaintenanceOn = category?.isUnderMaintenance && !isAdmin && !isEditor;
-  
   const showSkeleton = (isCategoryLoading || areItemsLoading || isUserLoading) && !isMaintenanceOn && (!rawItems || rawItems.length === 0);
 
   const renderContent = () => {
     if (isMaintenanceOn) {
        return (
-         <div className="flex flex-col items-center justify-center text-center p-8 sm:p-12 bg-card/40 backdrop-blur-3xl rounded-[3.5rem] mt-8 shadow-2xl border border-white/20 min-h-[550px] animate-in fade-in zoom-in duration-700 relative overflow-hidden">
-            <div className="absolute top-10 left-10 text-primary/20 animate-pulse"><Sparkles size={40} /></div>
-            <div className="absolute bottom-20 right-10 text-primary/20 animate-pulse" style={{ animationDelay: '1s' }}><Sparkles size={24} /></div>
-            <MaintenanceArt />
+         <div className="flex flex-col items-center justify-center text-center p-8 sm:p-12 bg-card/40 backdrop-blur-3xl rounded-[3.5rem] mt-8 shadow-2xl border border-white/20 min-h-[550px] relative overflow-hidden">
             <div className="space-y-5 relative z-20">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
-                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Live Updates</span>
-                </div>
-                <h3 className="font-black text-xl text-foreground tracking-tight leading-tight">نطور من أجلك</h3>
+                <h3 className="font-black text-xl text-foreground">نطور من أجلك</h3>
                 <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed font-bold opacity-80">
                     المهندس يعمل الآن على إضافة لمسات إبداعية لهذا القسم. سنكون جاهزين قريباً جداً!
                 </p>
             </div>
-            <div className="flex flex-col items-center gap-6 mt-12 w-full max-w-xs relative z-20">
-                <Button 
-                    variant="default" 
-                    onClick={() => router.back()} 
-                    className="w-full rounded-2xl h-16 font-black text-lg shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all group"
-                >
-                    <ArrowLeft className="ml-3 h-7 w-7 group-hover:-translate-x-1 transition-transform" /> العودة للرئيسية
-                </Button>
-                <div className="flex items-center gap-2 py-2 px-5 bg-primary/5 rounded-full border border-primary/10">
-                    <Settings className="h-3 w-3 text-primary animate-spin" />
-                    <span className="text-[9px] font-black text-primary/60 uppercase tracking-widest">الموقع تحت التطوير المستمر</span>
-                </div>
-            </div>
+            <Button variant="default" onClick={() => router.back()} className="mt-8 rounded-2xl h-16 px-8 font-black">العودة للرئيسية</Button>
          </div>
        )
     }
@@ -360,60 +314,19 @@ export default function CategoryPage() {
     return (
         <div className="space-y-10">
             {currentSubCategories.length > 0 && (
-                <div className="space-y-4">
-                    {displayStyle === 'style7' ? (
-                        <ScrollArea className="w-full" dir="rtl">
-                            <div className="flex flex-row items-center gap-3 pb-4">
-                                {currentSubCategories.map(sub => {
-                                    const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
-                                    return (
-                                        <button 
-                                            key={sub.id} 
-                                            onClick={() => handleSubCategoryClick(sub)}
-                                            className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-black whitespace-nowrap border border-primary/10 hover:bg-primary/90 transition-all active:scale-95 relative shadow-lg text-sm"
-                                        >
-                                            {sub.name}
-                                            {isLocked && <Crown className="absolute -top-1 -right-1 h-4 w-4 text-yellow-300 fill-yellow-300 drop-shadow-md" />}
-                                        </button>
-                                    );
-                                })}
+                <div className="grid grid-cols-2 gap-4">
+                    {currentSubCategories.map((sub, idx) => {
+                        const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
+                        return (
+                            <div key={sub.id} onClick={() => handleSubCategoryClick(sub)} className="animate-in fade-in zoom-in-95 duration-500 fill-mode-both" style={{ animationDelay: `${idx * 50}ms` }}>
+                                <div className="relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg hover:shadow-primary/20 aspect-square text-center active:scale-95 group overflow-hidden border-4 border-white/5">
+                                    <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-700" />
+                                    {isLocked && <Crown className="absolute top-4 left-4 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
+                                    <p className="font-bold text-sm relative z-10 leading-snug px-2">{sub.name}</p>
+                                </div>
                             </div>
-                            <ScrollBar orientation="horizontal" className="hidden" />
-                        </ScrollArea>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                            {currentSubCategories.map((sub, idx) => {
-                                const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
-                                const isUnderMaintenance = sub.isUnderMaintenance;
-                                return (
-                                    <div 
-                                        key={sub.id} 
-                                        onClick={() => handleSubCategoryClick(sub)}
-                                        className="animate-in fade-in zoom-in-95 duration-500 fill-mode-both"
-                                        style={{ animationDelay: `${idx * 50}ms` }}
-                                    >
-                                        <div className={cn(
-                                            "relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg hover:shadow-primary/20 aspect-square text-center active:scale-95 group overflow-hidden border-4 border-white/5",
-                                        )}>
-                                            <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-700" />
-                                            {isLocked && <Crown className="absolute top-4 left-4 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
-                                            {isUnderMaintenance && (
-                                                <div className="absolute top-4 right-4 bg-yellow-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 z-20 shadow-md">
-                                                    <Hammer className="h-2.5 w-2.5" /> صيانة
-                                                </div>
-                                            )}
-                                            {sub.fileTypes && !isUnderMaintenance && (
-                                                <div className="absolute top-4 right-4 bg-black/20 text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase backdrop-blur-sm z-20">
-                                                    {sub.fileTypes}
-                                                </div>
-                                            )}
-                                            <p className="font-bold text-sm relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{sub.name}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                        );
+                    })}
                 </div>
             )}
 
@@ -422,15 +335,7 @@ export default function CategoryPage() {
                     {displayStyle === 'style7' ? (
                         <div className="space-y-6">
                             {typedItems.map(item => (
-                                <AudioPlayerRow 
-                                    key={item.id} 
-                                    item={item} 
-                                    isFavorite={isFavorite(item.id)} 
-                                    onToggleFavorite={() => toggleFavorite(item)}
-                                    onAction={(action) => handleAction(item, action)}
-                                    activeId={activeAudioId}
-                                    onPlay={setActiveAudioId}
-                                />
+                                <AudioPlayerRow key={item.id} item={item} isFavorite={isFavorite(item.id)} onToggleFavorite={() => toggleFavorite(item)} onAction={(action) => handleAction(item, action)} activeId={activeAudioId} onPlay={setActiveAudioId} />
                             ))}
                         </div>
                     ) : displayStyle === 'style3' ? (
@@ -438,196 +343,18 @@ export default function CategoryPage() {
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
                                     <h3 className="font-black text-sm text-center text-primary px-4">{item.title}</h3>
-                                    <div 
-                                        className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in"
-                                        onClick={() => {
-                                            if (item.imageUrl) setSelectedImage(item.imageUrl);
-                                            incrementInteraction();
-                                        }}
-                                    >
-                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-500" />}
-                                        <button 
-                                            className="absolute top-4 left-4 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary hover:scale-110 shadow-lg active:scale-90"
-                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
-                                        >
+                                    <div className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted group shadow-2xl border-4 border-white/5 cursor-zoom-in" onClick={() => { if (item.imageUrl) setSelectedImage(item.imageUrl); incrementInteraction(); }}>
+                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="block w-full h-auto object-contain" />}
+                                        <button className="absolute top-4 left-4 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}>
                                             <Heart className={cn("h-5 w-5 text-white transition-all", isFavorite(item.id) && "fill-white text-white scale-110")} />
                                         </button>
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                                            <Eye className="text-white h-12 w-12" />
-                                        </div>
                                     </div>
                                     <div className="space-y-2 px-2">
-                                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">نص البرومبت:</p>
-                                        <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted/50 border-none rounded-2xl text-xs font-mono p-4 shadow-inner" dir="ltr" />
+                                        <Textarea readOnly value={item.prompt || ''} className="h-28 bg-muted/50 border-none rounded-2xl text-xs font-mono p-4" dir="ltr" />
                                     </div>
                                     <div className="flex gap-3 px-2">
-                                        <Button 
-                                            className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm" 
-                                            onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ بنجاح"}); } })}
-                                        >
-                                            نسخ البرومبت
-                                        </Button>
-                                        {item.downloadUrl && (
-                                            <Button 
-                                                variant="outline" 
-                                                className="h-14 w-14 rounded-2xl border-2 hover:bg-primary/10 transition-all border-primary/20 active:scale-90"
-                                                onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}
-                                            >
-                                                <Download className="h-6 w-6 text-primary" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : displayStyle === 'style4' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            {typedItems.map(item => (
-                                <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-6 duration-700 relative">
-                                    <div className="text-center px-4 relative">
-                                        <h3 className="font-black text-xl mb-1 tracking-tight">{item.title}</h3>
-                                        {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse bg-green-50 px-3 py-0.5 rounded-full border border-green-100">جديد</span>}
-                                    </div>
-                                    <div className="relative aspect-video bg-black overflow-hidden rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group cursor-pointer" onClick={() => handleAction(item, () => item.videoUrl && window.open(item.videoUrl, '_blank'))}>
-                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-1000" />}
-                                        <button 
-                                            className="absolute top-4 left-4 z-20 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
-                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
-                                        >
-                                            <Heart className={cn("h-5 w-5 text-white", isFavorite(item.id) && "fill-white text-white")} />
-                                        </button>
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="bg-primary/90 text-white p-6 rounded-full shadow-2xl scale-90 group-hover:scale-100 transition-all duration-500 backdrop-blur-sm">
-                                                <PlayCircle className="h-14 w-14" />
-                                            </div>
-                                        </div>
-                                        {item.visibility === 'pro' && !isPro && !isAdmin && !isEditor && <div className="absolute top-6 left-6 bg-yellow-500 text-white p-2 rounded-full shadow-2xl border-2 border-white/20"><Crown className="h-5 w-5" /></div>}
-                                    </div>
-                                    <div className="px-6 text-center">
-                                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-bold opacity-70">{item.instructions || 'شاهد شرح المحتوى بالفيديو للحصول على أفضل النتائج.'}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : displayStyle === 'style5' ? (
-                        <div className="space-y-12">
-                            {typedItems.map(item => (
-                                <Card key={item.id} className="overflow-hidden rounded-[3.5rem] border border-white/20 bg-primary/5 backdrop-blur-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] hover:shadow-[0_35px_80px_-15px_rgba(0,0,0,0.15)] transition-all duration-500 group/card relative">
-                                    <div className="p-8 sm:p-10">
-                                        <div className="flex items-start gap-6 mb-8">
-                                            <div className="h-24 w-24 rounded-[2.2rem] bg-card relative overflow-hidden shrink-0 shadow-2xl border-4 border-white/10 group-hover/card:scale-105 transition-transform duration-500">
-                                                {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />}
-                                                <button 
-                                                    className="absolute top-2 left-2 z-20 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
-                                                    onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
-                                                >
-                                                    <Heart className={cn("h-4 w-4 text-white", isFavorite(item.id) && "fill-white text-white")} />
-                                                </button>
-                                            </div>
-                                            <div className="flex-1 pt-2">
-                                                <h3 className="text-xl font-black leading-tight text-foreground">{item.title}</h3>
-                                                {item.appVersion && (
-                                                    <span className="inline-flex items-center gap-1.5 mt-2 px-4 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-black border border-primary/10">
-                                                        <Sparkles className="h-3 w-3" />
-                                                        إصدار {item.appVersion}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {item.instructions && (
-                                            <div className="mb-10 animate-in fade-in slide-in-from-right-4 duration-500">
-                                                <div className="p-6 rounded-[2rem] bg-card/30 border border-white/10 shadow-inner">
-                                                    <p className="text-xs text-foreground/70 font-bold leading-relaxed">{item.instructions}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {item.screenshots && item.screenshots.length > 0 && (
-                                            <div className="mb-12 -mx-4">
-                                                <div className="overflow-x-auto no-scrollbar pb-4" dir="rtl">
-                                                    <div className="flex gap-6 px-4">
-                                                        {item.screenshots.map((shot, idx) => (
-                                                            <div 
-                                                                key={idx} 
-                                                                className="relative h-[420px] w-[230px] rounded-[2.5rem] overflow-hidden bg-muted shrink-0 shadow-[0_15px_40px_rgba(0,0,0,0.2)] cursor-zoom-in group/img"
-                                                                onClick={() => {
-                                                                    setSelectedImage(shot);
-                                                                    incrementInteraction();
-                                                                }}
-                                                            >
-                                                                <img src={shot} alt="" className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-1000" />
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <Button 
-                                            className="w-full h-16 rounded-[2.2rem] font-black text-lg shadow-[0_15px_40px_rgba(var(--primary),0.3)] hover:shadow-[0_20px_50px_rgba(var(--primary),0.4)] hover:scale-[1.02] active:scale-95 transition-all bg-primary relative overflow-hidden group/btn"
-                                            onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}
-                                        >
-                                            <Download className="ml-3 h-7 w-7 group-hover/btn:translate-y-1 transition-transform relative z-10" />
-                                            <span className="relative z-10">تحميل</span>
-                                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                                        </Button>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : displayStyle === 'style6' ? (
-                        <div className="grid grid-cols-1 gap-12">
-                            {typedItems.map(item => (
-                                <div key={item.id} className="flex flex-col gap-5 group animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    <div className="text-center px-4 relative">
-                                        <h3 className="font-black text-xl tracking-tight mb-1">{item.title}</h3>
-                                        <p className="text-xs text-muted-foreground font-bold opacity-60">{item.instructions || 'تصفح الموقع الإلكتروني وتعرف على المزيد.'}</p>
-                                    </div>
-                                    <div className="relative aspect-video w-full rounded-[3rem] overflow-hidden shadow-2xl group cursor-pointer border-4 border-white/10" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                                        {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />}
-                                        <button 
-                                            className="absolute top-4 left-4 z-20 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
-                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
-                                        >
-                                            <Heart className={cn("h-5 w-5 text-white", isFavorite(item.id) && "fill-white text-white")} />
-                                        </button>
-                                        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-[2px]">
-                                            <ExternalLink className="text-white h-14 w-14 scale-75 group-hover:scale-100 transition-transform" />
-                                        </div>
-                                    </div>
-                                    <div className="px-2 mt-2">
-                                        <Button className="w-full rounded-[2rem] font-black h-16 text-lg shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>زيارة الموقع الآن</Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : displayStyle === 'style2' ? (
-                        <div className="grid grid-cols-1 gap-14 mt-4">
-                            {typedItems.map(item => (
-                                <div key={item.id} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    <div className="text-center px-4 relative">
-                                        <h3 className="font-black text-xl text-foreground tracking-tight">{item.title}</h3>
-                                        {item.isNew && <span className="text-[10px] text-green-500 font-black animate-pulse block mt-1 uppercase tracking-tighter">New Update</span>}
-                                    </div>
-                                    <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.1)] group cursor-zoom-in" onClick={() => {
-                                        if (item.imageUrl) setSelectedImage(item.imageUrl);
-                                        incrementInteraction();
-                                    }}>
-                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="block w-full h-auto object-contain group-hover:scale-105 transition-transform duration-1000" />}
-                                        <button 
-                                            className="absolute top-4 left-4 z-10 h-10 w-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
-                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
-                                        >
-                                            <Heart className={cn("h-5 w-5 text-white", isFavorite(item.id) && "fill-white text-white")} />
-                                        </button>
-                                        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                            <Eye className="text-white h-12 w-12" />
-                                        </div>
-                                    </div>
-                                    <div className="px-2">
-                                        <Button className="w-full rounded-[2rem] font-black h-16 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all relative overflow-hidden group" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                                            <Download className="ml-3 h-6 w-6 relative z-10 group-hover:translate-y-1 transition-transform" />
-                                            <span className="relative z-10">تحميل</span>
-                                            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                                        </Button>
+                                        <Button className="flex-1 h-14 rounded-2xl font-black shadow-xl shadow-primary/20 text-sm" onClick={() => handleAction(item, () => { if(item.prompt) { navigator.clipboard.writeText(item.prompt); toast({title:"تم النسخ بنجاح"}); } })}>نسخ البرومبت</Button>
+                                        {item.downloadUrl && <Button variant="outline" className="h-14 w-14 rounded-2xl border-2 border-primary/20" onClick={() => handleAction(item, () => window.open(item.downloadUrl, '_blank'))}><Download className="h-6 w-6 text-primary" /></Button>}
                                     </div>
                                 </div>
                             ))}
@@ -636,28 +363,15 @@ export default function CategoryPage() {
                         <div className="grid grid-cols-2 gap-x-6 gap-y-12">
                             {typedItems.map(item => (
                                 <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-                                    <h3 className="font-black text-sm text-center truncate px-2 text-foreground tracking-tight">{item.title}</h3>
-                                    <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => {
-                                        if (item.imageUrl) setSelectedImage(item.imageUrl);
-                                        incrementInteraction();
-                                    }}>
-                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />}
-                                        <button 
-                                            className="absolute top-3 left-3 z-10 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:bg-primary active:scale-90"
-                                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
-                                        >
+                                    <h3 className="font-black text-sm text-center truncate px-2">{item.title}</h3>
+                                    <div className="relative aspect-square w-full rounded-[2.2rem] overflow-hidden shadow-xl group cursor-zoom-in" onClick={() => { if (item.imageUrl) setSelectedImage(item.imageUrl); incrementInteraction(); }}>
+                                        {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />}
+                                        <button className="absolute top-3 left-3 z-10 h-8 w-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all" onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}>
                                             <Heart className={cn("h-4 w-4 text-white transition-all", isFavorite(item.id) && "fill-white scale-110")} />
                                         </button>
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                                            <Eye className="text-white h-8 w-8" />
-                                        </div>
-                                        {item.isNew && <div className="absolute top-3 right-3 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full z-10 shadow-lg">جديد</div>}
+                                        {item.isNew && <div className="absolute top-3 right-3 bg-green-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full z-10">جديد</div>}
                                     </div>
-                                    <Button className="w-full rounded-[1.5rem] h-14 font-black shadow-xl shadow-primary/10 hover:scale-[1.05] active:scale-90 transition-all relative overflow-hidden group text-sm" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
-                                        <Download className="ml-2 h-5 w-5 relative z-10 group-hover:translate-y-0.5 transition-transform" />
-                                        <span className="relative z-10">تحميل</span>
-                                        <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                                    </Button>
+                                    <Button className="w-full rounded-[1.5rem] h-14 font-black shadow-xl text-sm" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}><Download className="ml-2 h-5 w-5" /> تحميل</Button>
                                 </div>
                             ))}
                         </div>
@@ -670,44 +384,29 @@ export default function CategoryPage() {
   
   return (
     <div className="flex min-h-dvh flex-col bg-secondary overflow-x-hidden">
-        <div className="sticky top-0 z-30">
-             <Header showMenu={false} title={showSkeleton ? '...' : (category?.name || "تحميل...")}>
-              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
-             </Header>
-            <div className="relative z-10 -mt-12">
-              <div className="pb-4 px-6">
-                <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input placeholder="ابحث في هذا القسم..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-base shadow-2xl focus:ring-4 focus:ring-primary/10 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                </div>
-              </div>
+        <Header showMenu={false} title={showSkeleton ? '...' : (category?.name || "تحميل...")}>
+            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
+        </Header>
+        <div className="relative z-10 -mt-12 px-6">
+            <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input placeholder="ابحث في هذا القسم..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-base shadow-2xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
         </div>
-      <main className="flex-1 px-6 pt-4 pb-24">
-        {!showSkeleton && !category ? (
-            <div className="text-center text-destructive p-12 bg-destructive/10 rounded-[2.5rem] mt-4 space-y-4">
-                <X className="mx-auto h-12 w-12" />
-                <h3 className="font-black text-lg">عفواً، لم نجد هذا القسم</h3>
-                <Button variant="outline" onClick={() => router.push('/home')} className="rounded-xl border-2">العودة للرئيسية</Button>
-            </div>
-        ) : showSkeleton ? (
-          <div className="grid grid-cols-2 gap-4 mt-6">
-             {[...Array(4)].map((_, i) => <CategorySkeleton key={i} className="aspect-square rounded-[2rem]" />)}
+      <main className="flex-1 px-6 pt-10 pb-24">
+        {showSkeleton ? (
+          <div className="grid grid-cols-2 gap-4">
+             {[...Array(4)].map((_, i) => <CategorySkeleton key={i} className="aspect-square" />)}
           </div>
         ) : renderContent()}
       </main>
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none overflow-hidden rounded-3xl">
-          <div className="sr-only">معاينة الصورة</div>
-          <button className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full transition-colors z-50 backdrop-blur-md" onClick={() => setSelectedImage(null)}>
+          <button className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full z-50 backdrop-blur-md" onClick={() => setSelectedImage(null)}>
             <X className="h-6 w-6" />
           </button>
-          {selectedImage && (
-            <div className="relative w-full h-[85vh]">
-                <img src={selectedImage} alt="" className="w-full h-full object-contain" />
-            </div>
-          )}
+          {selectedImage && <div className="relative w-full h-[85vh]"><img src={selectedImage} alt="" className="w-full h-full object-contain" /></div>}
         </DialogContent>
       </Dialog>
     </div>
