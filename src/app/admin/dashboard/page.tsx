@@ -398,7 +398,7 @@ export default function AdminDashboard() {
 
 function FormAffiliateControl() {
     const firestore = useFirestore();
-    const adsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'affiliateAds'), orderBy('createdAt', 'desc')) : null, [firestore]);
+    const adsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'affiliateAds')) : null, [firestore]);
     const { data: ads } = useCollection<AffiliateAd>(adsQuery);
     
     const catQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories'), orderBy('name', 'asc')) : null, [firestore]);

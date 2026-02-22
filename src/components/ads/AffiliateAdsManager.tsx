@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import type { AffiliateAd, AffiliateConfig } from '@/lib/definitions';
 
 interface AffiliateContextType {
@@ -24,12 +24,16 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
 
   const adsQuery = useMemoFirebase(() => firestore ? query(
     collection(firestore, 'affiliateAds'),
-    where('enabled', '==', true),
-    orderBy('order', 'asc')
+    where('enabled', '==', true)
   ) : null, [firestore]);
 
   const { data: rawAds, isLoading } = useCollection<AffiliateAd>(adsQuery);
-  const allAds = useMemo(() => rawAds || [], [rawAds]);
+  
+  // Sort client-side to avoid Firebase Index requirement
+  const allAds = useMemo(() => {
+    if (!rawAds) return [];
+    return [...rawAds].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [rawAds]);
 
   const bannerAdsCount = useMemo(() => allAds.filter(ad => ad.placement === 'banner').length, [allAds]);
   const inlineAdsCount = useMemo(() => allAds.filter(ad => ad.placement === 'inline').length, [allAds]);
@@ -63,7 +67,6 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
 export function useAffiliateAds() {
   const context = useContext(AffiliateContext);
   if (context === undefined) {
-    // Return safe defaults if used outside of provider (though it shouldn't happen)
     return { allAds: [], adFrequency: 6, currentBannerIndex: 0, currentInlineIndex: 0, isLoading: false };
   }
   return context;
