@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
@@ -54,14 +55,19 @@ export default function RootLayout({
                   <ThemeManager />
                   <OnlineStatusDetector />
                   <ServiceWorkerRegistrar />
-                  {children}
-                  
-                  {/* Global Bottom Banner Slot - Fixed at the very bottom (under navigation) */}
-                  <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
-                      <AffiliateAdSlot placement="banner" className="w-full max-w-md h-[60px] shadow-2xl border-t border-white/10 pointer-events-auto bg-card/80 backdrop-blur-md" />
+                  <div className="flex flex-col min-h-screen">
+                    <div className="flex-1 pb-[calc(60px+80px)]">
+                      {children}
+                    </div>
+                    
+                    {/* Floating Navigation Bar */}
+                    <BottomNav />
+
+                    {/* Banner Slot - Absolute bottom, Under everything */}
+                    <div className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center bg-card/95 backdrop-blur-md border-t border-white/10 safe-area-bottom">
+                        <AffiliateAdSlot placement="banner" className="w-full max-w-md h-[60px]" />
+                    </div>
                   </div>
-                  
-                  <BottomNav />
                 </CategoryProvider>
               </AffiliateAdsProvider>
             </FirebaseClientProvider>

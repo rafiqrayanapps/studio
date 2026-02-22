@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -187,7 +188,9 @@ export default function AdminDashboard() {
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent className="rounded-[2.5rem] max-w-md" dir="rtl">
-                                    <DialogHeader><DialogTitle className="font-black text-xl">إعدادات القسم</DialogTitle></DialogHeader>
+                                    <DialogHeader>
+                                        <DialogTitle className="font-black text-xl">إعدادات القسم</DialogTitle>
+                                    </DialogHeader>
                                     <Form {...catForm}>
                                         <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
                                             <FormField control={catForm.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
@@ -220,7 +223,9 @@ export default function AdminDashboard() {
                             <Dialog open={isAddingItem} onOpenChange={o => { setIsAddingItem(o); if(!o) setEditingItem(null); }}>
                                 <DialogTrigger asChild><Button variant="outline" className="flex-1 sm:flex-none rounded-2xl h-12 px-6 font-black border-2"><Send className="ml-2 h-5 w-5" /> منشور جديد</Button></DialogTrigger>
                                 <DialogContent className="rounded-[2.5rem] max-w-2xl" dir="rtl">
-                                    <DialogHeader><DialogTitle className="font-black text-xl">إضافة محتوى جديد</DialogTitle></DialogHeader>
+                                    <DialogHeader>
+                                        <DialogTitle className="font-black text-xl">إضافة محتوى جديد</DialogTitle>
+                                    </DialogHeader>
                                     <ScrollArea className="max-h-[80vh] px-1">
                                         <Form {...itemForm}>
                                             <form onSubmit={itemForm.handleSubmit(onSaveItem)} className="space-y-5 pt-4 pb-6">
@@ -392,8 +397,8 @@ function FormAffiliateControl() {
                 <CardHeader className="p-0 mb-6"><CardTitle className="font-black text-xl flex items-center gap-2"><AffiliateIcon className="h-6 w-6 text-primary" /> إضافة إعلان Affiliate جديد</CardTitle></CardHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSaveAd)} className="space-y-4">
-                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr" className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr" className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
@@ -471,15 +476,15 @@ function FormPlansControl() {
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم الباقة</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
+                            <FormField control={form.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم الباقة</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                             <div className="grid grid-cols-2 gap-2">
-                                <FormField control={form.control} name="price" render={({field})=><FormItem><FormLabel className="text-xs font-black">السعر</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
-                                <FormField control={form.control} name="currency" render={({field})=><FormItem><FormLabel className="text-xs font-black">العملة</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="price" render={({field})=><FormItem><FormLabel className="text-xs font-black">السعر</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="currency" render={({field})=><FormItem><FormLabel className="text-xs font-black">العملة</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                             </div>
                         </div>
-                        <FormField control={form.control} name="description" render={({field})=><FormItem><FormLabel className="text-xs font-black">وصف قصير</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={form.control} name="features" render={({field})=><FormItem><FormLabel className="text-xs font-black">المميزات (مفصولة بفاصلة ,)</FormLabel><FormControl><Textarea {...field}/></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط دفع خارجي (اختياري)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="description" render={({field})=><FormItem><FormLabel className="text-xs font-black">وصف قصير</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="features" render={({field})=><FormItem><FormLabel className="text-xs font-black">المميزات (مفصولة بفاصلة ,)</FormLabel><FormControl><Textarea {...field} className="rounded-xl"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط دفع خارجي (اختياري)</FormLabel><FormControl><Input {...field} dir="ltr" className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                         <div className="grid grid-cols-2 gap-4">
                             <FormField control={form.control} name="isFeatured" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تمييز؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                             <FormField control={form.control} name="enabled" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تفعيل؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
@@ -528,9 +533,9 @@ function FormUsersControl() {
                 <CardHeader className="p-0 mb-6"><CardTitle className="font-black text-xl flex items-center gap-2"><Users className="h-6 w-6 text-primary" /> إضافة مستخدم جديد</CardTitle></CardHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onAddUser)} className="space-y-4">
-                        <FormField control={form.control} name="displayName" render={({field})=><FormItem><FormLabel className="text-xs font-black">الاسم الكامل</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={form.control} name="email" render={({field})=><FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl><FormMessage /></FormItem>} />
-                        <FormField control={form.control} name="password" render={({field})=><FormItem><FormLabel className="text-xs font-black">كلمة المرور المؤقتة</FormLabel><FormControl><Input {...field} type="password" dir="ltr"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="displayName" render={({field})=><FormItem><FormLabel className="text-xs font-black">الاسم الكامل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="email" render={({field})=><FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} dir="ltr" className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="password" render={({field})=><FormItem><FormLabel className="text-xs font-black">كلمة المرور المؤقتة</FormLabel><FormControl><Input {...field} type="password" dir="ltr" className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                         <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
@@ -577,8 +582,8 @@ function FormSettingsControl() {
             <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white space-y-6">
                 <CardTitle className="font-black text-xl flex items-center gap-2"><Palette className="h-6 w-6 text-primary" /> ألوان الموقع (HSL)</CardTitle>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2"><label className="text-xs font-black">الوضع الفاتح</label><Input value={themeConfig.primaryColor} onChange={e => setThemeConfig({...themeConfig, primaryColor: e.target.value})} dir="ltr" /></div>
-                    <div className="space-y-2"><label className="text-xs font-black">الوضع الداكن</label><Input value={themeConfig.primaryColorDark || ''} onChange={e => setThemeConfig({...themeConfig, primaryColorDark: e.target.value})} dir="ltr" /></div>
+                    <div className="space-y-2"><label className="text-xs font-black">الوضع الفاتح</label><Input value={themeConfig.primaryColor} onChange={e => setThemeConfig({...themeConfig, primaryColor: e.target.value})} dir="ltr" className="rounded-xl h-12"/></div>
+                    <div className="space-y-2"><label className="text-xs font-black">الوضع الداكن</label><Input value={themeConfig.primaryColorDark || ''} onChange={e => setThemeConfig({...themeConfig, primaryColorDark: e.target.value})} dir="ltr" className="rounded-xl h-12"/></div>
                 </div>
                 <Button onClick={saveTheme} className="w-full h-12 rounded-xl font-black">تطبيق الألوان</Button>
             </Card>
@@ -586,9 +591,9 @@ function FormSettingsControl() {
             <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white space-y-6">
                 <div className="flex items-center justify-between"><CardTitle className="font-black text-xl">نافذة الاشتراك</CardTitle><Switch checked={popupConfig.enabled} onCheckedChange={v => setPopupConfig({...popupConfig, enabled: v})} /></div>
                 <div className="space-y-4">
-                    <Input placeholder="العنوان" value={popupConfig.title} onChange={e => setPopupConfig({...popupConfig, title: e.target.value})} />
-                    <Textarea placeholder="الوصف" value={popupConfig.description} onChange={e => setPopupConfig({...popupConfig, description: e.target.value})} />
-                    <Input placeholder="رابط الزر" value={popupConfig.link} onChange={e => setPopupConfig({...popupConfig, link: e.target.value})} dir="ltr" />
+                    <Input placeholder="العنوان" value={popupConfig.title} onChange={e => setPopupConfig({...popupConfig, title: e.target.value})} className="rounded-xl h-12"/>
+                    <Textarea placeholder="الوصف" value={popupConfig.description} onChange={e => setPopupConfig({...popupConfig, description: e.target.value})} className="rounded-xl"/>
+                    <Input placeholder="رابط الزر" value={popupConfig.link} onChange={e => setPopupConfig({...popupConfig, link: e.target.value})} dir="ltr" className="rounded-xl h-12"/>
                 </div>
                 <Button onClick={savePopup} className="w-full h-12 rounded-xl font-black">حفظ النافذة</Button>
             </Card>
@@ -615,15 +620,15 @@ function FormNotificationsControl() {
     return (
         <div className="space-y-8 max-w-2xl mx-auto">
             <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white space-y-4">
-                <Input placeholder="عنوان الإشعار" value={title} onChange={e => setTitle(e.target.value)} />
-                <Textarea placeholder="نص الإشعار" value={desc} onChange={e => setDesc(e.target.value)} />
+                <Input placeholder="عنوان الإشعار" value={title} onChange={e => setTitle(e.target.value)} className="rounded-xl h-12"/>
+                <Textarea placeholder="نص الإشعار" value={desc} onChange={e => setDesc(e.target.value)} className="rounded-xl"/>
                 <Button onClick={send} className="w-full h-14 rounded-2xl font-black shadow-xl"><Send className="ml-2 h-5 w-5" /> إرسال للجميع</Button>
             </Card>
             <div className="space-y-2">
-                {notifications?.map(n => (
-                    <div key={n.id} className="bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm">
-                        <div className="flex-1 min-w-0"><p className="font-black text-xs truncate">{n.title}</p></div>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore!, 'notifications', n.id))}><Trash2 className="h-4 w-4" /></Button>
+                {notifications?.map(notif => (
+                    <div key={notif.id} className="bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm">
+                        <div className="flex-1 min-w-0"><p className="font-black text-xs truncate">{notif.title}</p></div>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteDocumentNonBlocking(doc(firestore!, 'notifications', notif.id))}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                 ))}
             </div>

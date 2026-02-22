@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
@@ -5,6 +6,7 @@ import { useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase
 import { collection, query, where, doc } from 'firebase/firestore';
 import type { AffiliateAd, AffiliateConfig } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface AffiliateContextType {
   allAds: AffiliateAd[];
@@ -31,7 +33,7 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
 
   const { data: rawAds, isLoading } = useCollection<AffiliateAd>(adsQuery);
   
-  // Sort ads locally to avoid Index errors in Firestore
+  // Sort ads locally to avoid index requirement for simple queries
   const allAds = useMemo(() => {
     if (!rawAds) return [];
     return [...rawAds].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -78,16 +80,17 @@ export function useAffiliateAds() {
 export function AffiliateAdSlot({ placement, categoryId, className }: { placement: 'banner' | 'inline', categoryId?: string, className?: string }) {
   const { allAds, currentBannerIndex, currentInlineIndex } = useAffiliateAds();
   
-  // Filter and prioritize ads for the current slot
   const ads = useMemo(() => {
       if (!allAds || allAds.length === 0) return [];
+      
+      // Filter by placement
       let filtered = allAds.filter(ad => ad && ad.placement === placement);
       
-      // If inline, try to find ads targeting THIS category first
+      // If inline and categoryId provided, prioritize category-specific ads
       if (placement === 'inline' && categoryId) {
           const categorySpecific = filtered.filter(ad => ad.targetCategoryId === categoryId);
-          // If we have specific ads, use only them. Otherwise use global ones.
           if (categorySpecific.length > 0) return categorySpecific;
+          // Fallback to global ads if no specific ads for this category
           return filtered.filter(ad => !ad.targetCategoryId);
       }
       
@@ -102,29 +105,36 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
   if (!currentAd) return null;
 
   return (
-    <div 
-        key={currentAd.id} // Essential for triggering animations on change
-        className={cn(
-            "w-full flex justify-center items-center overflow-hidden transition-all duration-700 animate-in fade-in slide-in-from-bottom-2",
-            placement === 'banner' ? "h-[60px]" : "h-auto",
-            className
-        )}
-    >
-        <a 
-          href={currentAd.link} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="block w-full h-full group"
-        >
-          <img 
-            src={currentAd.imageUrl} 
-            alt="Promotion" 
-            className={cn(
-                "w-full h-full transition-transform duration-500 group-hover:scale-[1.02]",
-                placement === 'banner' ? "object-contain bg-black/5 backdrop-blur-sm" : "object-contain rounded-2xl shadow-lg"
-            )}
-          />
-        </a>
+    <div className={cn("w-full relative overflow-hidden", className)}>
+        <AnimatePresence mode="wait">
+            <motion.div
+                key={currentAd.id}
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className={cn(
+                    "w-full flex justify-center items-center",
+                    placement === 'banner' ? "h-[60px]" : "h-auto"
+                )}
+            >
+                <a 
+                  href={currentAd.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="block w-full h-full"
+                >
+                  <img 
+                    src={currentAd.imageUrl} 
+                    alt="Affiliate Ad" 
+                    className={cn(
+                        "w-full block",
+                        placement === 'banner' ? "h-[60px] object-contain" : "h-auto w-full object-contain rounded-2xl shadow-lg"
+                    )}
+                  />
+                </a>
+            </motion.div>
+        </AnimatePresence>
     </div>
   );
 }
