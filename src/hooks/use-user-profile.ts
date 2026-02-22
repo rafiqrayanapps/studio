@@ -66,24 +66,17 @@ export function useUserProfile() {
     }, [firestore, user, isProfileLoading, userProfile, deviceFingerprint, tempReferralCode]);
 
     // 4. Security: Single Device Enforcement (New Session kicks Old Session)
-    // This effect monitors the user document for fingerprint changes.
     useEffect(() => {
         if (!firestore || !user || user.isAnonymous || !userProfile || !deviceFingerprint || isLoggingOut) return;
 
-        // Monitor the user's specific document for fingerprint changes
         const userRef = doc(firestore, 'users', user.uid);
         const unsubscribe = onSnapshot(userRef, async (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.data() as UserProfile;
-                
-                // If the fingerprint in the database is different from the current device's fingerprint
-                // it means the user logged in from somewhere else.
                 if (data.deviceFingerprint && data.deviceFingerprint !== deviceFingerprint) {
-                    console.warn("Session started on another device. Signing out current session...");
                     setIsLoggingOut(true);
                     try {
                         await auth.signOut();
-                        // Redirect to login with error message
                         window.location.href = '/login?error=session_expired';
                     } catch (e) {
                         console.error("Error signing out:", e);
@@ -116,7 +109,6 @@ export function useUserProfile() {
         return false;
     }, [isAdmin, isEditor, userProfile]);
     
-    // Auth is loading, or we have a user but haven't loaded their profile/whitelist yet
     const isLoading = isAuthLoading || (user && !user.isAnonymous && (isProfileLoading || isWhitelistLoading));
 
     return { 

@@ -20,7 +20,6 @@ export const initializeFirebase = (() => {
     const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // Using experimentalForceLongPolling only to avoid multi-tab and persistence issues in some environments
     const firestore = initializeFirestore(app, {
       experimentalForceLongPolling: true,
     });
