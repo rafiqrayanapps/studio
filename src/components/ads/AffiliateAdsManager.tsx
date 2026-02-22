@@ -31,6 +31,7 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [currentInlineIndex, setCurrentInlineIndex] = useState(0);
 
+  // Rotate ads every 9 seconds
   useEffect(() => {
     if (bannerAds.length <= 1) return;
     const interval = setInterval(() => {
@@ -67,7 +68,9 @@ export function AffiliateAdSlot({ placement, className }: { placement: 'banner' 
   const index = placement === 'banner' ? currentBannerIndex : currentInlineIndex;
   
   if (ads.length === 0) return null;
-  const currentAd = ads[index];
+  
+  // Safeguard against index out of bounds during updates
+  const currentAd = ads[index] || ads[0];
 
   return (
     <a 

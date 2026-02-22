@@ -55,6 +55,7 @@ export default function RootLayout({
                   <OnlineStatusDetector />
                   <ServiceWorkerRegistrar />
                   {children}
+                  {/* Global Floating Banner Slot - Rotates automatically */}
                   <div className="fixed bottom-24 left-0 right-0 z-40 px-6 flex justify-center pointer-events-none">
                       <AffiliateAdSlot placement="banner" className="max-w-md h-16 rounded-2xl shadow-xl border-2 border-white/10 pointer-events-auto" />
                   </div>
