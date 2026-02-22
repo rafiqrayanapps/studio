@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
-    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package, ShieldCheck, Mail, User
+    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package, ShieldCheck, Mail, User, Crown
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc, setDoc, serverTimestamp, orderBy, getDocs, where } from 'firebase/firestore';
@@ -502,7 +502,7 @@ function FormUsersControl() {
                                     <FormField control={form.control} name="displayName" render={({field})=><FormItem><FormLabel className="text-xs font-black">الاسم الكامل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                     <FormField control={form.control} name="email" render={({field})=><FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} className="rounded-xl h-12" dir="ltr"/></FormControl></FormItem>} />
                                     <FormField control={form.control} name="password" render={({field})=><FormItem><FormLabel className="text-xs font-black">كلمة المرور المؤقتة</FormLabel><FormControl><Input {...field} type="password" className="rounded-xl h-12" dir="ltr"/></FormControl></FormItem>} />
-                                    <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="admin">مدير (Admin)</SelectItem><SelectItem value="editor">محرر (Editor)</SelectItem><SelectItem value="pro">عضو برو (Pro)</SelectItem></SelectContent></Select></FormItem>} />
+                                    <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="admin">مدير (Admin)</SelectItem><SelectItem value="editor">محرر (Editor)</SelectItem><SelectItem value="pro">عضو برو (Pro)</SelectItem></Select></FormItem>} />
                                     <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl" disabled={form.formState.isSubmitting}>
                                         {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'إنشاء الحساب فوراً'}
                                     </Button>
