@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import type { Category as CategoryType, ContentItem } from '@/lib/definitions';
-import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, RefreshCw, Settings } from 'lucide-react';
+import { ArrowLeft, Download, Search, Heart, Crown, Hammer, ExternalLink, PlayCircle, X, Music, Play, Pause, RefreshCw, Settings, Wrench, Package, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -304,23 +304,63 @@ export default function CategoryPage() {
 
   const renderContent = () => {
     if (isMaintenanceOn) return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 animate-in fade-in zoom-in duration-700">
-            <Card className="w-full max-w-md overflow-hidden rounded-[3rem] border-none shadow-2xl bg-card">
-                <div className="relative aspect-[4/3] w-full bg-muted">
-                    <img src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=800&auto=format&fit=crop" alt="Maintenance" className="object-cover w-full h-full opacity-90" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-                </div>
-                <div className="px-8 pb-10 -mt-12 relative z-10 text-center space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-full text-[10px] font-black shadow-md">
-                        <Settings className="h-3.5 w-3.5 animate-spin" /> تحسينات مستمرة
+        <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 animate-in fade-in zoom-in duration-1000">
+            <div className="relative w-full max-w-lg">
+                {/* Decorative Background Elements */}
+                <div className="absolute -top-20 -left-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl animate-pulse delay-700" />
+                
+                <Card className="relative overflow-hidden rounded-[3.5rem] border-none shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] bg-card/80 backdrop-blur-3xl pt-16 pb-12 px-8 text-center space-y-10 group">
+                    {/* Animated Scene */}
+                    <div className="relative h-40 flex items-center justify-center">
+                        <div className="absolute inset-0 flex items-center justify-center opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Rocket className="h-32 w-32 -rotate-12 animate-floating" />
+                        </div>
+                        <div className="relative flex items-center justify-center gap-4">
+                            <div className="relative">
+                                <Settings className="h-20 w-20 text-primary/20 animate-gear-rotate" />
+                                <Settings className="h-10 w-10 text-primary absolute -top-2 -right-2 animate-gear-rotate-reverse" />
+                            </div>
+                            <div className="relative mt-8">
+                                <Wrench className="h-16 w-16 text-primary/40 animate-wrench" />
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Content */}
+                    <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2.5 bg-primary/10 text-primary px-5 py-2 rounded-full text-xs font-black tracking-wide shadow-inner">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                            </span>
+                            جاري العمل على القسم
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <h3 className="text-3xl font-black text-foreground tracking-tight">تحسينات مستمرة</h3>
+                            <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto font-medium">
+                                نحن نقوم الآن بضبط بعض التفاصيل التقنية والجمالية لنقدم لك تجربة إبداعية لا مثيل لها. شكراً لانتظارك!
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Progress Simulator */}
                     <div className="space-y-2">
-                        <h3 className="text-2xl font-black text-foreground">إبداع قيد التحضير</h3>
-                        <p className="text-muted-foreground text-sm leading-relaxed px-2">نحن نقوم الآن بضبط بعض التفاصيل التقنية والجمالية لنقدم لك أفضل نسخة من هذا القسم. انتظرنا!</p>
+                        <div className="flex justify-between items-end px-2">
+                            <span className="text-[10px] font-black text-primary uppercase">التقدم</span>
+                            <span className="text-[10px] font-black text-muted-foreground">90%</span>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden p-0.5 border">
+                            <div className="h-full bg-primary rounded-full animate-pulse shadow-[0_0_8px_rgba(var(--primary),0.5)]" style={{ width: '90%' }} />
+                        </div>
                     </div>
-                    <Button size="lg" onClick={() => router.push('/home')} className="w-full h-16 rounded-[2rem] text-lg font-black bg-primary">العودة للرئيسية</Button>
-                </div>
-            </Card>
+
+                    <Button size="lg" onClick={() => router.push('/home')} className="w-full h-16 rounded-[2.2rem] text-lg font-black shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                        العودة للرئيسية
+                    </Button>
+                </Card>
+            </div>
         </div>
     );
 
