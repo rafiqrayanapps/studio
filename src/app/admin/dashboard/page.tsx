@@ -192,10 +192,21 @@ export default function AdminDashboard() {
                                     <Form {...catForm}><form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
                                         <FormField control={catForm.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <FormField control={catForm.control} name="displayStyle" render={({field})=><FormItem><FormLabel className="text-xs font-black">نمط العرض</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl">
-                                                {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                            </SelectContent></Select></FormItem>} />
-                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
+                                            <FormField control={catForm.control} name="displayStyle" render={({field})=><FormItem><FormLabel className="text-xs font-black">نمط العرض</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
+                                                <SelectContent className="rounded-xl">
+                                                    {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select></FormItem>} />
+                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="public">عام</SelectItem>
+                                                    <SelectItem value="pro">برو فقط</SelectItem>
+                                                </SelectContent>
+                                            </Select></FormItem>} />
                                         </div>
                                         <FormField control={catForm.control} name="fileTypes" render={({field})=><FormItem><FormLabel className="text-xs font-black">صيغ الملفات (مثلاً: PSD, AI)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         <FormField control={catForm.control} name="isUnderMaintenance" render={({field})=><FormItem className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border"><div className="space-y-0.5"><FormLabel className="font-black text-xs">وضع الصيانة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
@@ -222,7 +233,14 @@ export default function AdminDashboard() {
                                         <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (Style 3)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl></FormItem>} />
                                         <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط المعرض (Style 5 - مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl></FormItem>} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
+                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="public">عام</SelectItem>
+                                                    <SelectItem value="pro">برو فقط</SelectItem>
+                                                </SelectContent>
+                                            </Select></FormItem>} />
                                             <FormField control={itemForm.control} name="isNew" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl h-12"><FormLabel className="font-black text-xs">جديد؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                                         </div>
                                         <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">نشر الآن</Button>
@@ -442,11 +460,22 @@ function FormAffiliateControl() {
                     <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
                     <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="inline">بين المنشورات</SelectItem><SelectItem value="banner">بانر تحت شريط التنقل</SelectItem></SelectContent></Select></FormItem>} />
-                        <FormField control={form.control} name="targetCategoryId" render={({field})=><FormItem><FormLabel className="text-xs font-black">القسم المستهدف (اختياري)</FormLabel><Select onValueChange={field.onChange} value={field.value || 'global'}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl">
-                            <SelectItem value="global">عام (كل الأقسام)</SelectItem>
-                            {cats?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                        </SelectContent></Select></FormItem>} />
+                        <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem value="inline">بين المنشورات</SelectItem>
+                                <SelectItem value="banner">بانر أسفل الشاشة</SelectItem>
+                            </SelectContent>
+                        </Select></FormItem>} />
+                        <FormField control={form.control} name="targetCategoryId" render={({field})=><FormItem><FormLabel className="text-xs font-black">القسم المستهدف (اختياري)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || 'global'}>
+                            <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem value="global">عام (كل الأقسام)</SelectItem>
+                                {cats?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select></FormItem>} />
                     </div>
                     <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">إضافة الإعلان الآن</Button>
                 </form></Form>
@@ -607,7 +636,8 @@ function FormUsersControl() {
                                     <FormField control={form.control} name="displayName" render={({field})=><FormItem><FormLabel className="text-xs font-black">الاسم الكامل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                     <FormField control={form.control} name="email" render={({field})=><FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} className="rounded-xl h-12" dir="ltr"/></FormControl></FormItem>} />
                                     <FormField control={form.control} name="password" render={({field})=><FormItem><FormLabel className="text-xs font-black">كلمة المرور المؤقتة</FormLabel><FormControl><Input {...field} type="password" className="rounded-xl h-12" dir="ltr"/></FormControl></FormItem>} />
-                                    <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel><Select onValueChange={field.onChange} value={field.value}>
+                                    <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
                                         <SelectContent className="rounded-xl">
                                             <SelectItem value="admin">مدير (Admin)</SelectItem>
