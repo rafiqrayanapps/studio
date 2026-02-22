@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -96,7 +95,7 @@ export default function AdminDashboard() {
   const subCategories = useMemo(() => selectedParentId ? allCategories.filter(c => c.parentId === selectedParentId) : [], [allCategories, selectedParentId]);
 
   const itemsQuery = useMemoFirebase(() => selectedParentId ? query(collection(firestore!, 'categories', selectedParentId, 'items'), orderBy('order', 'asc')) : null, [firestore, selectedParentId]);
-  const { data: currentItems = [] } = useCollection<ContentItem>(itemsQuery);
+  const { data: currentItems } = useCollection<ContentItem>(itemsQuery);
 
   const catForm = useForm({ resolver: zodResolver(categorySchema), defaultValues: { name: '', displayStyle: 'style1' as const, visibility: 'public' as const, isUnderMaintenance: false, fileTypes: '', parentId: null } });
   const itemForm = useForm({ resolver: zodResolver(itemSchema), defaultValues: { title: '', imageUrl: '', audioUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', appVersion: '', screenshots: '', visibility: 'public' as const, isNew: false } });
@@ -125,7 +124,7 @@ export default function AdminDashboard() {
       if (editingItem && isAdmin) {
           await setDoc(doc(firestore, 'categories', selectedParentId, 'items', editingItem.id), itemData, { merge: true });
       } else {
-          await addDocumentNonBlocking(collection(firestore, 'categories', selectedParentId, 'items'), { ...itemData, order: currentItems.length, createdAt: serverTimestamp() });
+          await addDocumentNonBlocking(collection(firestore, 'categories', selectedParentId, 'items'), { ...itemData, order: currentItems?.length || 0, createdAt: serverTimestamp() });
       }
       
       toast({ title: isAdmin ? "تم النشر بنجاح" : "تم الإرسال للمراجعة" });
@@ -309,7 +308,7 @@ export default function AdminDashboard() {
                             <Card className="rounded-[2.5rem] overflow-hidden border-none shadow-sm bg-white">
                                 <ScrollArea className="h-[600px]">
                                     <div className="divide-y">
-                                        {currentItems.map(item => (
+                                        {(currentItems || []).map(item => (
                                             <div key={item.id} className="p-5 flex items-center justify-between hover:bg-muted/30">
                                                 <div className="flex items-center gap-4">
                                                     <div className="h-14 w-14 rounded-2xl bg-muted overflow-hidden border shadow-inner">
