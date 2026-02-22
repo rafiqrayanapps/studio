@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -199,7 +200,13 @@ export default function AdminDashboard() {
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
                                                     <SelectContent className="rounded-xl">
-                                                        {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                                        <SelectItem value="style1">style1</SelectItem>
+                                                        <SelectItem value="style2">style2</SelectItem>
+                                                        <SelectItem value="style3">style3</SelectItem>
+                                                        <SelectItem value="style4">style4</SelectItem>
+                                                        <SelectItem value="style5">style5</SelectItem>
+                                                        <SelectItem value="style6">style6</SelectItem>
+                                                        <SelectItem value="style7">style7</SelectItem>
                                                     </SelectContent>
                                                 </Select><FormMessage /></FormItem>} />
                                                 <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel>
