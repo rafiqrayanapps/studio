@@ -18,19 +18,18 @@ const AffiliateContext = createContext<AffiliateContextType | undefined>(undefin
 export function AffiliateAdsProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   
-  // Fetch Config
   const configRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'affiliate') : null, [firestore]);
   const { data: config } = useDoc<AffiliateConfig>(configRef);
   const adFrequency = config?.adFrequency || 6;
 
-  // Fetch Ads
   const adsQuery = useMemoFirebase(() => firestore ? query(
     collection(firestore, 'affiliateAds'),
     where('enabled', '==', true),
     orderBy('order', 'asc')
   ) : null, [firestore]);
 
-  const { data: allAds = [], isLoading } = useCollection<AffiliateAd>(adsQuery);
+  const { data: rawAds, isLoading } = useCollection<AffiliateAd>(adsQuery);
+  const allAds = useMemo(() => rawAds || [], [rawAds]);
 
   const bannerAdsCount = useMemo(() => allAds.filter(ad => ad.placement === 'banner').length, [allAds]);
   const inlineAdsCount = useMemo(() => allAds.filter(ad => ad.placement === 'inline').length, [allAds]);
@@ -38,7 +37,6 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [currentInlineIndex, setCurrentInlineIndex] = useState(0);
 
-  // Rotate banner ads
   useEffect(() => {
     if (bannerAdsCount <= 1) return;
     const interval = setInterval(() => {
@@ -47,7 +45,6 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
     return () => clearInterval(interval);
   }, [bannerAdsCount]);
 
-  // Rotate inline ads
   useEffect(() => {
     if (inlineAdsCount <= 1) return;
     const interval = setInterval(() => {
@@ -72,12 +69,11 @@ export function useAffiliateAds() {
 export function AffiliateAdSlot({ placement, categoryId, className }: { placement: 'banner' | 'inline', categoryId?: string, className?: string }) {
   const { allAds, currentBannerIndex, currentInlineIndex } = useAffiliateAds();
   
-  // Filter ads based on placement and targeting
   const ads = useMemo(() => {
+      if (!allAds) return [];
       let filtered = allAds.filter(ad => ad.placement === placement);
       
       if (placement === 'inline' && categoryId) {
-          // Priority: specific category ads, then global ads
           const categorySpecific = filtered.filter(ad => ad.targetCategoryId === categoryId);
           if (categorySpecific.length > 0) return categorySpecific;
           return filtered.filter(ad => !ad.targetCategoryId);

@@ -411,7 +411,7 @@ function FormAffiliateControl() {
 
     const form = useForm({
         resolver: zodResolver(affiliateSchema),
-        defaultValues: { link: '', imageUrl: '', placement: 'inline', targetCategoryId: null, enabled: true }
+        defaultValues: { link: '', imageUrl: '', placement: 'inline' as const, targetCategoryId: null, enabled: true }
     });
 
     const [frequency, setFrequency] = useState(6);
@@ -456,29 +456,31 @@ function FormAffiliateControl() {
 
             <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white">
                 <CardHeader className="p-0 mb-6"><CardTitle className="font-black text-xl flex items-center gap-2"><AffiliateIcon className="h-6 w-6 text-primary" /> إضافة إعلان Affiliate جديد</CardTitle></CardHeader>
-                <Form {...form}><form onSubmit={form.handleSubmit(onSaveAd)} className="space-y-4">
-                    <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
-                    <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem value="inline">بين المنشورات</SelectItem>
-                                <SelectItem value="banner">بانر أسفل الشاشة</SelectItem>
-                            </SelectContent>
-                        </Select></FormItem>} />
-                        <FormField control={form.control} name="targetCategoryId" render={({field})=><FormItem><FormLabel className="text-xs font-black">القسم المستهدف (اختياري)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || 'global'}>
-                            <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem value="global">عام (كل الأقسام)</SelectItem>
-                                {cats?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select></FormItem>} />
-                    </div>
-                    <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">إضافة الإعلان الآن</Button>
-                </form></Form>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSaveAd)} className="space-y-4">
+                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
+                        <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="inline">بين المنشورات</SelectItem>
+                                    <SelectItem value="banner">بانر أسفل الشاشة</SelectItem>
+                                </SelectContent>
+                            </Select></FormItem>} />
+                            <FormField control={form.control} name="targetCategoryId" render={({field})=><FormItem><FormLabel className="text-xs font-black">القسم المستهدف (اختياري)</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || 'global'}>
+                                <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="global">عام (كل الأقسام)</SelectItem>
+                                    {cats?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select></FormItem>} />
+                        </div>
+                        <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">إضافة الإعلان الآن</Button>
+                    </form>
+                </Form>
             </Card>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -745,7 +747,7 @@ function FormLinksControl() {
     const [requestCfg, setRequestCfg] = useState<RequestDesignConfig>({ enabled: false, url: '' });
     const { toast } = useToast();
 
-    useEffect(() => { if (share) setShareCfg(share); if (request) setShareCfg(request); }, [share, request]);
+    useEffect(() => { if (share) setShareCfg(share); if (request) setRequestCfg(request); }, [share, request]);
 
     const handleSave = async () => {
         try {
