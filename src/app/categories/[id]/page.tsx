@@ -202,7 +202,7 @@ export default function CategoryPage() {
     switch(style) {
         case 'style3':
             return (
-                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto w-full">
                     <h3 className="font-black text-sm text-center text-primary">{item.title}</h3>
                     <div className="relative w-full rounded-[2.5rem] overflow-hidden bg-muted shadow-2xl border-4 border-white/5" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-auto" />}
@@ -217,7 +217,7 @@ export default function CategoryPage() {
             );
         case 'style4':
             return (
-                <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div key={item.id} className="flex flex-col gap-4 group animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto w-full">
                     <h3 className="font-black text-sm text-center">{item.title}</h3>
                     <div className="relative aspect-video bg-black overflow-hidden rounded-[2.5rem] shadow-2xl cursor-pointer" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="object-cover w-full h-full opacity-80" />}
@@ -230,7 +230,7 @@ export default function CategoryPage() {
             );
         case 'style5':
             return (
-                <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border border-white/20 bg-primary/5 backdrop-blur-3xl shadow-xl transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
+                <Card key={item.id} className="overflow-hidden rounded-[2.5rem] border border-white/20 bg-primary/5 backdrop-blur-3xl shadow-xl transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 max-w-xl mx-auto w-full">
                     <div className="p-6">
                         <div className="flex items-start gap-4 mb-6">
                             <div className="h-16 w-16 rounded-[1.2rem] bg-card relative overflow-hidden shrink-0 shadow-2xl border-2 border-white/10">
@@ -267,7 +267,7 @@ export default function CategoryPage() {
             );
         case 'style6':
             return (
-                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto w-full">
                     <h3 className="font-black text-sm text-center">{item.title}</h3>
                     <div className="relative aspect-video w-full rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-pointer border-4 border-white/5" onClick={() => handleAction(item, () => item.downloadUrl && window.open(item.downloadUrl, '_blank'))}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="object-cover w-full h-full" />}
@@ -279,7 +279,7 @@ export default function CategoryPage() {
             );
         case 'style2':
             return (
-                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div key={item.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto w-full">
                     <h3 className="font-black text-sm text-center">{item.title}</h3>
                     <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl cursor-zoom-in" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-auto" />}
@@ -290,7 +290,7 @@ export default function CategoryPage() {
             );
         default:
             return (
-                <div key={item.id} className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div key={item.id} className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
                     <h3 className="font-black text-xs text-center truncate px-1">{item.title}</h3>
                     <div className="relative aspect-square rounded-[2rem] overflow-hidden shadow-xl border-4 border-white/5" onClick={() => item.imageUrl && setSelectedImage(item.imageUrl)}>
                         {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />}
@@ -329,11 +329,11 @@ export default function CategoryPage() {
     const displayStyle = category?.displayStyle || 'style1';
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 container max-w-6xl mx-auto">
             {currentSubCategories.length > 0 && (
                 <div className={cn("relative", displayStyle === 'style7' ? "-mx-6" : "")}>
                     <ScrollArea className="w-full" dir="rtl">
-                        <div className={cn("flex gap-3 px-6 pb-2", displayStyle !== 'style7' && "grid grid-cols-2 px-0")}>
+                        <div className={cn("flex gap-3 px-6 pb-2", displayStyle !== 'style7' && "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 px-0")}>
                             {currentSubCategories.map((sub) => {
                                 const isLocked = sub.visibility === 'pro' && !isPro && !isAdmin && !isEditor;
                                 const isActive = sub.id === id;
@@ -361,7 +361,7 @@ export default function CategoryPage() {
 
             <div className="space-y-8">
                 {displayStyle === 'style7' ? (
-                    <div className="space-y-5">
+                    <div className="space-y-5 max-w-3xl mx-auto w-full">
                         {filteredItems.map((item, idx) => (
                             <Fragment key={item.id}>
                                 <AudioPlayerRow item={item} isFavorite={favorites.some(f => f.id === item.id)} onToggleFavorite={() => toggleFavorite(item)} onAction={(a) => handleAction(item, a)} activeId={activeAudioId} onPlay={setActiveAudioId} />
@@ -370,11 +370,11 @@ export default function CategoryPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className={cn("grid gap-6", (displayStyle === 'style1' || displayStyle === 'style2') ? (displayStyle === 'style1' ? "grid-cols-2" : "grid-cols-1") : "grid-cols-1")}>
+                    <div className={cn("grid gap-6", (displayStyle === 'style1' || displayStyle === 'style2') ? (displayStyle === 'style1' ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" : "grid-cols-1") : "grid-cols-1")}>
                         {filteredItems.map((item, idx) => (
                             <Fragment key={item.id}>
                                 {renderItem(item)}
-                                {(idx + 1) % adFrequency === 0 && <div className={displayStyle === 'style1' ? "col-span-2" : ""}><AffiliateAdSlot placement="inline" categoryId={id} className="rounded-3xl overflow-hidden shadow-md" /></div>}
+                                {(idx + 1) % adFrequency === 0 && <div className={displayStyle === 'style1' ? "col-span-full" : ""}><AffiliateAdSlot placement="inline" categoryId={id} className="rounded-3xl overflow-hidden shadow-md max-w-3xl mx-auto" /></div>}
                             </Fragment>
                         ))}
                     </div>
@@ -389,13 +389,13 @@ export default function CategoryPage() {
         <Header title={showSkeleton ? '...' : (category?.name || "تحميل...")}>
             <Button variant="ghost" size="icon" className="text-primary-foreground rounded-xl" onClick={() => router.back()}><ArrowLeft className="h-7 w-7" /></Button>
         </Header>
-        <div className="relative z-10 -mt-12 px-6">
+        <div className="relative z-10 -mt-12 px-6 max-w-2xl mx-auto w-full">
             <div className="relative group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input placeholder="ابحث في هذا القسم..." className="h-14 w-full rounded-2xl border-none bg-card pl-12 pr-4 text-sm shadow-2xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
         </div>
-      <main className="flex-1 px-6 pt-8 pb-24">{showSkeleton ? <div className="grid grid-cols-2 gap-4">{[...Array(4)].map((_, i) => <CategorySkeleton key={i} className="aspect-square" />)}</div> : renderContent()}</main>
+      <main className="flex-1 px-6 pt-8 pb-24">{showSkeleton ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">{[...Array(10)].map((_, i) => <CategorySkeleton key={i} className="aspect-square" />)}</div> : renderContent()}</main>
       <UpgradeProDialog isOpen={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-0 shadow-none overflow-hidden rounded-3xl">

@@ -57,7 +57,7 @@ function HomeContent() {
       <div className="sticky top-0 z-20">
           <Header title="رفيق المصمم" showPoints={true} />
           <div className="relative z-10 -mt-10">
-              <div className="pb-4 px-6">
+              <div className="pb-4 px-6 max-w-2xl mx-auto">
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input 
@@ -71,10 +71,10 @@ function HomeContent() {
             </div>
       </div>
       
-      <main className="flex-1 px-6 pb-24 pt-4 space-y-6">
+      <main className="flex-1 px-6 pb-24 pt-4 space-y-6 container max-w-6xl mx-auto">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4">
-            {[...Array(4)].map((_, i) => <CategorySkeleton key={i} className="aspect-square" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {[...Array(10)].map((_, i) => <CategorySkeleton key={i} className="aspect-square" />)}
           </div>
         ) : (
           <div className="space-y-4">
@@ -86,7 +86,7 @@ function HomeContent() {
                 </div>}
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {mainCategories.map((cat, idx) => {
                 const isLocked = cat.visibility === 'pro' && !isPro && !isAdmin;
                 const isUnderMaintenance = cat.isUnderMaintenance;
@@ -101,7 +101,6 @@ function HomeContent() {
                   <div className={cn(
                       "relative bg-primary text-primary-foreground p-4 rounded-[2.2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-primary/90 transition-all shadow-lg hover:shadow-primary/20 aspect-square text-center active:scale-95 group overflow-hidden border-4 border-white/5",
                   )}>
-                    {/* Background Decorative Element */}
                     <div className="absolute -bottom-4 -right-4 bg-white/10 w-16 h-16 rounded-full group-hover:scale-150 transition-transform duration-700" />
                     
                     {isLocked && <Crown className="absolute top-4 left-4 h-5 w-5 text-yellow-300 drop-shadow-md z-20" />}
@@ -118,7 +117,7 @@ function HomeContent() {
                         </div>
                     )}
 
-                    <p className="font-bold text-sm relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{cat.name}</p>
+                    <p className="font-bold text-sm md:text-base relative z-10 leading-snug px-2 group-hover:scale-105 transition-transform duration-300">{cat.name}</p>
                   </div>
                 </div>
               )})}

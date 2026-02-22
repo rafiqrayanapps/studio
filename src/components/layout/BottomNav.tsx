@@ -102,7 +102,7 @@ export default function BottomNav() {
   }
 
   return (
-    <div className="fixed bottom-[calc(60px+0.5rem)] inset-x-0 z-[110] flex justify-center items-center pointer-events-none px-6 transition-all duration-500">
+    <div className="fixed bottom-[calc(60px+8px)] inset-x-0 z-[110] flex justify-center items-center pointer-events-none px-6 transition-all duration-500">
         <nav className="relative flex items-stretch h-16 w-full max-w-md bg-card/90 backdrop-blur-xl border border-primary/10 shadow-[0_15px_40px_rgba(0,0,0,0.15)] rounded-[2.2rem] pointer-events-auto px-2">
             
             {/* Sliding Indicator (Active State) */}
