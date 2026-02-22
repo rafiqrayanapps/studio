@@ -4,10 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
-    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package, ShieldCheck, Mail, User, Crown, ExternalLink as AffiliateIcon
+    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package, ShieldCheck, Mail, User, Crown, ExternalLink as AffiliateIcon, UserCheck, XCircle
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, doc, setDoc, serverTimestamp, orderBy, where } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { Category, ContentItem, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry, AffiliateAd, AffiliateConfig } from '@/lib/definitions';
+import type { Category, ContentItem, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry, AffiliateAd, AffiliateConfig, UserProfile } from '@/lib/definitions';
 import { createUserByAdmin } from '@/lib/user-actions';
 
 const categorySchema = z.object({ 
@@ -48,13 +48,39 @@ const itemSchema = z.object({
     isNew: z.boolean().default(false) 
 });
 
+const affiliateSchema = z.object({
+    link: z.string().url(),
+    imageUrl: z.string().url(),
+    placement: z.enum(['inline', 'banner']),
+    targetCategoryId: z.string().nullable(),
+    enabled: z.boolean()
+});
+
+const planSchema = z.object({
+    name: z.string().min(2),
+    price: z.string(),
+    currency: z.string(),
+    description: z.string(),
+    features: z.string(),
+    isFeatured: z.boolean(),
+    enabled: z.boolean(),
+    link: z.string().optional()
+});
+
+const userSchema = z.object({
+    email: z.string().email(),
+    role: z.enum(['admin', 'editor', 'pro']),
+    displayName: z.string().min(2),
+    password: z.string().min(6)
+});
+
 export default function AdminDashboard() {
   const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
   
-  const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'users' | 'affiliate' | 'settings' | 'notifications'>('content');
+  const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'users' | 'requests' | 'affiliate' | 'settings' | 'notifications'>('content');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
@@ -121,9 +147,10 @@ export default function AdminDashboard() {
                 <nav className="flex gap-1 bg-secondary/50 p-1 rounded-2xl border whitespace-nowrap">
                     {[
                         { id: 'content', label: 'المحتوى', icon: Layers }, 
+                        { id: 'requests', label: 'الطلبات', icon: Clock },
                         { id: 'plans', label: 'الباقات', icon: Package },
                         { id: 'users', label: 'المستخدمين', icon: Users },
-                        { id: 'affiliate', label: 'إعلانات Affiliate', icon: AffiliateIcon },
+                        { id: 'affiliate', label: 'Affiliate', icon: AffiliateIcon },
                         { id: 'settings', label: 'المظهر', icon: Settings },
                         { id: 'notifications', label: 'الإشعارات', icon: Bell }
                     ].map(tool => (
@@ -307,6 +334,7 @@ export default function AdminDashboard() {
             </div>
         )}
 
+        {isAdmin && activeTool === 'requests' && <FormSignupRequestsControl />}
         {isAdmin && activeTool === 'plans' && <FormPlansControl />}
         {isAdmin && activeTool === 'users' && <FormUsersControl />}
         {isAdmin && activeTool === 'affiliate' && <FormAffiliateControl />}
@@ -315,6 +343,86 @@ export default function AdminDashboard() {
       </main>
     </div>
   );
+}
+
+function FormSignupRequestsControl() {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    
+    const requestsQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'users'), where('status', '==', 'pending'), orderBy('createdAt', 'desc')) : null, 
+    [firestore]);
+    
+    const { data: requests, isLoading } = useCollection<UserProfile>(requestsQuery);
+
+    const handleAction = async (userId: string, action: 'approved' | 'rejected') => {
+        if (!firestore) return;
+        try {
+            await updateDocumentNonBlocking(doc(firestore, 'users', userId), {
+                status: action,
+                updatedAt: serverTimestamp()
+            });
+            toast({ title: action === 'approved' ? "تم قبول المستخدم" : "تم رفض الطلب" });
+        } catch (e) {
+            toast({ title: "فشلت العملية", variant: "destructive" });
+        }
+    };
+
+    return (
+        <div className="space-y-6 max-w-4xl mx-auto">
+            <div className="bg-white p-6 rounded-[2.5rem] border shadow-sm flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-black">طلبات الانضمام</h2>
+                    <p className="text-[10px] text-muted-foreground font-bold mt-1">المستخدمين الجدد بانتظار الموافقة</p>
+                </div>
+                <Badge variant="outline" className="h-8 px-4 rounded-full font-black">{requests?.length || 0} طلب</Badge>
+            </div>
+
+            {isLoading ? (
+                <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            ) : requests && requests.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                    {requests.map(req => (
+                        <Card key={req.id} className="rounded-3xl border-none shadow-sm overflow-hidden">
+                            <CardContent className="p-6 flex items-center justify-between bg-white">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary">
+                                        <User className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-sm">{req.displayName}</p>
+                                        <p className="text-[10px] text-muted-foreground">{req.email}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button 
+                                        size="sm" 
+                                        className="rounded-xl bg-green-600 hover:bg-green-700 h-10 px-4 font-black text-[10px]"
+                                        onClick={() => handleAction(req.id, 'approved')}
+                                    >
+                                        <UserCheck className="ml-1.5 h-3.5 w-3.5" /> قبول
+                                    </Button>
+                                    <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        className="rounded-xl text-destructive hover:bg-destructive/5 h-10 px-4 font-black text-[10px]"
+                                        onClick={() => handleAction(req.id, 'rejected')}
+                                    >
+                                        <XCircle className="ml-1.5 h-3.5 w-3.5" /> رفض
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-20 bg-white rounded-[2.5rem] border border-dashed">
+                    <Clock className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
+                    <p className="font-black text-muted-foreground">لا توجد طلبات معلقة حالياً</p>
+                </div>
+            )}
+        </div>
+    );
 }
 
 function FormAffiliateControl() {

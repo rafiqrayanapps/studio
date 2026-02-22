@@ -49,6 +49,7 @@ export function useUserProfile() {
                         email: user.email || '',
                         displayName: user.displayName || (user.isAnonymous ? 'زائر' : 'مستخدم'),
                         subscriptionTier: 'free',
+                        status: 'approved', // Anonymous or auto-created guest profiles are approved by default
                         createdAt: serverTimestamp(),
                         points: 0, 
                         referralCode: tempReferralCode,
@@ -65,7 +66,7 @@ export function useUserProfile() {
         }
     }, [firestore, user, isProfileLoading, userProfile, deviceFingerprint, tempReferralCode]);
 
-    // 4. Security: Single Device Enforcement (New Session kicks Old Session)
+    // 4. Security: Single Device Enforcement & Account Guard
     useEffect(() => {
         if (!firestore || !user || user.isAnonymous || !userProfile || !deviceFingerprint || isLoggingOut) return;
 
@@ -73,6 +74,8 @@ export function useUserProfile() {
         const unsubscribe = onSnapshot(userRef, async (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.data() as UserProfile;
+                
+                // Kicked by single device logic
                 if (data.deviceFingerprint && data.deviceFingerprint !== deviceFingerprint) {
                     setIsLoggingOut(true);
                     try {
@@ -81,6 +84,15 @@ export function useUserProfile() {
                     } catch (e) {
                         console.error("Error signing out:", e);
                     }
+                }
+
+                // Kicked if admin rejects account while active
+                if (data.status === 'rejected') {
+                    setIsLoggingOut(true);
+                    try {
+                        await auth.signOut();
+                        window.location.href = '/login';
+                    } catch (e) {}
                 }
             }
         });
@@ -109,6 +121,9 @@ export function useUserProfile() {
         return false;
     }, [isAdmin, isEditor, userProfile]);
     
+    // An account is viewable only if approved or it's a guest
+    const isAccountActive = userProfile?.status === 'approved' || (user && user.isAnonymous);
+
     const isLoading = isAuthLoading || (user && !user.isAnonymous && (isProfileLoading || isWhitelistLoading));
 
     return { 
@@ -117,6 +132,7 @@ export function useUserProfile() {
         isPro, 
         isAdmin, 
         isEditor,
+        isAccountActive,
         points: userProfile?.points ?? 0,
         isLoading
     };

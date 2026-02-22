@@ -98,6 +98,7 @@ export interface UserProfile {
   unlockedProCodes: string[];
   referredBy?: string | null;
   deviceFingerprint?: string;
+  status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface WhitelistEntry {

@@ -7,14 +7,14 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff, ShieldAlert, Clock } from 'lucide-react';
 import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FirebaseError } from 'firebase/app';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import type { WhitelistEntry } from '@/lib/definitions';
+import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import type { WhitelistEntry, UserProfile } from '@/lib/definitions';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 
 const formSchema = z.object({
@@ -47,13 +47,37 @@ export default function ProLoginForm() {
         const user = userCredential.user;
 
         if (!firestore) {
-            await auth.signOut();
+            await signOut(auth);
             throw new Error("خدمة قاعدة البيانات غير متاحة.");
         }
 
         const currentFingerprint = await getDeviceFingerprint();
 
-        // 1. Update Whitelist Metadata if user is an admin/editor
+        // 1. Check User Status from Firestore
+        const userRef = doc(firestore, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            const userData = userSnap.data() as UserProfile;
+            
+            // Check status for manually registered users
+            if (userData.status === 'pending') {
+                await signOut(auth);
+                throw new Error("طلبك لا يزال قيد المراجعة من قبل الإدارة. يرجى المحاولة لاحقاً.");
+            }
+            if (userData.status === 'rejected') {
+                await signOut(auth);
+                throw new Error("عذراً، تم رفض طلب انضمامك للمنصة.");
+            }
+
+            // Update session info
+            await updateDoc(userRef, {
+                deviceFingerprint: currentFingerprint,
+                lastLogin: serverTimestamp()
+            }).catch(() => {});
+        }
+
+        // 2. Update Whitelist Metadata if user is an admin/editor
         const whitelistRef = doc(firestore, 'whitelist', email);
         const whitelistSnap = await getDoc(whitelistRef);
 
@@ -61,22 +85,8 @@ export default function ProLoginForm() {
             await updateDoc(whitelistRef, {
                 deviceFingerprints: arrayUnion(currentFingerprint),
                 lastActiveFingerprint: currentFingerprint
-            });
-        }
-
-        // 2. Update the main User Profile fingerprint.
-        // This is the trigger for the single-session logic in useUserProfile.
-        const userRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userRef, {
-            deviceFingerprint: currentFingerprint,
-            lastLogin: serverTimestamp()
-        }).catch(() => {
-            // If the document doesn't exist yet, we don't block login
-            // useUserProfile will create it automatically.
-        });
-
-        // 3. Direct to appropriate page
-        if (whitelistSnap.exists()) {
+            }).catch(() => {});
+            
             const whitelistData = whitelistSnap.data() as WhitelistEntry;
             if (whitelistData.role === 'admin' || whitelistData.role === 'editor') {
                 router.push('/admin/dashboard');
@@ -92,7 +102,7 @@ export default function ProLoginForm() {
         if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
           description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
         } else if (e.code === 'auth/admin-restricted-operation') {
-          description = "خطأ أمان: يرجى تفعيل 'Email/Password' في Firebase Console وإضافة هذا النطاق لـ 'Authorized Domains'.";
+          description = "خطأ أمان: يرجى تفعيل 'Email/Password' في Firebase Console.";
         }
       } else {
         description = e.message;
@@ -160,7 +170,7 @@ export default function ProLoginForm() {
             
             {error && (
                 <div className="bg-destructive/10 p-4 rounded-xl border border-destructive/20 flex gap-3 items-start animate-in fade-in">
-                    <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    <ShieldAlert className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                     <p className="text-xs font-bold text-destructive leading-relaxed">{error}</p>
                 </div>
             )}
