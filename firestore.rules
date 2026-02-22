@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -40,15 +39,15 @@ service cloud.firestore {
 
     match /categories/{categoryId}/items/{itemId} {
       allow read: if true;
-      
-      // CREATE: Admin can create any status. Editor can only create 'pending'.
       allow create: if isAdmin() || (isEditor() && request.resource.data.status == 'pending');
-      
-      // UPDATE: Only admins can update (approve or modify).
       allow update: if isAdmin();
-      
-      // DELETE: Only admins can delete.
       allow delete: if isAdmin();
+    }
+
+    // --- Affiliate Ads Rules ---
+    match /affiliateAds/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // --- App Configuration Rules ---

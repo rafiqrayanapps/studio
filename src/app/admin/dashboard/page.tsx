@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
-    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package, ShieldCheck, Mail, User, Crown
+    Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package, ShieldCheck, Mail, User, Crown, ExternalLink as AffiliateIcon
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc, setDoc, serverTimestamp, orderBy, getDocs, where } from 'firebase/firestore';
@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Category, ContentItem, AdsConfig, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry } from '@/lib/definitions';
+import type { Category, ContentItem, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry, AffiliateAd } from '@/lib/definitions';
 import { createUserByAdmin } from '@/lib/user-actions';
 
 const categorySchema = z.object({ 
@@ -49,22 +49,11 @@ const itemSchema = z.object({
     isNew: z.boolean().default(false) 
 });
 
-const planSchema = z.object({
-    name: z.string().min(2, "الاسم مطلوب"),
-    price: z.string().min(1, "السعر مطلوب"),
-    currency: z.string().default("ر.س"),
-    description: z.string().min(5, "الوصف مطلوب"),
-    features: z.string().describe("المميزات مفصولة بفاصلة"),
-    isFeatured: z.boolean().default(false),
-    enabled: z.boolean().default(true),
-    link: z.string().optional()
-});
-
-const userSchema = z.object({
-    email: z.string().email("بريد غير صالح"),
-    role: z.enum(['admin', 'editor', 'pro']).default('pro'),
-    displayName: z.string().min(3, "الاسم مطلوب"),
-    password: z.string().min(6, "كلمة المرور 6 أحرف على الأقل")
+const affiliateSchema = z.object({
+    link: z.string().url("الرابط غير صالح"),
+    imageUrl: z.string().url("رابط الصورة غير صالح"),
+    placement: z.enum(['banner', 'inline']),
+    enabled: z.boolean().default(true)
 });
 
 export default function AdminDashboard() {
@@ -73,7 +62,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const router = useRouter();
   
-  const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'users' | 'settings' | 'notifications'>('content');
+  const [activeTool, setActiveTool] = useState<'content' | 'plans' | 'users' | 'affiliate' | 'settings' | 'notifications'>('content');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
@@ -142,7 +131,8 @@ export default function AdminDashboard() {
                         { id: 'content', label: 'المحتوى', icon: Layers }, 
                         { id: 'plans', label: 'الباقات', icon: Package },
                         { id: 'users', label: 'المستخدمين', icon: Users },
-                        { id: 'settings', label: 'الإعدادات', icon: Settings },
+                        { id: 'affiliate', label: 'إعلانات Affiliate', icon: AffiliateIcon },
+                        { id: 'settings', label: 'المظهر', icon: Settings },
                         { id: 'notifications', label: 'الإشعارات', icon: Bell }
                     ].map(tool => (
                         isAdmin || (tool.id === 'content' && isEditor) ? (
@@ -186,7 +176,7 @@ export default function AdminDashboard() {
                                             <FormField control={catForm.control} name="displayStyle" render={({field})=><FormItem><FormLabel className="text-xs font-black">نمط العرض</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl">
                                                 {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
                                             </SelectContent></Select></FormItem>} />
-                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></Select></FormItem>} />
+                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></Select></FormItem>} />
                                         </div>
                                         <FormField control={catForm.control} name="fileTypes" render={({field})=><FormItem><FormLabel className="text-xs font-black">صيغ الملفات (مثلاً: PSD, AI)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         <FormField control={catForm.control} name="isUnderMaintenance" render={({field})=><FormItem className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border"><div className="space-y-0.5"><FormLabel className="font-black text-xs">وضع الصيانة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
@@ -329,24 +319,20 @@ export default function AdminDashboard() {
             </div>
         )}
 
+        {isAdmin && activeTool === 'affiliate' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+                <FormAffiliateControl />
+            </div>
+        )}
+
         {isAdmin && activeTool === 'settings' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Tabs defaultValue="ads" dir="rtl" className="space-y-6">
-                    <ScrollArea className="w-full">
-                        <TabsList className="bg-white rounded-2xl p-1 h-16 border shadow-sm mx-auto grid grid-cols-3 min-w-[450px]">
-                            <TabsTrigger value="ads" className="rounded-xl font-black text-xs sm:text-sm">الإعلانات (Adsterra)</TabsTrigger>
-                            <TabsTrigger value="theme" className="rounded-xl font-black text-xs sm:text-sm">المظهر والألوان</TabsTrigger>
-                            <TabsTrigger value="general" className="rounded-xl font-black text-xs sm:text-sm">روابط ونوافذ</TabsTrigger>
-                        </TabsList>
-                        <ScrollBar orientation="horizontal" className="hidden" />
-                    </ScrollArea>
+                <Tabs defaultValue="theme" dir="rtl" className="space-y-6">
+                    <TabsList className="bg-white rounded-2xl p-1 h-16 border shadow-sm mx-auto grid grid-cols-2 max-w-md">
+                        <TabsTrigger value="theme" className="rounded-xl font-black">المظهر والألوان</TabsTrigger>
+                        <TabsTrigger value="general" className="rounded-xl font-black">روابط ونوافذ</TabsTrigger>
+                    </TabsList>
                     
-                    <TabsContent value="ads">
-                        <Card className="rounded-[2.5rem] p-6 sm:p-10 border-none shadow-xl bg-white max-w-3xl mx-auto">
-                            <FormAdsControl />
-                        </Card>
-                    </TabsContent>
-
                     <TabsContent value="theme">
                         <Card className="rounded-[2.5rem] p-6 sm:p-10 border-none shadow-xl bg-white max-w-3xl mx-auto">
                             <FormThemeControl />
@@ -371,6 +357,65 @@ export default function AdminDashboard() {
       </main>
     </div>
   );
+}
+
+function FormAffiliateControl() {
+    const firestore = useFirestore();
+    const adsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'affiliateAds'), orderBy('createdAt', 'desc')) : null, [firestore]);
+    const { data: ads, isLoading } = useCollection<AffiliateAd>(adsQuery);
+    const { toast } = useToast();
+
+    const form = useForm({
+        resolver: zodResolver(affiliateSchema),
+        defaultValues: { link: '', imageUrl: '', placement: 'inline', enabled: true }
+    });
+
+    const onSave = async (values: any) => {
+        if (!firestore) return;
+        try {
+            await addDocumentNonBlocking(collection(firestore, 'affiliateAds'), {
+                ...values,
+                order: ads?.length || 0,
+                createdAt: serverTimestamp()
+            });
+            toast({ title: "تمت إضافة الإعلان" });
+            form.reset();
+        } catch (e) { toast({ title: "فشل الحفظ", variant: "destructive" }); }
+    };
+
+    return (
+        <div className="space-y-8">
+            <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white">
+                <CardHeader className="p-0 mb-6"><CardTitle className="font-black text-xl flex items-center gap-2"><AffiliateIcon className="h-6 w-6 text-primary" /> إضافة إعلان Affiliate جديد</CardTitle></CardHeader>
+                <Form {...form}><form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
+                    <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
+                    <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
+                    <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="inline">بين المنشورات (كل 6 منشورات)</SelectItem><SelectItem value="banner">بانر تحت شريط التنقل</SelectItem></Select></FormItem>} />
+                    <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">إضافة الإعلان الآن</Button>
+                </form></Form>
+            </Card>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {ads?.map(ad => (
+                    <Card key={ad.id} className="p-4 rounded-[2rem] border shadow-sm relative group overflow-hidden">
+                        <div className="aspect-video rounded-xl bg-muted overflow-hidden mb-3">
+                            <img src={ad.imageUrl} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <p className="text-[10px] font-black text-primary">{ad.placement === 'banner' ? 'بانر سفلي' : 'بين المنشورات'}</p>
+                                <p className="text-[8px] text-muted-foreground truncate max-w-[150px]">{ad.link}</p>
+                            </div>
+                            <div className="flex gap-1">
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => confirm("حذف الإعلان؟") && deleteDocumentNonBlocking(doc(firestore!, 'affiliateAds', ad.id))}><Trash2 className="h-4 w-4" /></Button>
+                                <Switch checked={ad.enabled} onCheckedChange={(v) => updateDocumentNonBlocking(doc(firestore!, 'affiliateAds', ad.id), { enabled: v })} />
+                            </div>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
 }
 
 function FormPlansControl() {
@@ -540,60 +585,6 @@ function FormUsersControl() {
                     </ScrollArea>
                 </div>
             </Card>
-        </div>
-    );
-}
-
-function FormAdsControl() {
-    const firestore = useFirestore();
-    const adsRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'ads') : null, [firestore]);
-    const { data: ads, isLoading } = useDoc<AdsConfig>(adsRef);
-    const [config, setConfig] = useState<AdsConfig>({ 
-        enabled: false, 
-        adsterraEnabled: false, 
-        interstitialFrequency: 6, 
-        manualAdsEnabled: false,
-        socialBarScript: '',
-        popunderScript: '',
-        nativeBannerScript: '',
-        directLinkUrl: ''
-    });
-    const { toast } = useToast();
-
-    useEffect(() => { if (ads) setConfig(prev => ({ ...prev, ...ads })); }, [ads]);
-
-    const handleSave = async () => {
-        if (!adsRef) return;
-        try { await setDoc(adsRef, config, { merge: true }); toast({ title: "تم تحديث الإعلانات" }); } catch (e) { toast({ title: "فشل الحفظ", variant: "destructive" }); }
-    };
-
-    if (isLoading) return <div className="p-10 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary" /></div>;
-
-    return (
-        <div className="space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border">
-                    <p className="text-xs font-black">تفعيل الإعلانات</p>
-                    <Switch checked={config.enabled} onCheckedChange={v => setConfig({...config, enabled: v})} />
-                </div>
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-2xl border">
-                    <p className="text-xs font-black">نظام Adsterra</p>
-                    <Switch checked={config.adsterraEnabled} onCheckedChange={v => setConfig({...config, adsterraEnabled: v})} />
-                </div>
-            </div>
-            <div className="space-y-4">
-                {[{id:'socialBarScript', label:'Social Bar', icon:Code2}, {id:'popunderScript', label:'Popunder', icon:Code2}, {id:'nativeBannerScript', label:'Native Banner', icon:Layout}].map(item => (
-                    <div key={item.id} className="space-y-2">
-                        <div className="flex items-center gap-2"><item.icon className="h-4 w-4 text-primary" /><label className="text-[10px] font-black">{item.label}</label></div>
-                        <Textarea value={(config as any)[item.id]} onChange={e => setConfig({...config, [item.id]: e.target.value})} dir="ltr" className="h-24 font-mono text-[9px] bg-muted/30" />
-                    </div>
-                ))}
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2"><Link2 className="h-4 w-4 text-primary" /><label className="text-[10px] font-black">رابط Direct Link</label></div>
-                    <Input value={config.directLinkUrl || ''} onChange={e => setConfig({...config, directLinkUrl: e.target.value})} dir="ltr" className="h-12" />
-                </div>
-            </div>
-            <Button onClick={handleSave} className="w-full h-14 rounded-2xl font-black shadow-xl"><Save className="ml-2 h-5 w-5" /> حفظ إعدادات الإعلانات</Button>
         </div>
     );
 }

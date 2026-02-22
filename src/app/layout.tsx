@@ -10,8 +10,7 @@ import OnlineStatusDetector from '@/components/layout/OnlineStatusDetector';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import BottomNav from '@/components/layout/BottomNav';
 import { CategoryProvider } from '@/components/providers/CategoryProvider';
-import { UnityAdsProvider } from '@/components/ads/UnityAdsProvider';
-import UnityBannerAd from '@/components/ads/UnityBannerAd';
+import { AffiliateAdsProvider, AffiliateAdSlot } from '@/components/ads/AffiliateAdsManager';
 
 export const metadata: Metadata = {
   applicationName: 'رفيق المصمم',
@@ -50,16 +49,18 @@ export default function RootLayout({
       <body className={cn('font-body antialiased')}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <FirebaseClientProvider>
-              <UnityAdsProvider>
+              <AffiliateAdsProvider>
                 <CategoryProvider>
                   <ThemeManager />
                   <OnlineStatusDetector />
                   <ServiceWorkerRegistrar />
                   {children}
-                  <UnityBannerAd />
+                  <div className="fixed bottom-24 left-0 right-0 z-40 px-6 flex justify-center pointer-events-none">
+                      <AffiliateAdSlot placement="banner" className="max-w-md h-16 rounded-2xl shadow-xl border-2 border-white/10 pointer-events-auto" />
+                  </div>
                   <BottomNav />
                 </CategoryProvider>
-              </UnityAdsProvider>
+              </AffiliateAdsProvider>
             </FirebaseClientProvider>
         </ThemeProvider>
         <Toaster />

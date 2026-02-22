@@ -30,6 +30,16 @@ export interface ContentItem {
   isNew?: boolean;
 }
 
+export interface AffiliateAd {
+  id: string;
+  imageUrl: string;
+  link: string;
+  placement: 'inline' | 'banner';
+  enabled: boolean;
+  order: number;
+  createdAt: any;
+}
+
 export interface SubscriptionDialogConfig {
   title: string;
   description: string;
@@ -51,22 +61,6 @@ export interface RequestDesignConfig {
 export interface ThemeConfig {
   primaryColor: string;
   primaryColorDark?: string;
-}
-
-export interface AdsConfig {
-  enabled: boolean;
-  adsterraEnabled: boolean;
-  socialBarScript?: string;
-  popunderScript?: string;
-  nativeBannerScript?: string;
-  directLinkUrl?: string;
-  interstitialFrequency: number;
-  manualAdsEnabled: boolean;
-  manualBannerImg?: string;
-  manualBannerLink?: string;
-  manualInterstitialImg?: string;
-  manualInterstitialLink?: string;
-  manualRewardedImg?: string;
 }
 
 export interface ReferralConfig {

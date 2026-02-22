@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, WithId } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
@@ -20,7 +20,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { useUnityAds } from '@/components/ads/UnityAdsProvider';
+import { AffiliateAdSlot } from '@/components/ads/AffiliateAdsManager';
 
 const FavoriteButton = ({ isFavorite, onClick, className }: { isFavorite: boolean, onClick: (e: any) => void, className?: string }) => (
     <button 
@@ -152,7 +152,6 @@ export default function CategoryPage() {
   const router = useRouter();
   const id = params?.id as string;
   const firestore = useFirestore();
-  const { showInterstitial, config: adsConfig } = useUnityAds();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [favorites, setFavorites] = useLocalStorage<any[]>('favorites', []);
@@ -160,7 +159,6 @@ export default function CategoryPage() {
   const { isPro, isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
-  const [interactionCount, setInteractionCount] = useState(0);
 
   const categoryRef = useMemoFirebase(() => id ? doc(firestore!, 'categories', id) : null, [firestore, id]);
   const { data: category, isLoading: isCategoryLoading } = useDoc<CategoryType>(categoryRef);
@@ -186,9 +184,6 @@ export default function CategoryPage() {
       if (item.visibility === 'pro' && !isPro && !isAdmin && !isEditor) setShowUpgradeDialog(true);
       else { 
           action();
-          const newCount = interactionCount + 1;
-          setInteractionCount(newCount);
-          if (newCount >= (adsConfig?.interstitialFrequency || 6)) { showInterstitial(); setInteractionCount(0); }
       }
   };
 
@@ -367,10 +362,22 @@ export default function CategoryPage() {
 
             <div className="space-y-8">
                 {displayStyle === 'style7' ? (
-                    <div className="space-y-5">{filteredItems.map(item => <AudioPlayerRow key={item.id} item={item} isFavorite={favorites.some(f => f.id === item.id)} onToggleFavorite={() => toggleFavorite(item)} onAction={(a) => handleAction(item, a)} activeId={activeAudioId} onPlay={setActiveAudioId} />)}</div>
+                    <div className="space-y-5">
+                        {filteredItems.map((item, idx) => (
+                            <Fragment key={item.id}>
+                                <AudioPlayerRow item={item} isFavorite={favorites.some(f => f.id === item.id)} onToggleFavorite={() => toggleFavorite(item)} onAction={(a) => handleAction(item, a)} activeId={activeAudioId} onPlay={setActiveAudioId} />
+                                {(idx + 1) % 6 === 0 && <AffiliateAdSlot placement="inline" className="h-24 rounded-2xl border-2 border-primary/5 shadow-sm" />}
+                            </Fragment>
+                        ))}
+                    </div>
                 ) : (
                     <div className={cn("grid gap-6", (displayStyle === 'style1' || displayStyle === 'style2') ? (displayStyle === 'style1' ? "grid-cols-2" : "grid-cols-1") : "grid-cols-1")}>
-                        {filteredItems.map(item => renderItem(item))}
+                        {filteredItems.map((item, idx) => (
+                            <Fragment key={item.id}>
+                                {renderItem(item)}
+                                {(idx + 1) % 6 === 0 && <div className={displayStyle === 'style1' ? "col-span-2" : ""}><AffiliateAdSlot placement="inline" className="h-32 rounded-3xl border-2 border-primary/5 shadow-md" /></div>}
+                            </Fragment>
+                        ))}
                     </div>
                 )}
             </div>
