@@ -45,11 +45,8 @@ export default function RootLayout({
                   <OnlineStatusDetector />
                   <ServiceWorkerRegistrar />
                   <div className="flex flex-col min-h-screen">
-                    {/* Centered Mobile Frame for Desktop */}
-                    <div className={cn(
-                        "flex-1 w-full mx-auto bg-background transition-all duration-500",
-                        !isAdmin && "max-w-md shadow-[0_0_50px_rgba(0,0,0,0.05)] border-x border-black/5"
-                    )}>
+                    {/* Full Width Layout (Mobile Frame Removed) */}
+                    <div className="flex-1 w-full bg-background transition-all duration-500">
                         <div className={cn("pb-[calc(60px+80px)] min-h-screen", isAdmin && "pb-0")}>
                           {children}
                         </div>
@@ -58,10 +55,10 @@ export default function RootLayout({
                     {/* Floating Navigation Bar */}
                     <BottomNav />
 
-                    {/* Banner Slot - Fixed at bottom within the mobile frame context */}
+                    {/* Banner Slot - Fixed at bottom */}
                     {showAds && (
                         <div className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center pointer-events-none">
-                            <div className="w-full max-w-md pointer-events-auto bg-card/80 backdrop-blur-xl border-t border-white/5 safe-area-bottom min-h-[60px] flex items-center justify-center">
+                            <div className="w-full pointer-events-auto bg-card/80 backdrop-blur-xl border-t border-white/5 safe-area-bottom min-h-[60px] flex items-center justify-center">
                                 <AffiliateAdSlot placement="banner" className="w-full h-[60px]" />
                             </div>
                         </div>
