@@ -48,32 +48,6 @@ const itemSchema = z.object({
     isNew: z.boolean().default(false) 
 });
 
-const affiliateSchema = z.object({
-    link: z.string().url("الرابط غير صالح"),
-    imageUrl: z.string().url("رابط الصورة غير صالح"),
-    placement: z.enum(['banner', 'inline']),
-    targetCategoryId: z.string().optional().nullable(),
-    enabled: z.boolean().default(true)
-});
-
-const planSchema = z.object({
-    name: z.string().min(2, "اسم الباقة مطلوب"),
-    price: z.string().min(1, "السعر مطلوب"),
-    currency: z.string().default('ر.س'),
-    description: z.string(),
-    features: z.string(),
-    isFeatured: z.boolean().default(false),
-    enabled: z.boolean().default(true),
-    link: z.string().optional()
-});
-
-const userSchema = z.object({
-    email: z.string().email("البريد غير صالح"),
-    displayName: z.string().min(3, "الاسم مطلوب"),
-    password: z.string().min(6, "6 أحرف على الأقل"),
-    role: z.enum(['admin', 'editor', 'pro']).default('pro')
-});
-
 export default function AdminDashboard() {
   const { isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
   const firestore = useFirestore();
