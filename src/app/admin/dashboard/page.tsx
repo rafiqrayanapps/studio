@@ -502,7 +502,14 @@ function FormUsersControl() {
                                     <FormField control={form.control} name="displayName" render={({field})=><FormItem><FormLabel className="text-xs font-black">الاسم الكامل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                     <FormField control={form.control} name="email" render={({field})=><FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} className="rounded-xl h-12" dir="ltr"/></FormControl></FormItem>} />
                                     <FormField control={form.control} name="password" render={({field})=><FormItem><FormLabel className="text-xs font-black">كلمة المرور المؤقتة</FormLabel><FormControl><Input {...field} type="password" className="rounded-xl h-12" dir="ltr"/></FormControl></FormItem>} />
-                                    <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="admin">مدير (Admin)</SelectItem><SelectItem value="editor">محرر (Editor)</SelectItem><SelectItem value="pro">عضو برو (Pro)</SelectItem></Select></FormItem>} />
+                                    <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel><Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="admin">مدير (Admin)</SelectItem>
+                                            <SelectItem value="editor">محرر (Editor)</SelectItem>
+                                            <SelectItem value="pro">عضو برو (Pro)</SelectItem>
+                                        </SelectContent>
+                                    </Select></FormItem>} />
                                     <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl" disabled={form.formState.isSubmitting}>
                                         {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'إنشاء الحساب فوراً'}
                                     </Button>
