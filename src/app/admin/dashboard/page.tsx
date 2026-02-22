@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -7,7 +8,7 @@ import {
     Plus, Edit2, Trash2, Settings, CheckCircle, Loader2, Layers, Send, ChevronUp, ChevronDown, Zap, CreditCard, ArrowRight, ChevronRight, Monitor, Bell, Palette, FileCode, UserPlus, Users, Wallet, UserCog, ImageIcon, Layout, Hammer, Music, Save, Globe, Check, Clock, Code2, Link2, Share2, Brush, ExternalLink, Package, ShieldCheck, Mail, User, Crown, ExternalLink as AffiliateIcon, UserCheck, XCircle
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc, setDoc, serverTimestamp, orderBy, where } from 'firebase/firestore';
+import { collection, query, doc, setDoc, serverTimestamp, orderBy, where, getDocs } from 'firebase/firestore';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { Category, ContentItem, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry, AffiliateAd, AffiliateConfig, UserProfile } from '@/lib/definitions';
+import type { Category, ContentItem, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry, AffiliateAd, AffiliateConfig, UserProfile, DisplayStyle } from '@/lib/definitions';
 import { createUserByAdmin } from '@/lib/user-actions';
 
 const categorySchema = z.object({ 
@@ -85,6 +86,7 @@ export default function AdminDashboard() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [activeItemStyle, setActiveItemStyle] = useState<DisplayStyle>('style1');
 
   const categoriesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories')) : null, [firestore]);
   const { data: rawCategories } = useCollection<Category>(categoriesQuery);
@@ -95,10 +97,17 @@ export default function AdminDashboard() {
   const subCategories = useMemo(() => selectedParentId ? allCategories.filter(c => c.parentId === selectedParentId) : [], [allCategories, selectedParentId]);
 
   const itemsQuery = useMemoFirebase(() => selectedParentId ? query(collection(firestore!, 'categories', selectedParentId, 'items'), orderBy('order', 'asc')) : null, [firestore, selectedParentId]);
-  const { data: currentItems } = useCollection<ContentItem>(itemsQuery);
+  const { data: currentItemsRaw } = useCollection<ContentItem>(itemsQuery);
+  const currentItems = currentItemsRaw || [];
 
   const catForm = useForm({ resolver: zodResolver(categorySchema), defaultValues: { name: '', displayStyle: 'style1' as const, visibility: 'public' as const, isUnderMaintenance: false, fileTypes: '', parentId: null } });
   const itemForm = useForm({ resolver: zodResolver(itemSchema), defaultValues: { title: '', imageUrl: '', audioUrl: '', downloadUrl: '', prompt: '', instructions: '', videoUrl: '', appVersion: '', screenshots: '', visibility: 'public' as const, isNew: false } });
+
+  useEffect(() => {
+      if (currentCategory) {
+          setActiveItemStyle(currentCategory.displayStyle);
+      }
+  }, [currentCategory, isAddingItem]);
 
   const onUpdateCategory = async (values: any) => {
       if (!firestore || !isAdmin) return;
@@ -124,7 +133,7 @@ export default function AdminDashboard() {
       if (editingItem && isAdmin) {
           await setDoc(doc(firestore, 'categories', selectedParentId, 'items', editingItem.id), itemData, { merge: true });
       } else {
-          await addDocumentNonBlocking(collection(firestore, 'categories', selectedParentId, 'items'), { ...itemData, order: currentItems?.length || 0, createdAt: serverTimestamp() });
+          await addDocumentNonBlocking(collection(firestore, 'categories', selectedParentId, 'items'), { ...itemData, order: currentItems.length, createdAt: serverTimestamp() });
       }
       
       toast({ title: isAdmin ? "تم النشر بنجاح" : "تم الإرسال للمراجعة" });
@@ -199,13 +208,13 @@ export default function AdminDashboard() {
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
                                                     <SelectContent className="rounded-xl">
-                                                        <SelectItem value="style1">style1</SelectItem>
-                                                        <SelectItem value="style2">style2</SelectItem>
-                                                        <SelectItem value="style3">style3</SelectItem>
-                                                        <SelectItem value="style4">style4</SelectItem>
-                                                        <SelectItem value="style5">style5</SelectItem>
-                                                        <SelectItem value="style6">style6</SelectItem>
-                                                        <SelectItem value="style7">style7</SelectItem>
+                                                        <SelectItem value="style1">النمط الأفقي (صغير)</SelectItem>
+                                                        <SelectItem value="style2">نمط الصورة الكبيرة</SelectItem>
+                                                        <SelectItem value="style3">نمط البرومبت (AI)</SelectItem>
+                                                        <SelectItem value="style4">نمط الفيديو (YouTube)</SelectItem>
+                                                        <SelectItem value="style5">نمط المعرض (App)</SelectItem>
+                                                        <SelectItem value="style6">نمط الروابط الخارجية</SelectItem>
+                                                        <SelectItem value="style7">نمط مشغل الصوت</SelectItem>
                                                     </SelectContent>
                                                 </Select><FormMessage /></FormItem>} />
                                                 <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel>
@@ -233,19 +242,53 @@ export default function AdminDashboard() {
                                         <DialogTitle className="font-black text-xl">{editingItem ? 'تعديل المنشور' : 'إضافة محتوى جديد'}</DialogTitle>
                                     </DialogHeader>
                                     <ScrollArea className="max-h-[80vh] px-1">
+                                        <div className="mb-6 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                                            <label className="text-[10px] font-black text-primary mb-2 block uppercase tracking-widest">عرض الحقول حسب النمط</label>
+                                            <Select value={activeItemStyle} onValueChange={(v: any) => setActiveItemStyle(v)}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="style1">النمط الأفقي / الأساسي</SelectItem>
+                                                    <SelectItem value="style3">نمط البرومبت (AI)</SelectItem>
+                                                    <SelectItem value="style4">نمط الفيديو</SelectItem>
+                                                    <SelectItem value="style5">نمط المعرض (التطبيقات)</SelectItem>
+                                                    <SelectItem value="style6">روابط خارجية</SelectItem>
+                                                    <SelectItem value="style7">مشغل الصوت</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
                                         <Form {...itemForm}>
-                                            <form onSubmit={itemForm.handleSubmit(onSaveItem)} className="space-y-5 pt-4 pb-6">
+                                            <form onSubmit={itemForm.handleSubmit(onSaveItem)} className="space-y-5 pt-2 pb-6">
                                                 <FormField control={itemForm.control} name="title" render={({field})=><FormItem><FormLabel className="text-xs font-black">العنوان</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                                
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <FormField control={itemForm.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصورة</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
-                                                    <FormField control={itemForm.control} name="downloadUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط التحميل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={itemForm.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصورة (الأساسية)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={itemForm.control} name="downloadUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">{activeItemStyle === 'style6' ? 'رابط الموقع' : 'رابط التحميل'}</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                                                 </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <FormField control={itemForm.control} name="audioUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصوت (Style 7)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
-                                                    <FormField control={itemForm.control} name="videoUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الفيديو (Style 4)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
-                                                </div>
-                                                <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (Style 3)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl><FormMessage /></FormItem>} />
-                                                <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط المعرض (Style 5 - مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl><FormMessage /></FormItem>} />
+
+                                                {/* Dynamic Fields based on Style */}
+                                                {activeItemStyle === 'style7' && (
+                                                    <FormField control={itemForm.control} name="audioUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط ملف الصوت (Direct Link)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                                )}
+
+                                                {activeItemStyle === 'style4' && (
+                                                    <FormField control={itemForm.control} name="videoUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط فيديو YouTube</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                                )}
+
+                                                {activeItemStyle === 'style3' && (
+                                                    <>
+                                                        <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (AI Prompt)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl><FormMessage /></FormItem>} />
+                                                        <FormField control={itemForm.control} name="instructions" render={({field})=><FormItem><FormLabel className="text-xs font-black">تعليمات الاستخدام (اختياري)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl><FormMessage /></FormItem>} />
+                                                    </>
+                                                )}
+
+                                                {activeItemStyle === 'style5' && (
+                                                    <>
+                                                        <FormField control={itemForm.control} name="appVersion" render={({field})=><FormItem><FormLabel className="text-xs font-black">إصدار التطبيق</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                                        <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط صور المعرض (مفصولة بفاصلة ,)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl><FormMessage /></FormItem>} />
+                                                    </>
+                                                )}
+
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
@@ -308,7 +351,7 @@ export default function AdminDashboard() {
                             <Card className="rounded-[2.5rem] overflow-hidden border-none shadow-sm bg-white">
                                 <ScrollArea className="h-[600px]">
                                     <div className="divide-y">
-                                        {(currentItems || []).map(item => (
+                                        {currentItems.map(item => (
                                             <div key={item.id} className="p-5 flex items-center justify-between hover:bg-muted/30">
                                                 <div className="flex items-center gap-4">
                                                     <div className="h-14 w-14 rounded-2xl bg-muted overflow-hidden border shadow-inner">
@@ -323,23 +366,19 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    {isAdmin && (
-                                                        <>
-                                                            <Button variant="ghost" size="icon" className="text-primary" onClick={() => { 
-                                                                setEditingItem(item); 
-                                                                itemForm.reset({
-                                                                    ...item,
-                                                                    screenshots: item.screenshots?.join(', ') || ''
-                                                                });
-                                                                setIsAddingItem(true);
-                                                            }}>
-                                                                <Edit2 className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => confirm("حذف المنشور؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId, 'items', item.id))}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </>
-                                                    )}
+                                                    <Button variant="ghost" size="icon" className="text-primary" onClick={() => { 
+                                                        setEditingItem(item); 
+                                                        itemForm.reset({
+                                                            ...item,
+                                                            screenshots: item.screenshots?.join(', ') || ''
+                                                        });
+                                                        setIsAddingItem(true);
+                                                    }}>
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => confirm("حذف المنشور؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId, 'items', item.id))}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
                                                 </div>
                                             </div>
                                         ))}
