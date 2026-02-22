@@ -29,33 +29,33 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
 
   const { data: rawAds, isLoading } = useCollection<AffiliateAd>(adsQuery);
   
-  // Sort client-side to avoid Firebase Index requirement
+  // Sort and filter client-side to avoid index requirements
   const allAds = useMemo(() => {
     if (!rawAds) return [];
     return [...rawAds].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }, [rawAds]);
 
-  const bannerAdsCount = useMemo(() => allAds.filter(ad => ad.placement === 'banner').length, [allAds]);
-  const inlineAdsCount = useMemo(() => allAds.filter(ad => ad.placement === 'inline').length, [allAds]);
+  const bannerAds = useMemo(() => allAds.filter(ad => ad.placement === 'banner'), [allAds]);
+  const inlineAds = useMemo(() => allAds.filter(ad => ad.placement === 'inline'), [allAds]);
 
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [currentInlineIndex, setCurrentInlineIndex] = useState(0);
 
   useEffect(() => {
-    if (bannerAdsCount <= 1) return;
+    if (bannerAds.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentBannerIndex(prev => (prev + 1) % bannerAdsCount);
+      setCurrentBannerIndex(prev => (prev + 1) % bannerAds.length);
     }, 9000);
     return () => clearInterval(interval);
-  }, [bannerAdsCount]);
+  }, [bannerAds.length]);
 
   useEffect(() => {
-    if (inlineAdsCount <= 1) return;
+    if (inlineAds.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentInlineIndex(prev => (prev + 1) % inlineAdsCount);
+      setCurrentInlineIndex(prev => (prev + 1) % inlineAds.length);
     }, 9000);
     return () => clearInterval(interval);
-  }, [inlineAdsCount]);
+  }, [inlineAds.length]);
 
   return (
     <AffiliateContext.Provider value={{ allAds, adFrequency, currentBannerIndex, currentInlineIndex, isLoading }}>

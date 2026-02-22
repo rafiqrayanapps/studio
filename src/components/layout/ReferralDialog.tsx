@@ -4,30 +4,27 @@ import { useState, useEffect, Suspense } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Coins, Gift, Share2, Copy, Loader2, Info, CheckCircle2, Crown, Zap, AlertCircle, LogIn, PlayCircle, ExternalLink } from 'lucide-react';
+import { Coins, Gift, Copy, Loader2, Info, CheckCircle2, Crown, Zap, LogIn } from 'lucide-react';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, increment, getDoc, arrayUnion, setDoc } from 'firebase/firestore';
+import { doc, query, collection, where, getDocs, writeBatch, serverTimestamp, increment, getDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getDeviceFingerprint } from '@/lib/fingerprint';
 import type { ReferralConfig, UserProfile } from '@/lib/definitions';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useUnityAds } from '@/components/ads/UnityAdsProvider';
 
 function ReferralDialogContent() {
-    const { points, user, userProfile, isAdmin, isPro, isLoading } = useUserProfile();
+    const { points, user, userProfile, isPro, isLoading } = useUserProfile();
     const firestore = useFirestore();
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { showRewarded, config: adsConfig } = useUnityAds();
     
     const [referralCodeInput, setReferralCodeInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
-    const [isWatchingAd, setIsWatchingAd] = useState(false);
 
     const referralConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'referral') : null, [firestore]);
     const { data: refConfig } = useDoc<ReferralConfig>(referralConfigRef);
@@ -47,28 +44,6 @@ function ReferralDialogContent() {
             navigator.clipboard.writeText(text);
             toast({ title });
         }
-    };
-
-    const handleWatchAd = () => {
-        if (!user || user.isAnonymous) {
-            toast({ title: "تنبيه", description: "يجب تسجيل الدخول لجمع النقاط عبر الإعلانات." });
-            return;
-        }
-        
-        setIsWatchingAd(true);
-        showRewarded(async () => {
-            // Success Callback
-            try {
-                await updateDocumentNonBlocking(doc(firestore!, 'users', user.uid), {
-                    points: increment(1)
-                });
-                toast({ title: "مبروك! 🎉", description: "حصلت على نقطة واحدة لدعمك لنا." });
-            } catch (e) {
-                console.error("Ad point increment failed:", e);
-            } finally {
-                setIsWatchingAd(false);
-            }
-        });
     };
 
     const handleRedeemReferral = async () => {
@@ -99,7 +74,6 @@ function ReferralDialogContent() {
             }
 
             const referrerDoc = refSnap.docs[0];
-            const referrerData = referrerDoc.data() as UserProfile;
             
             if (referrerDoc.id === user.uid) {
                 throw new Error("لا يمكنك استخدام كود الدعوة الخاص بك.");
@@ -172,13 +146,11 @@ function ReferralDialogContent() {
             const newCode = `PRO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
             const batch = writeBatch(firestore);
             
-            // Deduct points
             batch.update(doc(firestore, 'users', user.uid), {
                 points: increment(-cost),
                 unlockedProCodes: arrayUnion(newCode)
             });
 
-            // Add to whitelist
             const whitelistRef = doc(firestore, 'whitelist', `GIFT-${newCode}@designer.companion`);
             batch.set(whitelistRef, {
                 email: `GIFT-${newCode}@designer.companion`,
@@ -250,27 +222,6 @@ function ReferralDialogContent() {
                         </DialogHeader>
 
                         <div className="space-y-6">
-                            {/* Rewarded Ad Section */}
-                            {(adsConfig?.adsterraEnabled || adsConfig?.manualAdsEnabled) && (
-                                <div className="bg-yellow-50 p-5 rounded-[2rem] border border-yellow-200 space-y-3 text-center relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><Coins className="h-12 w-12" /></div>
-                                    <div className="flex items-center justify-center gap-2 text-yellow-700 text-xs font-black uppercase relative z-10">
-                                        <Zap className="h-4 w-4 animate-pulse" />
-                                        <span>نقاط مجانية</span>
-                                    </div>
-                                    <p className="text-[10px] text-yellow-800/70 font-medium relative z-10">ادعمنا بمشاهدة إعلان سريع واحصل على 1 نقطة فورية!</p>
-                                    <Button 
-                                        className="w-full rounded-2xl h-12 bg-yellow-500 hover:bg-yellow-600 text-white font-black shadow-lg shadow-yellow-200 relative z-10"
-                                        onClick={handleWatchAd}
-                                        disabled={isWatchingAd}
-                                    >
-                                        {isWatchingAd ? <Loader2 className="animate-spin ml-2 h-4 w-4" /> : <ExternalLink className="ml-2 h-5 w-5" />}
-                                        افتح الإعلان واحصل على نقطة
-                                    </Button>
-                                </div>
-                            )}
-
-                            {/* User's Own Code */}
                             <div className="bg-muted/50 p-5 rounded-[2rem] space-y-3 text-center border-2 border-dashed border-primary/20 relative group">
                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest shadow-sm">
                                     كودك الخاص
@@ -285,7 +236,6 @@ function ReferralDialogContent() {
                                 </div>
                             </div>
 
-                            {/* Actions based on Pro/Basic status */}
                             <div className="bg-primary/5 p-5 rounded-[2rem] border border-primary/10 space-y-4">
                                 <div className="flex items-center gap-2.5 text-xs font-black text-primary uppercase">
                                     <Zap className="h-4 w-4" />
@@ -314,8 +264,7 @@ function ReferralDialogContent() {
                                 )}
                             </div>
 
-                            {/* Redeem Invite Code */}
-                            {!userProfile?.referredBy && !isAdmin && (
+                            {!userProfile?.referredBy && (
                                 <div className="space-y-3 pt-2">
                                     <div className="flex items-center gap-2 text-xs font-black text-foreground px-1">
                                         <Gift className="h-4 w-4 text-green-500" />
