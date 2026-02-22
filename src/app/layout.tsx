@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
@@ -62,8 +63,8 @@ export default function RootLayout({
                     {/* Floating Navigation Bar */}
                     <BottomNav />
 
-                    {/* Banner Slot - Absolute bottom, Under everything */}
-                    <div className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center bg-card/95 backdrop-blur-md border-t border-white/10 safe-area-bottom">
+                    {/* Banner Slot - Glassy Container at the very bottom */}
+                    <div className="fixed bottom-0 left-0 right-0 z-[120] flex justify-center bg-card/80 backdrop-blur-xl border-t border-white/5 safe-area-bottom min-h-[60px]">
                         <AffiliateAdSlot placement="banner" className="w-full max-w-md h-[60px]" />
                     </div>
                   </div>

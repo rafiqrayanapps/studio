@@ -33,7 +33,7 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
 
   const { data: rawAds, isLoading } = useCollection<AffiliateAd>(adsQuery);
   
-  // Sort ads locally to avoid index requirement for simple queries
+  // Sort ads locally
   const allAds = useMemo(() => {
     if (!rawAds) return [];
     return [...rawAds].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -78,25 +78,34 @@ export function useAffiliateAds() {
 }
 
 export function AffiliateAdSlot({ placement, categoryId, className }: { placement: 'banner' | 'inline', categoryId?: string, className?: string }) {
-  const { allAds, currentBannerIndex, currentInlineIndex } = useAffiliateAds();
+  const { allAds, currentBannerIndex, currentInlineIndex, isLoading } = useAffiliateAds();
   
   const ads = useMemo(() => {
       if (!allAds || allAds.length === 0) return [];
       
-      // Filter by placement
       let filtered = allAds.filter(ad => ad && ad.placement === placement);
       
-      // If inline and categoryId provided, prioritize category-specific ads
       if (placement === 'inline' && categoryId) {
           const categorySpecific = filtered.filter(ad => ad.targetCategoryId === categoryId);
           if (categorySpecific.length > 0) return categorySpecific;
-          // Fallback to global ads if no specific ads for this category
           return filtered.filter(ad => !ad.targetCategoryId);
       }
       
       return filtered;
   }, [allAds, placement, categoryId]);
   
+  if (isLoading) {
+      return (
+          <div className={cn(
+              "w-full bg-white/5 backdrop-blur-xl border border-white/10 animate-pulse flex items-center justify-center rounded-2xl",
+              placement === 'banner' ? "h-[60px]" : "aspect-video",
+              className
+          )}>
+              <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+          </div>
+      );
+  }
+
   if (ads.length === 0) return null;
   
   const index = placement === 'banner' ? currentBannerIndex : currentInlineIndex;
@@ -109,10 +118,10 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
         <AnimatePresence mode="wait">
             <motion.div
                 key={currentAd.id}
-                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+                initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className={cn(
                     "w-full flex justify-center items-center",
                     placement === 'banner' ? "h-[60px]" : "h-auto"
@@ -128,8 +137,8 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
                     src={currentAd.imageUrl} 
                     alt="Affiliate Ad" 
                     className={cn(
-                        "w-full block",
-                        placement === 'banner' ? "h-[60px] object-contain" : "h-auto w-full object-contain rounded-2xl shadow-lg"
+                        "w-full block transition-transform duration-700",
+                        placement === 'banner' ? "h-[60px] object-contain" : "h-auto w-full object-contain rounded-[2rem] shadow-2xl"
                     )}
                   />
                 </a>
