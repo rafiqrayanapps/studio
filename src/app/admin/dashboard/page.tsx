@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Category, ContentItem, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry, AffiliateAd } from '@/lib/definitions';
+import type { Category, ContentItem, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry, AffiliateAd, AffiliateConfig } from '@/lib/definitions';
 import { createUserByAdmin } from '@/lib/user-actions';
 
 const categorySchema = z.object({ 
@@ -53,6 +53,7 @@ const affiliateSchema = z.object({
     link: z.string().url("الرابط غير صالح"),
     imageUrl: z.string().url("رابط الصورة غير صالح"),
     placement: z.enum(['banner', 'inline']),
+    targetCategoryId: z.string().optional().nullable(),
     enabled: z.boolean().default(true)
 });
 
@@ -194,7 +195,7 @@ export default function AdminDashboard() {
                                             <FormField control={catForm.control} name="displayStyle" render={({field})=><FormItem><FormLabel className="text-xs font-black">نمط العرض</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl">
                                                 {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
                                             </SelectContent></Select></FormItem>} />
-                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></Select></FormItem>} />
+                                            <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
                                         </div>
                                         <FormField control={catForm.control} name="fileTypes" render={({field})=><FormItem><FormLabel className="text-xs font-black">صيغ الملفات (مثلاً: PSD, AI)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
                                         <FormField control={catForm.control} name="isUnderMaintenance" render={({field})=><FormItem className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border"><div className="space-y-0.5"><FormLabel className="font-black text-xs">وضع الصيانة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
@@ -221,7 +222,7 @@ export default function AdminDashboard() {
                                         <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (Style 3)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl></FormItem>} />
                                         <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط المعرض (Style 5 - مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl></FormItem>} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></SelectContent></FormControl></FormItem>} />
+                                            <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="public">عام</SelectItem><SelectItem value="pro">برو فقط</SelectItem></Select></FormItem>} />
                                             <FormField control={itemForm.control} name="isNew" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl h-12"><FormLabel className="font-black text-xs">جديد؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                                         </div>
                                         <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">نشر الآن</Button>
@@ -381,18 +382,37 @@ function FormAffiliateControl() {
     const firestore = useFirestore();
     const adsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'affiliateAds'), orderBy('createdAt', 'desc')) : null, [firestore]);
     const { data: ads } = useCollection<AffiliateAd>(adsQuery);
+    
+    const catQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'categories'), orderBy('name', 'asc')) : null, [firestore]);
+    const { data: cats } = useCollection<Category>(catQuery);
+
+    const configRef = useMemoFirebase(() => firestore ? doc(firestore, 'appConfig', 'affiliate') : null, [firestore]);
+    const { data: config } = useDoc<AffiliateConfig>(configRef);
+
     const { toast } = useToast();
 
     const form = useForm({
         resolver: zodResolver(affiliateSchema),
-        defaultValues: { link: '', imageUrl: '', placement: 'inline', enabled: true }
+        defaultValues: { link: '', imageUrl: '', placement: 'inline', targetCategoryId: null, enabled: true }
     });
 
-    const onSave = async (values: any) => {
+    const [frequency, setFrequency] = useState(6);
+    useEffect(() => { if (config) setFrequency(config.adFrequency || 6); }, [config]);
+
+    const onSaveConfig = async () => {
+        if (!configRef) return;
+        try {
+            await setDoc(configRef, { adFrequency: frequency }, { merge: true });
+            toast({ title: "تم تحديث إعدادات التكرار" });
+        } catch (e) { toast({ title: "فشل الحفظ", variant: "destructive" }); }
+    };
+
+    const onSaveAd = async (values: any) => {
         if (!firestore) return;
         try {
             await addDocumentNonBlocking(collection(firestore, 'affiliateAds'), {
                 ...values,
+                targetCategoryId: values.targetCategoryId === 'global' ? null : values.targetCategoryId,
                 order: ads?.length || 0,
                 createdAt: serverTimestamp()
             });
@@ -404,11 +424,30 @@ function FormAffiliateControl() {
     return (
         <div className="space-y-8">
             <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white">
+                <CardHeader className="p-0 mb-6"><CardTitle className="font-black text-xl flex items-center gap-2"><Settings className="h-6 w-6 text-primary" /> إعدادات الإعلانات العامة</CardTitle></CardHeader>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-black">مكان الإعلان كل كم منشور؟ (مثلاً: 6)</label>
+                        <div className="flex gap-2">
+                            <Input type="number" value={frequency} onChange={e => setFrequency(parseInt(e.target.value))} className="rounded-xl h-12" />
+                            <Button onClick={onSaveConfig} className="rounded-xl px-6 font-black h-12">حفظ التكرار</Button>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+
+            <Card className="rounded-[2.5rem] p-6 sm:p-8 border-none shadow-xl bg-white">
                 <CardHeader className="p-0 mb-6"><CardTitle className="font-black text-xl flex items-center gap-2"><AffiliateIcon className="h-6 w-6 text-primary" /> إضافة إعلان Affiliate جديد</CardTitle></CardHeader>
-                <Form {...form}><form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
+                <Form {...form}><form onSubmit={form.handleSubmit(onSaveAd)} className="space-y-4">
                     <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
                     <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
-                    <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="inline">بين المنشورات (كل 6 منشورات)</SelectItem><SelectItem value="banner">بانر تحت شريط التنقل</SelectItem></SelectContent></Select></FormItem>} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="inline">بين المنشورات</SelectItem><SelectItem value="banner">بانر تحت شريط التنقل</SelectItem></SelectContent></Select></FormItem>} />
+                        <FormField control={form.control} name="targetCategoryId" render={({field})=><FormItem><FormLabel className="text-xs font-black">القسم المستهدف (اختياري)</FormLabel><Select onValueChange={field.onChange} value={field.value || 'global'}><FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl><SelectContent className="rounded-xl">
+                            <SelectItem value="global">عام (كل الأقسام)</SelectItem>
+                            {cats?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent></Select></FormItem>} />
+                    </div>
                     <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">إضافة الإعلان الآن</Button>
                 </form></Form>
             </Card>
@@ -421,7 +460,10 @@ function FormAffiliateControl() {
                         </div>
                         <div className="flex justify-between items-center">
                             <div>
-                                <p className="text-[10px] font-black text-primary">{ad.placement === 'banner' ? 'بانر سفلي' : 'بين المنشورات'}</p>
+                                <div className="flex gap-1 items-center">
+                                    <p className="text-[10px] font-black text-primary">{ad.placement === 'banner' ? 'بانر سفلي' : 'بين المنشورات'}</p>
+                                    <Badge variant="outline" className="text-[8px] h-4">{ad.targetCategoryId ? cats?.find(c => c.id === ad.targetCategoryId)?.name : 'عام'}</Badge>
+                                </div>
                                 <p className="text-[8px] text-muted-foreground truncate max-w-[150px]">{ad.link}</p>
                             </div>
                             <div className="flex gap-1">
@@ -673,7 +715,7 @@ function FormLinksControl() {
     const [requestCfg, setRequestCfg] = useState<RequestDesignConfig>({ enabled: false, url: '' });
     const { toast } = useToast();
 
-    useEffect(() => { if (share) setShareCfg(share); if (request) setRequestCfg(request); }, [share, request]);
+    useEffect(() => { if (share) setShareCfg(share); if (request) setShareCfg(request); }, [share, request]);
 
     const handleSave = async () => {
         try {

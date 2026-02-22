@@ -20,7 +20,7 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import UpgradeProDialog from '@/components/dialogs/UpgradeProDialog';
 import { useCategories } from '@/components/providers/CategoryProvider';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { AffiliateAdSlot } from '@/components/ads/AffiliateAdsManager';
+import { AffiliateAdSlot, useAffiliateAds } from '@/components/ads/AffiliateAdsManager';
 
 const FavoriteButton = ({ isFavorite, onClick, className }: { isFavorite: boolean, onClick: (e: any) => void, className?: string }) => (
     <button 
@@ -157,6 +157,7 @@ export default function CategoryPage() {
   const [favorites, setFavorites] = useLocalStorage<any[]>('favorites', []);
   const { toast } = useToast();
   const { isPro, isAdmin, isEditor, isLoading: isUserLoading } = useUserProfile();
+  const { adFrequency } = useAffiliateAds();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
 
@@ -366,7 +367,7 @@ export default function CategoryPage() {
                         {filteredItems.map((item, idx) => (
                             <Fragment key={item.id}>
                                 <AudioPlayerRow item={item} isFavorite={favorites.some(f => f.id === item.id)} onToggleFavorite={() => toggleFavorite(item)} onAction={(a) => handleAction(item, a)} activeId={activeAudioId} onPlay={setActiveAudioId} />
-                                {(idx + 1) % 6 === 0 && <AffiliateAdSlot placement="inline" className="h-24 rounded-2xl border-2 border-primary/5 shadow-sm" />}
+                                {(idx + 1) % adFrequency === 0 && <AffiliateAdSlot placement="inline" categoryId={id} className="h-24 rounded-2xl border-2 border-primary/5 shadow-sm" />}
                             </Fragment>
                         ))}
                     </div>
@@ -375,7 +376,7 @@ export default function CategoryPage() {
                         {filteredItems.map((item, idx) => (
                             <Fragment key={item.id}>
                                 {renderItem(item)}
-                                {(idx + 1) % 6 === 0 && <div className={displayStyle === 'style1' ? "col-span-2" : ""}><AffiliateAdSlot placement="inline" className="h-32 rounded-3xl border-2 border-primary/5 shadow-md" /></div>}
+                                {(idx + 1) % adFrequency === 0 && <div className={displayStyle === 'style1' ? "col-span-2" : ""}><AffiliateAdSlot placement="inline" categoryId={id} className="h-32 rounded-3xl border-2 border-primary/5 shadow-md" /></div>}
                             </Fragment>
                         ))}
                     </div>

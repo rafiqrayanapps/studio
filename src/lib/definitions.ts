@@ -35,9 +35,14 @@ export interface AffiliateAd {
   imageUrl: string;
   link: string;
   placement: 'inline' | 'banner';
+  targetCategoryId?: string | null; // New field
   enabled: boolean;
   order: number;
   createdAt: any;
+}
+
+export interface AffiliateConfig {
+    adFrequency: number; // New config
 }
 
 export interface SubscriptionDialogConfig {
