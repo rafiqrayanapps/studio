@@ -39,28 +39,28 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
     return [...rawAds].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }, [rawAds]);
 
-  const bannerAdsCount = useMemo(() => allAds.filter(ad => ad.placement === 'banner').length, [allAds]);
-  const inlineAdsCount = useMemo(() => allAds.filter(ad => ad.placement === 'inline').length, [allAds]);
+  const bannerAds = useMemo(() => allAds.filter(ad => ad.placement === 'banner'), [allAds]);
+  const inlineAds = useMemo(() => allAds.filter(ad => ad.placement === 'inline'), [allAds]);
 
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [currentInlineIndex, setCurrentInlineIndex] = useState(0);
 
   // Rotation logic: 9 seconds
   useEffect(() => {
-    if (bannerAdsCount <= 1) return;
+    if (bannerAds.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentBannerIndex(prev => (prev + 1) % bannerAdsCount);
+      setCurrentBannerIndex(prev => (prev + 1) % bannerAds.length);
     }, 9000);
     return () => clearInterval(interval);
-  }, [bannerAdsCount]);
+  }, [bannerAds.length]);
 
   useEffect(() => {
-    if (inlineAdsCount <= 1) return;
+    if (inlineAds.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentInlineIndex(prev => (prev + 1) % inlineAdsCount);
+      setCurrentInlineIndex(prev => (prev + 1) % inlineAds.length);
     }, 9000);
     return () => clearInterval(interval);
-  }, [inlineAdsCount]);
+  }, [inlineAds.length]);
 
   return (
     <AffiliateContext.Provider value={{ allAds, adFrequency, currentBannerIndex, currentInlineIndex, isLoading }}>
@@ -97,10 +97,11 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
   if (isLoading) {
       return (
           <div className={cn(
-              "w-full bg-white/5 backdrop-blur-xl border border-white/10 animate-pulse flex items-center justify-center rounded-2xl",
+              "w-full bg-white/5 backdrop-blur-xl border border-white/10 animate-pulse flex items-center justify-center rounded-2xl overflow-hidden",
               placement === 'banner' ? "h-[60px]" : "aspect-video",
               className
           )}>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
               <div className="w-12 h-1.5 bg-white/10 rounded-full" />
           </div>
       );
@@ -118,9 +119,9 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
         <AnimatePresence mode="wait">
             <motion.div
                 key={currentAd.id}
-                initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
-                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }}
+                initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className={cn(
                     "w-full flex justify-center items-center",
@@ -137,7 +138,7 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
                     src={currentAd.imageUrl} 
                     alt="Affiliate Ad" 
                     className={cn(
-                        "w-full block transition-transform duration-700",
+                        "w-full block",
                         placement === 'banner' ? "h-[60px] object-contain" : "h-auto w-full object-contain rounded-[2rem] shadow-2xl"
                     )}
                   />

@@ -56,7 +56,7 @@ export default function RootLayout({
                   <OnlineStatusDetector />
                   <ServiceWorkerRegistrar />
                   <div className="flex flex-col min-h-screen">
-                    <div className="flex-1 pb-[calc(60px+100px)]">
+                    <div className="flex-1 pb-[calc(60px+80px)]">
                       {children}
                     </div>
                     
