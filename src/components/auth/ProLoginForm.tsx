@@ -126,7 +126,7 @@ export default function ProLoginForm() {
               control={form.control}
               name="email"
               render={({ field }) => (
-                <FormItem>
+                FormItem>
                   <FormLabel className="font-bold text-xs">البريد الإلكتروني</FormLabel>
                   <FormControl>
                     <div className="relative">
@@ -142,7 +142,7 @@ export default function ProLoginForm() {
               control={form.control}
               name="password"
               render={({ field }) => (
-                <FormItem>
+                FormItem>
                   <FormLabel className="font-bold text-xs">كلمة المرور</FormLabel>
                   <FormControl>
                     <div className="relative">

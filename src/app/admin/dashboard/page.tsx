@@ -118,7 +118,7 @@ export default function AdminDashboard() {
   const onSaveItem = async (values: any) => {
     if (!firestore || !selectedParentId) return;
     try {
-      const screenshotsArray = values.screenshots ? values.screenshots.split(',').map((s: string) => s.trim()).filter((s: string) => s !== '') : [];
+      const screenshotsArray = typeof values.screenshots === 'string' ? values.screenshots.split(',').map((s: string) => s.trim()).filter((s: string) => s !== '') : values.screenshots;
       const itemData: any = { ...values, screenshots: screenshotsArray, updatedAt: serverTimestamp(), status: isAdmin ? 'approved' : 'pending' };
       
       if (editingItem && isAdmin) {
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
                                 <DialogTrigger asChild><Button variant="outline" className="flex-1 sm:flex-none rounded-2xl h-12 px-6 font-black border-2"><Send className="ml-2 h-5 w-5" /> منشور جديد</Button></DialogTrigger>
                                 <DialogContent className="rounded-[2.5rem] max-w-2xl" dir="rtl">
                                     <DialogHeader>
-                                        <DialogTitle className="font-black text-xl">إضافة محتوى جديد</DialogTitle>
+                                        <DialogTitle className="font-black text-xl">{editingItem ? 'تعديل المنشور' : 'إضافة محتوى جديد'}</DialogTitle>
                                     </DialogHeader>
                                     <ScrollArea className="max-h-[80vh] px-1">
                                         <Form {...itemForm}>
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
                                                     </Select><FormMessage /></FormItem>} />
                                                     <FormField control={itemForm.control} name="isNew" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl h-12"><FormLabel className="font-black text-xs">جديد؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                                                 </div>
-                                                <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">نشر الآن</Button>
+                                                <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">{editingItem ? 'حفظ التغييرات' : 'نشر الآن'}</Button>
                                             </form>
                                         </Form>
                                     </ScrollArea>
@@ -324,9 +324,21 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     {isAdmin && (
-                                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => confirm("حذف المنشور؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId, 'items', item.id))}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <>
+                                                            <Button variant="ghost" size="icon" className="text-primary" onClick={() => { 
+                                                                setEditingItem(item); 
+                                                                itemForm.reset({
+                                                                    ...item,
+                                                                    screenshots: item.screenshots?.join(', ') || ''
+                                                                });
+                                                                setIsAddingItem(true);
+                                                            }}>
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => confirm("حذف المنشور؟") && deleteDocumentNonBlocking(doc(firestore!, 'categories', selectedParentId, 'items', item.id))}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
