@@ -42,27 +42,27 @@ export default function Pricing() {
         </div>
         <div className="mt-16 grid grid-cols-1 lg:grid-cols-3 gap-8">
           {plans.map((plan) => (
-            <Card key={plan.name} className={cn('flex flex-col', plan.isFeatured && 'border-primary ring-2 ring-primary shadow-lg')}>
+            <Card key={plan.name} className={cn('flex flex-col rounded-[2.5rem]', plan.isFeatured && 'border-primary ring-2 ring-primary shadow-lg')}>
               <CardHeader>
-                <CardTitle className="font-headline">{plan.name}</CardTitle>
+                <CardTitle className="font-headline font-black">{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
-                <div>
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.frequency}</span>
+                <div className="pt-4">
+                  <span className="text-4xl font-black text-primary">{plan.price}</span>
+                  <span className="text-muted-foreground font-bold">{plan.frequency}</span>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1">
+              <CardContent className="flex-1 pt-4">
                 <ul className="space-y-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-center">
                       <Check className="w-4 h-4 text-primary mr-2" />
-                      <span>{feature}</span>
+                      <span className="font-bold text-sm">{feature}</span>
                     </li>
                   ))}
                 </ul>
               </CardContent>
-              <CardFooter>
-                <Button className={cn('w-full', plan.isFeatured ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-primary')}>Choose Plan</Button>
+              <CardFooter className="pb-8">
+                <Button className={cn('w-full h-12 rounded-2xl font-black shadow-lg', plan.isFeatured ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-secondary text-foreground hover:bg-secondary/80')}>Choose Plan</Button>
               </CardFooter>
             </Card>
           ))}

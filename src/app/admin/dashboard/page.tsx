@@ -495,7 +495,10 @@ function FormPlansControl() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {plans?.map(p => (
                     <Card key={p.id} className="p-6 rounded-[2rem] border-2 flex justify-between items-start">
-                        <div><h4 className="font-black text-lg">{p.name}</h4><p className="text-primary font-black">{p.price} {p.currency}</p></div>
+                        <div>
+                            <h4 className="font-black text-lg">{p.name}</h4>
+                            <p className="text-primary font-black text-xl">{p.price} {p.currency}</p>
+                        </div>
                         <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={()=>{setEditingPlan(p); form.reset({...p, features: p.features.join(', ')});}}><Edit2 className="h-4 w-4"/></Button>
                             <Button size="icon" variant="ghost" className="text-destructive" onClick={()=>confirm("حذف؟") && deleteDocumentNonBlocking(doc(firestore!, 'pricingPlans', p.id))}><Trash2 className="h-4 w-4"/></Button>
