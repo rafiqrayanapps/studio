@@ -58,7 +58,7 @@ export default function RootLayout({
                   
                   {/* Global Bottom Banner Slot - Fixed at the very bottom (under navigation) */}
                   <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
-                      <AffiliateAdSlot placement="banner" className="w-full max-w-md h-16 shadow-2xl border-t border-white/10 pointer-events-auto bg-card/80 backdrop-blur-md" />
+                      <AffiliateAdSlot placement="banner" className="w-full max-w-md h-[60px] shadow-2xl border-t border-white/10 pointer-events-auto bg-card/80 backdrop-blur-md" />
                   </div>
                   
                   <BottomNav />

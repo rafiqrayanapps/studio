@@ -365,7 +365,7 @@ export default function CategoryPage() {
                         {filteredItems.map((item, idx) => (
                             <Fragment key={item.id}>
                                 <AudioPlayerRow item={item} isFavorite={favorites.some(f => f.id === item.id)} onToggleFavorite={() => toggleFavorite(item)} onAction={(a) => handleAction(item, a)} activeId={activeAudioId} onPlay={setActiveAudioId} />
-                                {(idx + 1) % adFrequency === 0 && <AffiliateAdSlot placement="inline" categoryId={id} className="h-24 rounded-2xl border-2 border-primary/5 shadow-sm" />}
+                                {(idx + 1) % adFrequency === 0 && <AffiliateAdSlot placement="inline" categoryId={id} className="rounded-2xl overflow-hidden shadow-sm" />}
                             </Fragment>
                         ))}
                     </div>
@@ -374,7 +374,7 @@ export default function CategoryPage() {
                         {filteredItems.map((item, idx) => (
                             <Fragment key={item.id}>
                                 {renderItem(item)}
-                                {(idx + 1) % adFrequency === 0 && <div className={displayStyle === 'style1' ? "col-span-2" : ""}><AffiliateAdSlot placement="inline" categoryId={id} className="h-32 rounded-3xl border-2 border-primary/5 shadow-md" /></div>}
+                                {(idx + 1) % adFrequency === 0 && <div className={displayStyle === 'style1' ? "col-span-2" : ""}><AffiliateAdSlot placement="inline" categoryId={id} className="rounded-3xl overflow-hidden shadow-md" /></div>}
                             </Fragment>
                         ))}
                     </div>

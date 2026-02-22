@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo } from '
 import { useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import type { AffiliateAd, AffiliateConfig } from '@/lib/definitions';
+import { cn } from '@/lib/utils';
 
 interface AffiliateContextType {
   allAds: AffiliateAd[];
@@ -29,7 +30,6 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
 
   const { data: rawAds, isLoading } = useCollection<AffiliateAd>(adsQuery);
   
-  // Sort and filter client-side to avoid index requirements
   const allAds = useMemo(() => {
     if (!rawAds) return [];
     return [...rawAds].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -96,17 +96,26 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
   if (!currentAd) return null;
 
   return (
-    <a 
-      href={currentAd.link} 
-      target="_blank" 
-      rel="noopener noreferrer" 
-      className={`block w-full overflow-hidden transition-all duration-500 animate-in fade-in ${className}`}
-    >
-      <img 
-        src={currentAd.imageUrl} 
-        alt="Affiliate Ad" 
-        className="w-full h-full object-cover" 
-      />
-    </a>
+    <div className={cn(
+        "w-full flex justify-center items-center overflow-hidden transition-all duration-500 animate-in fade-in",
+        placement === 'banner' ? "h-[60px]" : "h-auto",
+        className
+    )}>
+        <a 
+          href={currentAd.link} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="block w-full h-full"
+        >
+          <img 
+            src={currentAd.imageUrl} 
+            alt="Affiliate Ad" 
+            className={cn(
+                "w-full h-full",
+                placement === 'banner' ? "object-contain bg-black/5" : "object-contain rounded-2xl"
+            )}
+          />
+        </a>
+    </div>
   );
 }

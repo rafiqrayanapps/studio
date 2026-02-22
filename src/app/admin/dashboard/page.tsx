@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +22,6 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Category, ContentItem, ThemeConfig, SubscriptionDialogConfig, ShareLinkConfig, RequestDesignConfig, Notification, PricingPlan, WhitelistEntry, AffiliateAd, AffiliateConfig } from '@/lib/definitions';
 import { createUserByAdmin } from '@/lib/user-actions';
 
@@ -191,7 +190,7 @@ export default function AdminDashboard() {
                                     <DialogHeader><DialogTitle className="font-black text-xl">إعدادات القسم</DialogTitle></DialogHeader>
                                     <Form {...catForm}>
                                         <form onSubmit={catForm.handleSubmit(onUpdateCategory)} className="space-y-5 pt-4">
-                                            <FormField control={catForm.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
+                                            <FormField control={catForm.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم القسم</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                                             <div className="grid grid-cols-2 gap-4">
                                                 <FormField control={catForm.control} name="displayStyle" render={({field})=><FormItem><FormLabel className="text-xs font-black">نمط العرض</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>
@@ -199,7 +198,7 @@ export default function AdminDashboard() {
                                                     <SelectContent className="rounded-xl">
                                                         {['style1','style2','style3','style4','style5','style6','style7'].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
                                                     </SelectContent>
-                                                </Select></FormItem>} />
+                                                </Select><FormMessage /></FormItem>} />
                                                 <FormField control={catForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
@@ -207,9 +206,9 @@ export default function AdminDashboard() {
                                                         <SelectItem value="public">عام</SelectItem>
                                                         <SelectItem value="pro">برو فقط</SelectItem>
                                                     </SelectContent>
-                                                </Select></FormItem>} />
+                                                </Select><FormMessage /></FormItem>} />
                                             </div>
-                                            <FormField control={catForm.control} name="fileTypes" render={({field})=><FormItem><FormLabel className="text-xs font-black">صيغ الملفات (مثلاً: PSD, AI)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
+                                            <FormField control={catForm.control} name="fileTypes" render={({field})=><FormItem><FormLabel className="text-xs font-black">صيغ الملفات (مثلاً: PSD, AI)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                                             <FormField control={catForm.control} name="isUnderMaintenance" render={({field})=><FormItem className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border"><div className="space-y-0.5"><FormLabel className="font-black text-xs">وضع الصيانة</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                                             <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">حفظ القسم</Button>
                                         </form>
@@ -225,17 +224,17 @@ export default function AdminDashboard() {
                                     <ScrollArea className="max-h-[80vh] px-1">
                                         <Form {...itemForm}>
                                             <form onSubmit={itemForm.handleSubmit(onSaveItem)} className="space-y-5 pt-4 pb-6">
-                                                <FormField control={itemForm.control} name="title" render={({field})=><FormItem><FormLabel className="text-xs font-black">العنوان</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
+                                                <FormField control={itemForm.control} name="title" render={({field})=><FormItem><FormLabel className="text-xs font-black">العنوان</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <FormField control={itemForm.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصورة</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
-                                                    <FormField control={itemForm.control} name="downloadUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط التحميل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
+                                                    <FormField control={itemForm.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصورة</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={itemForm.control} name="downloadUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط التحميل</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                                                 </div>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <FormField control={itemForm.control} name="audioUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصوت (Style 7)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
-                                                    <FormField control={itemForm.control} name="videoUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الفيديو (Style 4)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl></FormItem>} />
+                                                    <FormField control={itemForm.control} name="audioUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الصوت (Style 7)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={itemForm.control} name="videoUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط الفيديو (Style 4)</FormLabel><FormControl><Input {...field} className="rounded-xl h-12"/></FormControl><FormMessage /></FormItem>} />
                                                 </div>
-                                                <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (Style 3)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl></FormItem>} />
-                                                <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط المعرض (Style 5 - مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl></FormItem>} />
+                                                <FormField control={itemForm.control} name="prompt" render={({field})=><FormItem><FormLabel className="text-xs font-black">نص البرومبت (Style 3)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={3}/></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={itemForm.control} name="screenshots" render={({field})=><FormItem><FormLabel className="text-xs font-black">روابط المعرض (Style 5 - مفصولة بفاصلة)</FormLabel><FormControl><Textarea {...field} className="rounded-xl" rows={2}/></FormControl><FormMessage /></FormItem>} />
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <FormField control={itemForm.control} name="visibility" render={({field})=><FormItem><FormLabel className="text-xs font-black">الظهور</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
@@ -244,7 +243,7 @@ export default function AdminDashboard() {
                                                             <SelectItem value="public">عام</SelectItem>
                                                             <SelectItem value="pro">برو فقط</SelectItem>
                                                         </SelectContent>
-                                                    </Select></FormItem>} />
+                                                    </Select><FormMessage /></FormItem>} />
                                                     <FormField control={itemForm.control} name="isNew" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl h-12"><FormLabel className="font-black text-xs">جديد؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                                                 </div>
                                                 <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">نشر الآن</Button>
@@ -393,17 +392,17 @@ function FormAffiliateControl() {
                 <CardHeader className="p-0 mb-6"><CardTitle className="font-black text-xl flex items-center gap-2"><AffiliateIcon className="h-6 w-6 text-primary" /> إضافة إعلان Affiliate جديد</CardTitle></CardHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSaveAd)} className="space-y-4">
-                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
-                        <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
+                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط المنتج (Affiliate Link)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="imageUrl" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط صورة الإعلان</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl><FormMessage /></FormItem>} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="placement" render={({field})=><FormItem><FormLabel className="text-xs font-black">مكان الظهور</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
                                 <SelectContent className="rounded-xl">
-                                    <SelectItem value="inline">بين المنشورات</SelectItem>
-                                    <SelectItem value="banner">بانر أسفل الشاشة</SelectItem>
+                                    <SelectItem value="inline">بين المنشورات (صورة كاملة)</SelectItem>
+                                    <SelectItem value="banner">بانر سفلي (مقاس AdMob)</SelectItem>
                                 </SelectContent>
-                            </Select></FormItem>} />
+                            </Select><FormMessage /></FormItem>} />
                             <FormField control={form.control} name="targetCategoryId" render={({field})=><FormItem><FormLabel className="text-xs font-black">القسم المستهدف (اختياري)</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value || 'global'}>
                                 <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
@@ -411,7 +410,7 @@ function FormAffiliateControl() {
                                     <SelectItem value="global">عام (كل الأقسام)</SelectItem>
                                     {cats?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                                 </SelectContent>
-                            </Select></FormItem>} />
+                            </Select><FormMessage /></FormItem>} />
                         </div>
                         <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl">إضافة الإعلان الآن</Button>
                     </form>
@@ -472,15 +471,15 @@ function FormPlansControl() {
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم الباقة</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
+                            <FormField control={form.control} name="name" render={({field})=><FormItem><FormLabel className="text-xs font-black">اسم الباقة</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
                             <div className="grid grid-cols-2 gap-2">
-                                <FormField control={form.control} name="price" render={({field})=><FormItem><FormLabel className="text-xs font-black">السعر</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
-                                <FormField control={form.control} name="currency" render={({field})=><FormItem><FormLabel className="text-xs font-black">العملة</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
+                                <FormField control={form.control} name="price" render={({field})=><FormItem><FormLabel className="text-xs font-black">السعر</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="currency" render={({field})=><FormItem><FormLabel className="text-xs font-black">العملة</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
                             </div>
                         </div>
-                        <FormField control={form.control} name="description" render={({field})=><FormItem><FormLabel className="text-xs font-black">وصف قصير</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
-                        <FormField control={form.control} name="features" render={({field})=><FormItem><FormLabel className="text-xs font-black">المميزات (مفصولة بفاصلة ,)</FormLabel><FormControl><Textarea {...field}/></FormControl></FormItem>} />
-                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط دفع خارجي (اختياري)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
+                        <FormField control={form.control} name="description" render={({field})=><FormItem><FormLabel className="text-xs font-black">وصف قصير</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="features" render={({field})=><FormItem><FormLabel className="text-xs font-black">المميزات (مفصولة بفاصلة ,)</FormLabel><FormControl><Textarea {...field}/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط دفع خارجي (اختياري)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl><FormMessage /></FormItem>} />
                         <div className="grid grid-cols-2 gap-4">
                             <FormField control={form.control} name="isFeatured" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تمييز؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                             <FormField control={form.control} name="enabled" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تفعيل؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
@@ -529,9 +528,9 @@ function FormUsersControl() {
                 <CardHeader className="p-0 mb-6"><CardTitle className="font-black text-xl flex items-center gap-2"><Users className="h-6 w-6 text-primary" /> إضافة مستخدم جديد</CardTitle></CardHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onAddUser)} className="space-y-4">
-                        <FormField control={form.control} name="displayName" render={({field})=><FormItem><FormLabel className="text-xs font-black">الاسم الكامل</FormLabel><FormControl><Input {...field}/></FormControl></FormItem>} />
-                        <FormField control={form.control} name="email" render={({field})=><FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
-                        <FormField control={form.control} name="password" render={({field})=><FormItem><FormLabel className="text-xs font-black">كلمة المرور المؤقتة</FormLabel><FormControl><Input {...field} type="password" dir="ltr"/></FormControl></FormItem>} />
+                        <FormField control={form.control} name="displayName" render={({field})=><FormItem><FormLabel className="text-xs font-black">الاسم الكامل</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="email" render={({field})=><FormItem><FormLabel className="text-xs font-black">البريد الإلكتروني</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl><FormMessage /></FormItem>} />
+                        <FormField control={form.control} name="password" render={({field})=><FormItem><FormLabel className="text-xs font-black">كلمة المرور المؤقتة</FormLabel><FormControl><Input {...field} type="password" dir="ltr"/></FormControl><FormMessage /></FormItem>} />
                         <FormField control={form.control} name="role" render={({field})=><FormItem><FormLabel className="text-xs font-black">الصلاحية</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger className="rounded-xl h-12"><SelectValue/></SelectTrigger></FormControl>
@@ -540,7 +539,7 @@ function FormUsersControl() {
                                 <SelectItem value="editor">محرر (Editor)</SelectItem>
                                 <SelectItem value="pro">عضو برو (Pro)</SelectItem>
                             </SelectContent>
-                        </Select></FormItem>} />
+                        </Select><FormMessage /></FormItem>} />
                         <Button type="submit" className="w-full h-14 rounded-2xl font-black shadow-xl" disabled={form.formState.isSubmitting}>إنشاء الحساب</Button>
                     </form>
                 </Form>
