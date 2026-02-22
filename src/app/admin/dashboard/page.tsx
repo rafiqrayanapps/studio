@@ -382,7 +382,7 @@ function FormSignupRequestsControl() {
             });
             toast({ title: action === 'approved' ? "تم قبول المستخدم" : "تم رفض الطلب" });
         } catch (e) {
-            toast({ title: "فشلت العملية", variant: "destructive" });
+            toast({ title: "فشل العملية", variant: "destructive" });
         }
     };
 
