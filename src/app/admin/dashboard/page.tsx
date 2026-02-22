@@ -560,8 +560,8 @@ function FormPlansControl() {
                         <FormField control={form.control} name="features" render={({field})=><FormItem><FormLabel className="text-xs font-black">المميزات (مفصولة بفاصلة ,)</FormLabel><FormControl><Textarea {...field}/></FormControl></FormItem>} />
                         <FormField control={form.control} name="link" render={({field})=><FormItem><FormLabel className="text-xs font-black">رابط دفع خارجي (اختياري)</FormLabel><FormControl><Input {...field} dir="ltr"/></FormControl></FormItem>} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="isFeatured" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تمييز الباقة؟</FormLabel><Switch checked={field.value} onCheckedChange={field.onChange}/></FormItem>} />
-                            <FormField control={form.control} name="enabled" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تفعيل؟</FormLabel><Switch checked={field.value} onCheckedChange={field.onChange}/></FormItem>} />
+                            <FormField control={form.control} name="isFeatured" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تمييز الباقة؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
+                            <FormField control={form.control} name="enabled" render={({field})=><FormItem className="flex items-center justify-between p-3 border rounded-xl"><FormLabel className="font-black text-xs">تفعيل؟</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>} />
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2">
                             <Button type="submit" className="flex-1 h-12 rounded-xl font-black">حفظ الباقة</Button>

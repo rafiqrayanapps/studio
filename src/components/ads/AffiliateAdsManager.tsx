@@ -62,7 +62,10 @@ export function AffiliateAdsProvider({ children }: { children: React.ReactNode }
 
 export function useAffiliateAds() {
   const context = useContext(AffiliateContext);
-  if (!context) throw new Error('useAffiliateAds must be used within AffiliateAdsProvider');
+  if (context === undefined) {
+    // Return safe defaults if used outside of provider (though it shouldn't happen)
+    return { allAds: [], adFrequency: 6, currentBannerIndex: 0, currentInlineIndex: 0, isLoading: false };
+  }
   return context;
 }
 
@@ -70,8 +73,8 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
   const { allAds, currentBannerIndex, currentInlineIndex } = useAffiliateAds();
   
   const ads = useMemo(() => {
-      if (!allAds) return [];
-      let filtered = allAds.filter(ad => ad.placement === placement);
+      if (!allAds || allAds.length === 0) return [];
+      let filtered = allAds.filter(ad => ad && ad.placement === placement);
       
       if (placement === 'inline' && categoryId) {
           const categorySpecific = filtered.filter(ad => ad.targetCategoryId === categoryId);
@@ -86,6 +89,8 @@ export function AffiliateAdSlot({ placement, categoryId, className }: { placemen
   
   const index = placement === 'banner' ? currentBannerIndex : currentInlineIndex;
   const currentAd = ads[index % ads.length];
+
+  if (!currentAd) return null;
 
   return (
     <a 
