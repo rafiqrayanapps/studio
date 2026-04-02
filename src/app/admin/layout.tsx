@@ -1,26 +1,44 @@
 'use client';
-import { useUserProfile } from '@/hooks/use-user-profile';
+
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Loader2, ShieldAlert } from 'lucide-react';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { doc } from 'firebase/firestore';
+import { UserProfile } from '@/firebase/firestore';
+import { DEFAULT_ADMIN_EMAIL } from '@/lib/utils';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const { user, isAdmin, isEditor, isLoading } = useUserProfile();
+    const { user, loading: authLoading } = useUser();
+    const firestore = useFirestore();
     const router = useRouter();
 
+    // جلب بيانات المستخدم من Firestore (مجموعة Users بحرف كبير)
+    const userDocRef = useMemo(() => {
+        if (!firestore || !user) return null;
+        return doc(firestore, 'Users', user.uid);
+    }, [firestore, user]);
+
+    const { data: userData, loading: docLoading } = useDoc<UserProfile>(userDocRef);
+
+    const isLoading = authLoading || docLoading;
+    
+    // التحقق: هل هو الحساب الافتراضي أم لديه رتبة admin في Firestore؟
+    const isAdmin = user?.email === DEFAULT_ADMIN_EMAIL || userData?.role === 'admin';
+    const isEditor = userData?.role === 'editor'; // إذا كان لديك رتبة محرر
+
     useEffect(() => {
-        // Only redirect once loading is finished
         if (!isLoading) {
             if (!user || user.isAnonymous) {
                 router.replace('/login');
             } else if (!isAdmin && !isEditor) {
-                // Logged in but not authorized for Admin
-                router.replace('/home');
+                // إذا لم يكن أدمن، يتم توجيهه للرئيسية
+                router.replace('/');
             }
         }
     }, [user, isAdmin, isEditor, isLoading, router]);
 
-    // Show loading while checking permissions
     if (isLoading) {
         return (
             <div className="flex h-screen flex-col items-center justify-center bg-background gap-4">
@@ -30,14 +48,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         );
     }
 
-    // Secondary check: if for some reason we reach here and not authorized, show error
     if (!isAdmin && !isEditor) {
         return (
             <div className="flex h-screen flex-col items-center justify-center bg-background p-6 text-center gap-4">
                 <ShieldAlert className="h-16 w-16 text-destructive" />
                 <h2 className="text-2xl font-black">غير مصرح لك بالدخول</h2>
                 <p className="text-muted-foreground">ليست لديك صلاحيات المسؤول للوصول لهذه الصفحة.</p>
-                <button onClick={() => router.replace('/home')} className="mt-4 px-8 py-3 bg-primary text-white rounded-2xl font-black">العودة للرئيسية</button>
+                <button onClick={() => router.replace('/')} className="mt-4 px-8 py-3 bg-primary text-white rounded-2xl font-black">العودة للرئيسية</button>
             </div>
         );
     }
