@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "Category": {
+      "title": "Category",
+      "description": "Represents a category or sub-category for organizing content.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        },
+        "parentId": {
+          "type": "string",
+          "description": "The ID of the parent category. Null for top-level categories."
+        }
+      },
+      "required": ["name"]
+    },
+    "ContentItem": {
+      "title": "Content Item",
+      "description": "Represents a piece of content within a category.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title or text of the content."
+        },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the image for the content."
+        },
+        "fileUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the file associated with the content."
+        },
+        "categoryId": {
+            "type": "string",
+            "description": "The ID of the category this content belongs to."
+        }
+      },
+      "required": ["title", "imageUrl", "fileUrl", "categoryId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the system.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "SubscriptionDialog": {
+      "title": "Subscription Dialog",
+      "description": "Configuration for the subscription popup dialog.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the dialog is enabled or not."
+        },
+        "title": {
+          "type": "string",
+          "description": "The main title of the dialog."
+        },
+        "description": {
+          "type": "string",
+          "description": "The descriptive text in the dialog."
+        },
+        "subscribeText": {
+          "type": "string",
+          "description": "Text for the subscribe/action button."
+        },
+        "cancelText": {
+          "type": "string",
+          "description": "Text for the cancel button."
+        },
+        "subscribeUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL the subscribe button links to."
+        }
+      },
+      "required": ["enabled", "title", "description", "subscribeText", "cancelText", "subscribeUrl"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com", "password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/User"
+      },
+      "description": "User profile information."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/backend/entities/Category" },
+      "description": "Stores all categories, with parent-child relationships defined by parentId."
+    },
+    "/content/{contentId}": {
+        "schema": { "$ref": "#/backend/entities/ContentItem" },
+        "description": "Stores all content items."
+    },
+    "/app-config/subscription-dialog": {
+        "schema": { "$ref": "#/backend/entities/SubscriptionDialog" },
+        "description": "Single document to store the configuration for the subscription dialog."
+    }
+  }
+}
