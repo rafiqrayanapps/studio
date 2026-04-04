@@ -1,20 +1,18 @@
-# **App Name**: Visual Vibes
+# **App Name**: Duplication Station
 
 ## Core Features:
 
-- Image Upload: Allow users to upload an image to extract its color palette.
-- Palette Generation: Automatically generate a color palette based on the dominant colors in the uploaded image.
-- Palette Display: Display the extracted color palette with each color's hex code.
-- Palette Customization: Provide options to fine-tune the generated palette, adjusting hues or adding/removing colors using AI tool reasoning.
-- Palette Saving: Allow users to save their custom color palettes.
-- Palette Sharing: Allow users to share their saved color palettes with a shareable link.
+- Home Page Replication: Faithfully recreates the home page design of the specified website. Note that only aesthetic elements and overall layout are replicated.
+- Page Linking: Ensures all original links from the replicated page are functional, directing users to the corresponding sections or external sites.
+- UI Preservation: Strives to maintain a pixel-perfect likeness to the source site’s interface, making it near identical in visual appearance.
+- AI Powered Suggestion Tool: An AI feature that acts as a tool by comparing design and code implementation, providing feedback for improvements.
 
 ## Style Guidelines:
 
-- Primary color: Deep teal (#008080) to represent the depth and complexity of visual art.
-- Background color: Light gray (#F0F0F0) for a clean, neutral backdrop.
-- Accent color: Bright purple (#A020F0) to create contrast and highlight key actions.
-- Headline font: 'Playfair', a modern serif for elegant headlines.
-- Body font: 'PT Sans', a humanist sans-serif to complement Playfair, for readability.
-- Use simple, modern icons to represent functionalities, maintaining a minimalistic aesthetic.
-- Subtle transitions and animations for a smooth and engaging user experience.
+- Primary color: Teal (#008080), a vibrant hue reminiscent of digital interfaces.
+- Background color: Very light gray (#f0f0f0) providing a neutral canvas to highlight other color elements.
+- Accent color: Salmon (#FA8072), for interactive elements such as buttons, and links.
+- Font pairing: 'Poppins' (sans-serif) for headings and key textual elements, paired with 'Inter' (sans-serif) for body text to improve readability in paragraphs.
+- Simple and consistent vector icons, primarily in teal (#008080) to ensure visual cohesion.
+- Responsive grid-based layout adapting to various screen sizes.
+- Subtle transition effects for interactive components and page transitions.

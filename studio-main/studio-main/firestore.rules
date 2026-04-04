@@ -1,0 +1,102 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
+             get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'admin');
+    }
+
+    function isEditor() {
+      return isSignedIn() && (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) &&
+             get(/databases/$(database)/documents/whitelist/$(request.auth.token.email)).data.role == 'editor');
+    }
+
+    function hasActiveSubscription() {
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return profile.subscriptionTier == 'pro' &&
+             (profile.subscriptionEndDate == null || profile.subscriptionEndDate > request.time);
+    }
+
+    function isPro() {
+      return isSignedIn() && (isAdmin() || hasActiveSubscription());
+    }
+
+    // --- Content Rules ---
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId}/items/{itemId} {
+      allow read: if true;
+      allow create: if isAdmin() || (isEditor() && request.resource.data.status == 'pending');
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --- Affiliate Ads Rules ---
+    match /affiliateAds/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- App Configuration Rules ---
+    match /pricingPlans/{planId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+    
+    match /appConfig/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- User Data Rules ---
+    match /users/{userId} {
+        allow read, write: if isOwner(userId);
+        allow create: if request.auth.uid == userId;
+    }
+    
+    match /users/{userId}/suggestions/{suggestionId} {
+        allow read, write: if isOwner(userId);
+    }
+
+    match /subscriptionRequests/{requestId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    match /whitelist/{email} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() || 
+                     (request.auth.uid != null && request.resource.data.activatedByUid == request.auth.uid && resource.data.activatedByUid == null);
+      allow delete: if isAdmin();
+    }
+    
+    match /used_invitations/{fingerprint} {
+        allow read: if true;
+        allow create: if isSignedIn();
+    }
+    
+    match /paymentMethods/{methodId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+  }
+}
