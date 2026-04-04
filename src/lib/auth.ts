@@ -1,1 +1,1 @@
-export const authOptions = { providers: [], callbacks: { async authorize() { return { id: "1", name: "Admin", email: "artbag.rayanapp@gmail.com" }; } } }; export default authOptions;
+export const authOptions = { providers: [], callbacks: { async authorize(credentials) { if (credentials.email === "artbag.rayanapp@gmail.com") { return { id: "1", name: "Admin", email: "artbag.rayanapp@gmail.com" }; } return null; } } }; export default authOptions;
