@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+    
+    --primary-light-val: 350 72% 51%;
+    --primary-dark-val: 350 72% 51%;
+    
+    --primary: var(--primary-light-val);
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 13% 96%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: var(--primary);
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 355.7 100% 97.3%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: var(--primary);
+    --radius: 1.5rem;
+  }
+  .dark {
+    --background: 240 5% 9%;
+    --foreground: 0 0% 98%;
+    --card: 240 4% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 5% 9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: var(--primary-dark-val);
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 0 0% 63%;
+    --accent: var(--primary);
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: var(--primary);
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground font-body antialiased; }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  @keyframes walk {
+    0%, 100% { transform: translateX(0) translateY(0) rotate(0); }
+    25% { transform: translateX(-5px) translateY(-5px) rotate(-2deg); }
+    50% { transform: translateX(-10px) translateY(0) rotate(0); }
+    75% { transform: translateX(-5px) translateY(-5px) rotate(2deg); }
+  }
+
+  .animate-walk {
+    animation: walk 1.5s ease-in-out infinite;
+  }
+
+  @keyframes float-shadow {
+    0%, 100% { transform: scaleX(1); opacity: 0.2; }
+    50% { transform: scaleX(0.8); opacity: 0.1; }
+  }
+
+  .animate-float-shadow {
+    animation: float-shadow 1.5s ease-in-out infinite;
+  }
+
+  @keyframes gear-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .animate-gear-rotate {
+    animation: gear-rotate 8s linear infinite;
+  }
+
+  .animate-gear-rotate-reverse {
+    animation: gear-rotate 12s linear infinite reverse;
+  }
+
+  @keyframes floating {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+
+  .animate-floating {
+    animation: floating 3s ease-in-out infinite;
+  }
+
+  @keyframes wrench-swing {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(-20deg); }
+  }
+
+  .animate-wrench {
+    animation: wrench-swing 2s ease-in-out infinite;
+    transform-origin: top right;
+  }
+}
